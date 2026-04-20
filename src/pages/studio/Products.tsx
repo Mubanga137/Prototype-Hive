@@ -13,18 +13,19 @@ interface CatalogueItem {
   price: number | null;
   old_price: number | null;
   stock_count: number | null;
+  stock_quantity: number | null;
   category: string | null;
   image_url: string | null;
   item_type: string | null;
 }
 
 const categories = ["Fashion", "Tech", "Beauty", "Food", "Entertainment", "Accessories", "Other"];
+type ProductType = "physical" | "digital" | "service";
 
 const Products = () => {
-  const { user } = useAuth();
+  const { user, currentStore } = useAuth();
   const [products, setProducts] = useState<CatalogueItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [storeId, setStoreId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -36,46 +37,44 @@ const Products = () => {
   const [stock, setStock] = useState("");
   const [category, setCategory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [itemType, setItemType] = useState<ProductType>("physical");
 
   const resetForm = () => {
-    setName(""); setPrice(""); setOldPrice(""); setStock(""); setCategory(""); setImageUrl(""); setEditingId(null);
+    setName(""); setPrice(""); setOldPrice(""); setStock(""); setCategory(""); setImageUrl(""); setItemType("physical"); setEditingId(null);
   };
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!currentStore) { setLoading(false); return; }
     setLoading(true);
-    const store = await ensureStore(user);
-    const sid = store?.id || null;
-    setStoreId(sid);
-    if (sid) {
-      const { data } = await supabase.from("hive_catalogue").select("*").eq("sme_id", sid).neq("item_type", "service").order("created_at", { ascending: false });
-      setProducts((data as CatalogueItem[]) || []);
-    }
+    const { data } = await supabase
+      .from("hive_catalogue")
+      .select("*")
+      .eq("sme_id", currentStore.id)
+      .neq("item_type", "service")
+      .order("created_at", { ascending: false });
+    setProducts((data as CatalogueItem[]) || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => { fetchData(); }, [currentStore]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let sid = storeId;
-    if (!sid) {
-      const store = await ensureStore(user);
-      sid = store?.id || null;
-      setStoreId(sid);
-    }
-    if (!sid) { toast.error("Sign in to add products."); return; }
+    if (!currentStore) { toast.error("Workspace not ready."); return; }
     if (!name.trim()) { toast.error("Product name is required."); return; }
     setSubmitting(true);
-    const payload = {
+    const isPhysical = itemType === "physical";
+    const stockNum = isPhysical ? (parseInt(stock) || 0) : 999999; // services/digital are infinite
+    const payload: any = {
       product_name: name.trim(),
       price: parseFloat(price) || 0,
       old_price: oldPrice ? parseFloat(oldPrice) : null,
-      stock_count: parseInt(stock) || 0,
+      stock_count: stockNum,
+      stock_quantity: stockNum,
       category: category || null,
       image_url: imageUrl || null,
-      sme_id: sid,
-      item_type: "product",
+      sme_id: currentStore.id,
+      item_type: itemType,
     };
     if (editingId) {
       const { error } = await supabase.from("hive_catalogue").update(payload).eq("id", editingId);
@@ -95,9 +94,10 @@ const Products = () => {
     setName(item.product_name || "");
     setPrice(String(item.price || ""));
     setOldPrice(String(item.old_price || ""));
-    setStock(String(item.stock_count || ""));
+    setStock(String(item.stock_quantity ?? item.stock_count ?? ""));
     setCategory(item.category || "");
     setImageUrl(item.image_url || "");
+    setItemType((item.item_type as ProductType) || "physical");
     setFormOpen(true);
   };
 
