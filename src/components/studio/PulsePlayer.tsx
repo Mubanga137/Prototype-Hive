@@ -26,6 +26,8 @@ interface PulsePlayerProps {
   onAddHotspot?: (x: number, y: number) => void;
   onLockDeal?: (product: HotspotProduct) => void;
   storeName?: string;
+  /** When true, the LOCK DEAL CTA is disabled and relabeled "Vendor Unavailable". */
+  outOfCapacity?: boolean;
 }
 
 const PulsePlayer: React.FC<PulsePlayerProps> = ({
@@ -36,6 +38,7 @@ const PulsePlayer: React.FC<PulsePlayerProps> = ({
   onAddHotspot,
   onLockDeal,
   storeName,
+  outOfCapacity = false,
 }) => {
   const [selectedProduct, setSelectedProduct] = useState<HotspotProduct | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -236,13 +239,19 @@ const PulsePlayer: React.FC<PulsePlayerProps> = ({
               {/* CTA */}
               <button
                 onClick={() => {
+                  if (outOfCapacity) return;
                   onLockDeal?.(selectedProduct);
                   closeDrawer();
                 }}
-                className="w-full mt-5 py-3.5 rounded-xl text-sm font-black tracking-wide border-[3px] shadow-[4px_4px_0px_#0F1A35] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all"
-                style={{ background: "#B37C1C", color: "#FFFBF2", borderColor: "#0F1A35" }}
+                disabled={outOfCapacity}
+                className="w-full mt-5 py-3.5 rounded-xl text-sm font-black tracking-wide border-[3px] shadow-[4px_4px_0px_#0F1A35] active:shadow-none active:translate-x-[4px] active:translate-y-[4px] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{
+                  background: outOfCapacity ? "#9CA3AF" : "#B37C1C",
+                  color: "#FFFBF2",
+                  borderColor: "#0F1A35",
+                }}
               >
-                ⚡ LOCK DEAL
+                {outOfCapacity ? "Vendor Unavailable" : "⚡ LOCK DEAL"}
               </button>
             </motion.div>
           </>
