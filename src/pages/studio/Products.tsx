@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Package, Plus, Edit, Trash2, X, Loader2 } from "lucide-react";
+import { Package, Plus, Edit, Trash2, X, Loader2, Briefcase, Cloud } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ensureStore } from "@/lib/ensureStore";
 import { toast } from "sonner";
 
 interface CatalogueItem {
