@@ -66,6 +66,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const unreadCount = useUnreadCount();
+  const ordersLeft = profile?.pulse_credits ?? 0;
+  const outOfCapacity = ordersLeft <= 0;
 
   const handleLogout = async () => {
     await signOut();
@@ -76,11 +78,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-border">
-        <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-primary/30" />
-        <div>
-          <p className="font-display font-bold text-primary text-sm tracking-tight">THE HIVE</p>
-          <p className="text-[10px] text-muted-foreground">Retailer Studio</p>
+      <div className="px-5 py-5 border-b border-border space-y-3">
+        <div className="flex items-center gap-2.5">
+          <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-primary/30" />
+          <div>
+            <p className="font-display font-bold text-primary text-sm tracking-tight">THE HIVE</p>
+            <p className="text-[10px] text-muted-foreground">Retailer Studio</p>
+          </div>
+        </div>
+        {/* Capacity meter — pulse_credits surfaced as Orders Left */}
+        <div
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+            outOfCapacity
+              ? "bg-destructive/10 border-destructive/30 text-destructive"
+              : "bg-primary/10 border-primary/25 text-primary"
+          }`}
+          title={outOfCapacity ? "Top up to receive new orders" : "Orders you can still receive"}
+        >
+          <span className="text-base leading-none">📦</span>
+          <span className="tabular-nums">{ordersLeft.toLocaleString()}</span>
+          <span className="opacity-80">Orders Left</span>
         </div>
       </div>
 
