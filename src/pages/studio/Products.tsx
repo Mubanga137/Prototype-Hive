@@ -13,7 +13,7 @@ interface CatalogueItem {
   price: number | null;
   old_price: number | null;
   stock_count: number | null;
-  stock_quantity: number | null;
+  stock_quantity?: number | null;
   category: string | null;
   image_url: string | null;
   item_type: string | null;
