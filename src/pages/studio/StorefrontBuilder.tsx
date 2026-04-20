@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Globe, Upload, Rocket, Image as ImageIcon, Check, Loader2, Copy,
-  ExternalLink, Plus, Edit, Trash2, Package, Briefcase,
+  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { slugify } from "@/lib/slug";
-import { ensureStore, saveStore } from "@/lib/ensureStore";
+import { saveStore } from "@/lib/ensureStore";
 import OfferFormModal, { OfferDraft, ItemType } from "@/components/storefront/OfferFormModal";
 import StorefrontPreview from "@/components/storefront/StorefrontPreview";
 
@@ -24,13 +24,19 @@ interface OfferRow {
   location_type?: string | null;
   category?: string | null;
   stock_count?: number | null;
+  stock_quantity?: number | null;
 }
 
-const StorefrontBuilder = () => {
-  const { user, loading: authLoading } = useAuth();
+type SaveStatus = "idle" | "saving" | "saved";
 
-  // Store state
-  const [storeId, setStoreId] = useState<number | null>(null);
+const AUTOSAVE_DEBOUNCE_MS = 1500;
+
+const StorefrontBuilder = () => {
+  // Global state — guaranteed resolved before this component mounts
+  // (AuthProvider gates the whole app behind WorkspaceSplash).
+  const { user, currentStore, refreshStore } = useAuth();
+
+  // Editable draft fields
   const [brandName, setBrandName] = useState("");
   const [description, setDescription] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
@@ -40,8 +46,7 @@ const StorefrontBuilder = () => {
   const [slugTouched, setSlugTouched] = useState(false);
 
   // UX state
-  const [bootstrapping, setBootstrapping] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [launching, setLaunching] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -57,6 +62,11 @@ const StorefrontBuilder = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
+  // Autosave bookkeeping
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedRef = useRef(false);
+  const savedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fetchOffers = useCallback(async (sid: number) => {
     const { data } = await supabase
       .from("hive_catalogue")
@@ -66,39 +76,61 @@ const StorefrontBuilder = () => {
     setOffers((data as OfferRow[]) || []);
   }, []);
 
-  // Bootstrap: guarantee a store row exists, then hydrate fields.
+  // Hydrate editable fields from currentStore + draft_data overlay.
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      setBootstrapping(false);
-      return;
-    }
-    let cancelled = false;
+    if (!currentStore) return;
+    const draft = ((currentStore as any).draft_data || {}) as Partial<{
+      brand_name: string; description: string; banner_url: string;
+      logo_url: string; whatsapp_number: string; store_slug: string;
+    }>;
+    setBrandName(draft.brand_name ?? currentStore.brand_name ?? "");
+    setDescription(draft.description ?? currentStore.description ?? "");
+    setBannerUrl(draft.banner_url ?? currentStore.banner_url ?? "");
+    setLogoUrl(draft.logo_url ?? currentStore.logo_url ?? "");
+    setWhatsappNumber(draft.whatsapp_number ?? currentStore.whatsapp_number ?? "");
+    setStoreSlug(draft.store_slug ?? currentStore.store_slug ?? slugify(currentStore.brand_name || `store-${currentStore.id}`));
+    fetchOffers(currentStore.id);
+    // Allow autosave only AFTER initial hydration completes.
+    hydratedRef.current = false;
+    const t = setTimeout(() => { hydratedRef.current = true; }, 50);
+    return () => clearTimeout(t);
+  }, [currentStore, fetchOffers]);
 
-    (async () => {
-      setBootstrapping(true);
-      const store = await ensureStore(user);
-      if (cancelled) return;
+  // ----- Autosave (debounced write of draft_data only) ---------------
+  useEffect(() => {
+    if (!hydratedRef.current || !currentStore) return;
 
-      if (!store) {
-        toast.error("Sign in to manage your storefront.");
-        setBootstrapping(false);
+    setSaveStatus("saving");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      const draftPayload = {
+        brand_name: brandName,
+        description,
+        banner_url: bannerUrl,
+        logo_url: logoUrl,
+        whatsapp_number: whatsappNumber,
+        store_slug: slugify(storeSlug || brandName),
+      };
+      const { error } = await (supabase
+        .from("sme_stores") as any)
+        .update({ draft_data: draftPayload })
+        .eq("id", currentStore.id);
+
+      if (error) {
+        setSaveStatus("idle");
+        toast.error("Autosave failed: " + error.message);
         return;
       }
+      setSaveStatus("saved");
+      if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
+      savedFlashRef.current = setTimeout(() => setSaveStatus("idle"), 2200);
+    }, AUTOSAVE_DEBOUNCE_MS);
 
-      setStoreId(store.id);
-      setBrandName(store.brand_name || "");
-      setDescription(store.description || "");
-      setBannerUrl(store.banner_url || "");
-      setLogoUrl(store.logo_url || "");
-      setWhatsappNumber(store.whatsapp_number || "");
-      setStoreSlug(store.store_slug || slugify(store.brand_name || `store-${store.id}`));
-      await fetchOffers(store.id);
-      setBootstrapping(false);
-    })();
-
-    return () => { cancelled = true; };
-  }, [user, authLoading, fetchOffers]);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [brandName, description, bannerUrl, logoUrl, whatsappNumber, storeSlug, currentStore]);
 
   // ---------- Image uploads ----------
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
@@ -111,20 +143,11 @@ const StorefrontBuilder = () => {
     return data.publicUrl;
   };
 
-  const persistField = async (patch: Record<string, any>) => {
-    const { error } = await saveStore(user, patch);
-    if (error) toast.error(error);
-  };
-
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
     setUploadingLogo(true);
     const url = await uploadFile(f, "logo");
-    if (url) {
-      setLogoUrl(url); // instant UI update
-      await persistField({ logo_url: url });
-      toast.success("Logo saved!");
-    }
+    if (url) setLogoUrl(url); // triggers autosave
     setUploadingLogo(false);
     if (logoInputRef.current) logoInputRef.current.value = "";
   };
@@ -133,51 +156,44 @@ const StorefrontBuilder = () => {
     const f = e.target.files?.[0]; if (!f) return;
     setUploadingBanner(true);
     const url = await uploadFile(f, "banner");
-    if (url) {
-      setBannerUrl(url);
-      await persistField({ banner_url: url });
-      toast.success("Banner saved!");
-    }
+    if (url) setBannerUrl(url);
     setUploadingBanner(false);
     if (bannerInputRef.current) bannerInputRef.current.value = "";
   };
 
-  // ---------- Save ----------
-  const handleSave = async (silent = false): Promise<boolean> => {
-    if (!user) { toast.error("Sign in to save your storefront."); return false; }
-    setSaving(true);
-    const desiredSlug = slugify(storeSlug || brandName) || `store-${user.id.slice(0, 8)}`;
-    const { store, error } = await saveStore(user, {
-      brand_name: brandName.trim() || "My Store",
-      description,
-      banner_url: bannerUrl || null,
-      logo_url: logoUrl || null,
-      whatsapp_number: whatsappNumber || null,
+  // ---------- Launch (promote draft → live, MERGE strategy) ----------
+  const handleLaunch = async () => {
+    if (!currentStore) { toast.error("Workspace not ready yet."); return; }
+    setLaunching(true);
+
+    // Flush any pending autosave first.
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
+
+    const desiredSlug = slugify(storeSlug || brandName) || `store-${user!.id.slice(0, 8)}`;
+
+    // MERGE: draft wins, but live keeps anything not in the draft.
+    const livePatch: Record<string, any> = {
+      brand_name: brandName.trim() || currentStore.brand_name || "My Store",
+      description: description ?? currentStore.description,
+      banner_url: bannerUrl || currentStore.banner_url || null,
+      logo_url: logoUrl || currentStore.logo_url || null,
+      whatsapp_number: whatsappNumber || currentStore.whatsapp_number || null,
       store_slug: desiredSlug,
-    });
-    setSaving(false);
+      draft_data: {}, // reset draft after publish
+    };
+
+    const { store, error } = await saveStore(user, livePatch);
+    setLaunching(false);
 
     if (error || !store) {
-      toast.error(error || "Could not save changes — please try again.");
-      return false;
+      toast.error(error || "Could not launch — please try again.");
+      return;
     }
 
-    // Hydrate state with the canonical row (slug may have been deduped to e.g. -2)
-    setStoreId(store.id);
+    await refreshStore();
     setStoreSlug(store.store_slug || desiredSlug);
-    if (!silent) toast.success("Storefront saved!");
-    return true;
-  };
-
-  const handleLaunch = async () => {
-    setLaunching(true);
-    const ok = await handleSave(true);
-    setLaunching(false);
-    if (ok && (storeSlug || storeId)) {
-      const target = storeSlug || String(storeId);
-      window.open(`/store/${target}`, "_blank");
-      toast.success("Store launched 🚀");
-    }
+    toast.success("🚀 Store launched!");
+    window.open(`/store/${store.store_slug || store.id}`, "_blank");
   };
 
   // ---------- Offers ----------
@@ -190,7 +206,7 @@ const StorefrontBuilder = () => {
       description: o.description || "",
       image_url: o.image_url || "",
       item_type: t,
-      stock: String(o.stock_count ?? ""),
+      stock: String(o.stock_quantity ?? o.stock_count ?? ""),
       duration: o.duration || "",
       location_type: (o.location_type as any) || "",
       category: o.category || "",
@@ -202,16 +218,11 @@ const StorefrontBuilder = () => {
     const { error } = await supabase.from("hive_catalogue").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Offer removed.");
-    if (storeId) fetchOffers(storeId);
+    if (currentStore) fetchOffers(currentStore.id);
   };
 
-  const openAddOffer = async () => {
-    // Guarantee store before opening modal so the offer always saves.
-    if (!storeId) {
-      const store = await ensureStore(user);
-      if (!store) { toast.error("Sign in to add offers."); return; }
-      setStoreId(store.id);
-    }
+  const openAddOffer = () => {
+    if (!currentStore) { toast.error("Workspace not ready yet."); return; }
     setEditingOffer(null);
     setOfferOpen(true);
   };
@@ -219,8 +230,8 @@ const StorefrontBuilder = () => {
   // ---------- Derived ----------
   const storeUrl = storeSlug
     ? `${window.location.origin}/store/${storeSlug}`
-    : storeId
-      ? `${window.location.origin}/store/${storeId}`
+    : currentStore
+      ? `${window.location.origin}/store/${currentStore.id}`
       : "";
 
   const copyLink = async () => {
@@ -238,17 +249,36 @@ const StorefrontBuilder = () => {
   const inputClass =
     "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
 
-  // ---------- Render ----------
-  if (bootstrapping) {
+  // No local "bootstrapping" splash needed — AuthProvider already gated us.
+  // If we somehow render without a store (non-vendor accidentally here), bail clean.
+  if (!currentStore) {
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <Loader2 size={26} className="animate-spin text-primary" />
-          <p className="text-xs text-muted-foreground">Preparing your storefront…</p>
+          <Globe size={26} className="text-muted-foreground" />
+          <p className="text-xs text-muted-foreground">Storefront is only available for Vendor accounts.</p>
         </div>
       </DashboardLayout>
     );
   }
+
+  // ---------- Save indicator (top-right) ----------
+  const SaveIndicator = () => (
+    <AnimatePresence mode="wait">
+      {saveStatus === "saving" && (
+        <motion.div key="saving" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/70 border border-border text-xs font-semibold text-muted-foreground">
+          <Loader2 size={12} className="animate-spin" /> Saving…
+        </motion.div>
+      )}
+      {saveStatus === "saved" && (
+        <motion.div key="saved" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30 text-xs font-semibold text-primary">
+          <Check size={12} /> Saved to Drafts
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
     <DashboardLayout>
@@ -263,9 +293,12 @@ const StorefrontBuilder = () => {
               <p className="text-sm text-muted-foreground">Design, manage offers, and launch your store</p>
             </div>
           </div>
-          <button onClick={openAddOffer} className="btn-gold flex items-center gap-2 px-5 py-2.5 text-sm">
-            <Plus size={16} /> Add Offer
-          </button>
+          <div className="flex items-center gap-3">
+            <SaveIndicator />
+            <button onClick={openAddOffer} className="btn-gold flex items-center gap-2 px-5 py-2.5 text-sm">
+              <Plus size={16} /> Add Offer
+            </button>
+          </div>
         </div>
 
         {/* Public link card */}
@@ -351,18 +384,14 @@ const StorefrontBuilder = () => {
                 placeholder="+260 9XX XXX XXX" className={inputClass} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => handleSave(false)} disabled={saving}
-                className="py-3 text-sm flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary/50 text-foreground font-semibold hover:bg-secondary transition-colors disabled:opacity-60">
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-              <button onClick={handleLaunch} disabled={launching}
-                className="btn-gold py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                {launching ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}
-                🚀 Launch Store
-              </button>
-            </div>
+            <button onClick={handleLaunch} disabled={launching}
+              className="btn-gold w-full py-4 text-base font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+              {launching ? <Loader2 size={18} className="animate-spin" /> : <Rocket size={18} />}
+              🚀 LAUNCH ONLINE STORE
+            </button>
+            <p className="text-[10px] text-center text-muted-foreground">
+              Drafts autosave as you type. Click Launch to publish to your public link.
+            </p>
           </motion.div>
 
           {/* MIDDLE: Offers list */}
@@ -449,9 +478,9 @@ const StorefrontBuilder = () => {
       <OfferFormModal
         open={offerOpen}
         onOpenChange={setOfferOpen}
-        smeId={storeId}
+        smeId={currentStore.id}
         initial={editingOffer}
-        onSaved={() => storeId && fetchOffers(storeId)}
+        onSaved={() => fetchOffers(currentStore.id)}
       />
     </DashboardLayout>
   );
