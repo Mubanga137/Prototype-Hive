@@ -54,6 +54,8 @@ const StorePage = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "products" | "services">("all");
   const [activeCampaigns, setActiveCampaigns] = useState<{ code: string; discount_value: number; discount_type: string }[]>([]);
+  // Seller's pulse_credits — drives the "Vendor Unavailable" public CTA gating.
+  const [sellerOrdersLeft, setSellerOrdersLeft] = useState<number>(1);
   const { addItem, itemCount } = useStoreCart(store?.id ?? null);
 
   useEffect(() => {
@@ -75,6 +77,16 @@ const StorePage = () => {
           .order("created_at", { ascending: false });
         setItems((itemsData as unknown as OfferItem[]) || []);
 
+        // Fetch the seller's order capacity (pulse_credits) — used for gating CTAs.
+        if (s.owner_user_id) {
+          const { data: ownerProf } = await supabase
+            .from("profiles")
+            .select("pulse_credits")
+            .eq("user_id", s.owner_user_id)
+            .maybeSingle();
+          setSellerOrdersLeft(Number((ownerProf as any)?.pulse_credits ?? 0));
+        }
+
         // Active campaigns from local promo engine
         const camps = loadCampaigns(s.id).filter((c) => c.status === "active");
         setActiveCampaigns(camps.map((c) => ({ code: c.code, discount_value: c.discount_value, discount_type: c.discount_type })));
@@ -83,7 +95,8 @@ const StorePage = () => {
     })();
   }, [storeKey]);
 
-  const sellerHasCredits = (store?.prepaid_units ?? 1) >= 0;
+  // Vendor is "available" only when they have remaining order capacity.
+  const sellerHasCapacity = sellerOrdersLeft > 0;
 
   const filtered = useMemo(() =>
     items.filter((i) =>
