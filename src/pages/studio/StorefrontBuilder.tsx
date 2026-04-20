@@ -190,10 +190,19 @@ const StorefrontBuilder = () => {
       return;
     }
 
-    await refreshStore();
+    // Optimize: use the returned store data instead of fetching again
+    // Only call refreshStore if we need to sync auth context
     setStoreSlug(store.store_slug || desiredSlug);
     toast.success("🚀 Store launched!");
-    window.open(`/store/${store.store_slug || store.id}`, "_blank");
+
+    // Open the store in a new tab immediately (don't wait for refreshStore)
+    const storeUrl = store.store_slug
+      ? `/store/${store.store_slug}`
+      : `/store/${store.id}`;
+    window.open(storeUrl, "_blank");
+
+    // Refresh auth context in background (non-blocking)
+    void refreshStore();
   };
 
   // ---------- Offers ----------
