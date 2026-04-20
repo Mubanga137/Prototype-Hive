@@ -130,22 +130,58 @@ const Products = () => {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] bg-card border border-border rounded-2xl shadow-2xl z-[90] overflow-auto max-h-[90vh]">
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-display font-bold text-foreground">{editingId ? "Edit Product" : "Add Product"}</h3>
+                    <h3 className="text-lg font-display font-bold text-foreground">{editingId ? "Edit Item" : "Add Item"}</h3>
                     <button type="button" onClick={() => setFormOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary"><X size={18} className="text-muted-foreground" /></button>
                   </div>
-                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Product name *" className={inputClass} required />
+
+                  {/* Item type selector — drives whether stock UI is shown */}
+                  <div>
+                    <label className="text-xs font-semibold text-foreground mb-1.5 block">Item Type</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { v: "physical", label: "Physical", icon: Package },
+                        { v: "digital", label: "Digital", icon: Cloud },
+                        { v: "service", label: "Service", icon: Briefcase },
+                      ] as const).map(({ v, label, icon: Icon }) => {
+                        const active = itemType === v;
+                        return (
+                          <button key={v} type="button" onClick={() => setItemType(v)}
+                            className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1 transition-colors ${
+                              active ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground hover:bg-secondary"
+                            }`}>
+                            <Icon size={16} />
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Item name *" className={inputClass} required />
                   <div className="grid grid-cols-2 gap-3">
                     <input value={price} onChange={e => setPrice(e.target.value)} placeholder="Price (ZMW)" type="number" step="0.01" className={inputClass} required />
                     <input value={oldPrice} onChange={e => setOldPrice(e.target.value)} placeholder="Old price (optional)" type="number" step="0.01" className={inputClass} />
                   </div>
-                  <input value={stock} onChange={e => setStock(e.target.value)} placeholder="Stock count" type="number" className={inputClass} />
+
+                  {/* Inventory only for Physical — Service & Digital are infinitely available */}
+                  {itemType === "physical" ? (
+                    <div>
+                      <input value={stock} onChange={e => setStock(e.target.value)} placeholder="Stock quantity" type="number" min="0" className={inputClass} />
+                      <p className="text-[10px] text-muted-foreground mt-1">When stock reaches 0, the item shows "Out of Stock" and buying is disabled.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-[11px] text-muted-foreground">
+                      {itemType === "service" ? "Services are infinitely bookable — no stock tracking." : "Digital items are infinitely available — no stock tracking."}
+                    </div>
+                  )}
+
                   <select value={category} onChange={e => setCategory(e.target.value)} className={inputClass}>
                     <option value="">Select category</option>
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="Image URL (optional)" className={inputClass} />
                   <button type="submit" disabled={submitting} className="btn-gold w-full py-3 text-sm flex items-center justify-center gap-2">
-                    {submitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : editingId ? "Update Product" : "Add Product"}
+                    {submitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : editingId ? "Update Item" : "Add Item"}
                   </button>
                 </form>
               </motion.div>
@@ -179,9 +215,18 @@ const Products = () => {
                   <p className="text-xs text-muted-foreground">{product.category || "Uncategorized"}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-foreground">ZMW {product.price || 0}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      (product.stock_count || 0) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                    }`}>{(product.stock_count || 0) > 0 ? `${product.stock_count} in stock` : "Out of stock"}</span>
+                    {(() => {
+                      const isPhysical = (product.item_type || "physical") === "physical";
+                      const qty = product.stock_quantity ?? product.stock_count ?? 0;
+                      if (!isPhysical) {
+                        return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Always available</span>;
+                      }
+                      return (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          qty > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                        }`}>{qty > 0 ? `${qty} in stock` : "Out of Stock"}</span>
+                      );
+                    })()}
                   </div>
                   <div className="flex gap-2 pt-2">
                     <button onClick={() => handleEdit(product)} className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-1.5 hover:bg-primary/5 transition-colors">
