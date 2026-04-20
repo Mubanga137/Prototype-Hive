@@ -302,24 +302,43 @@ const StorePage = () => {
                       </span>
                       {item.old_price && <span className="text-xs text-muted-foreground line-through">ZMW {item.old_price}</span>}
                     </div>
-                    {isService ? (
-                      <button onClick={() => handleBuyNow(item)}
-                        className="mt-auto w-full text-xs py-2 rounded-lg flex items-center justify-center gap-1 btn-gold">
-                        📅 Book Order
-                      </button>
-                    ) : (
-                      <div className="mt-auto flex gap-1.5">
-                        <button onClick={() => handleAddToCart(item)}
-                          aria-label="Add to cart"
-                          className="shrink-0 w-9 rounded-lg border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center justify-center">
-                          <Plus size={14} />
-                        </button>
-                        <button onClick={() => handleBuyNow(item)}
-                          className="flex-1 text-xs py-2 rounded-lg flex items-center justify-center gap-1 btn-gold">
-                          🛒 Buy Now
-                        </button>
-                      </div>
-                    )}
+                    {(() => {
+                      const isPhysical = !isService && item.item_type !== "digital";
+                      const oos = isPhysical && (item.stock_count ?? 0) <= 0;
+                      const disabled = !sellerHasCapacity || oos;
+                      const label = !sellerHasCapacity
+                        ? "Vendor Unavailable"
+                        : oos ? "Out of Stock"
+                        : isService ? "📅 Book Order" : "🛒 Buy Now";
+                      const disabledClass = "mt-auto w-full text-xs py-2 rounded-lg flex items-center justify-center gap-1 bg-muted text-muted-foreground cursor-not-allowed";
+                      if (isService) {
+                        return (
+                          <button onClick={() => handleBuyNow(item)} disabled={disabled}
+                            className={disabled ? disabledClass : "mt-auto w-full text-xs py-2 rounded-lg flex items-center justify-center gap-1 btn-gold"}>
+                            {label}
+                          </button>
+                        );
+                      }
+                      return (
+                        <div className="mt-auto flex gap-1.5">
+                          <button onClick={() => handleAddToCart(item)} disabled={disabled}
+                            aria-label="Add to cart"
+                            className={`shrink-0 w-9 rounded-lg border flex items-center justify-center transition-colors ${
+                              disabled
+                                ? "border-muted bg-muted text-muted-foreground cursor-not-allowed"
+                                : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                            }`}>
+                            <Plus size={14} />
+                          </button>
+                          <button onClick={() => handleBuyNow(item)} disabled={disabled}
+                            className={disabled
+                              ? "flex-1 text-xs py-2 rounded-lg flex items-center justify-center gap-1 bg-muted text-muted-foreground cursor-not-allowed"
+                              : "flex-1 text-xs py-2 rounded-lg flex items-center justify-center gap-1 btn-gold"}>
+                            {label}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </motion.div>
               );
