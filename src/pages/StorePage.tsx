@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BadgeCheck, Package, Briefcase, Store, MessageCircle, Tag, Clock, MapPin, ShoppingCart, Plus } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Store, MessageCircle, Tag, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import Header from "@/components/Header";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
 import CartDrawer from "@/components/CartDrawer";
+import ProductCard from "@/components/storefront/ProductCard";
+import StorefrontBot from "@/components/storefront/StorefrontBot";
 import { useStoreCart } from "@/hooks/useStoreCart";
 import { useAuth } from "@/hooks/useAuth";
 import { loadCampaigns } from "@/lib/promoEngine";
@@ -38,9 +40,6 @@ interface OfferItem {
   duration: string | null;
   location_type: string | null;
 }
-
-const locLabel = (l?: string | null) =>
-  l === "at_customer" ? "At you" : l === "at_sme" ? "At store" : l === "remote" ? "Remote" : null;
 
 const StorePage = () => {
   const { storeKey } = useParams();
@@ -265,84 +264,33 @@ const StorePage = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map((item, i) => {
-              const isService = item.item_type === "service";
-              const savings = item.old_price && item.price ? Math.round(((item.old_price - item.price) / item.old_price) * 100) : 0;
-              return (
-                <motion.div key={item.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }}
-                  className="bg-card rounded-xl border border-border hover:border-primary/40 transition-colors overflow-hidden flex flex-col">
-                  <div className="h-36 bg-gradient-to-br from-secondary to-muted flex items-center justify-center relative">
-                    {item.image_url ? (
-                      <img src={item.image_url} alt={item.product_name || ""} className="w-full h-full object-cover" />
-                    ) : (
-                      isService ? <Briefcase size={28} className="text-muted-foreground/40" /> : <Package size={28} className="text-muted-foreground/40" />
-                    )}
-                    {savings > 0 && (
-                      <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md">
-                        -{savings}%
-                      </span>
-                    )}
-                    <span className="absolute top-2 right-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-foreground/70 text-background backdrop-blur">
-                      {isService ? "Service" : (item.item_type === "digital" ? "Digital" : "Product")}
-                    </span>
-                  </div>
-                  <div className="p-3 flex-1 flex flex-col">
-                    <p className="text-sm font-semibold text-foreground line-clamp-2 mb-1">{item.product_name || "Item"}</p>
-                    {isService ? (
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-1">
-                        {item.duration && <span className="flex items-center gap-0.5"><Clock size={10} />{item.duration}</span>}
-                        {locLabel(item.location_type) && <span className="flex items-center gap-0.5"><MapPin size={10} />{locLabel(item.location_type)}</span>}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">{item.category}</span>
-                    )}
-                    <div className="flex items-baseline gap-2 mt-2 mb-3">
-                      <span className="text-primary font-bold">
-                        {isService && "From "}ZMW {item.price || 0}
-                      </span>
-                      {item.old_price && <span className="text-xs text-muted-foreground line-through">ZMW {item.old_price}</span>}
-                    </div>
-                    {(() => {
-                      const isPhysical = !isService && item.item_type !== "digital";
-                      const oos = isPhysical && (item.stock_count ?? 0) <= 0;
-                      const disabled = !sellerHasCapacity || oos;
-                      const label = !sellerHasCapacity
-                        ? "Vendor Unavailable"
-                        : oos ? "Out of Stock"
-                        : isService ? "📅 Book Order" : "🛒 Buy Now";
-                      const disabledClass = "mt-auto w-full text-xs py-2 rounded-lg flex items-center justify-center gap-1 bg-muted text-muted-foreground cursor-not-allowed";
-                      if (isService) {
-                        return (
-                          <button onClick={() => handleBuyNow(item)} disabled={disabled}
-                            className={disabled ? disabledClass : "mt-auto w-full text-xs py-2 rounded-lg flex items-center justify-center gap-1 btn-gold"}>
-                            {label}
-                          </button>
-                        );
-                      }
-                      return (
-                        <div className="mt-auto flex gap-1.5">
-                          <button onClick={() => handleAddToCart(item)} disabled={disabled}
-                            aria-label="Add to cart"
-                            className={`shrink-0 w-9 rounded-lg border flex items-center justify-center transition-colors ${
-                              disabled
-                                ? "border-muted bg-muted text-muted-foreground cursor-not-allowed"
-                                : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-                            }`}>
-                            <Plus size={14} />
-                          </button>
-                          <button onClick={() => handleBuyNow(item)} disabled={disabled}
-                            className={disabled
-                              ? "flex-1 text-xs py-2 rounded-lg flex items-center justify-center gap-1 bg-muted text-muted-foreground cursor-not-allowed"
-                              : "flex-1 text-xs py-2 rounded-lg flex items-center justify-center gap-1 btn-gold"}>
-                            {label}
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </motion.div>
-              );
-            })}
+            {filtered.map((item, i) => (
+              <ProductCard
+                key={item.id}
+                id={item.id}
+                product_name={item.product_name}
+                price={item.price}
+                old_price={item.old_price}
+                image_url={item.image_url}
+                category={item.category}
+                stock_count={item.stock_count}
+                item_type={item.item_type}
+                description={item.description}
+                duration={item.duration}
+                location_type={item.location_type}
+                rating={(item as any).rating}
+                review_count={(item as any).review_count}
+                discount_type={(item as any).discount_type}
+                discount_value={(item as any).discount_value}
+                variants={(item as any).variants}
+                media_gallery={(item as any).media_gallery}
+                isService={item.item_type === "service"}
+                onBuyNow={handleBuyNow}
+                onAddToCart={handleAddToCart}
+                disabled={!sellerHasCapacity || (item.item_type !== "service" && item.item_type !== "digital" && (item.stock_count ?? 0) <= 0)}
+                disabledReason={!sellerHasCapacity ? "Vendor Unavailable" : "Out of Stock"}
+              />
+            ))}
           </div>
         )}
       </main>
@@ -376,6 +324,12 @@ const StorePage = () => {
         smeId={store?.id ?? null}
         storeName={store?.brand_name || "Store"}
         storeWhatsapp={store?.whatsapp_number ?? null}
+      />
+
+      {/* Storefront Bot Assistant */}
+      <StorefrontBot
+        storeName={store?.brand_name || "Store"}
+        storeDescription={store?.description || ""}
       />
     </div>
   );

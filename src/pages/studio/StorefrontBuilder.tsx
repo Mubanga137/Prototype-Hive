@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { slugify } from "@/lib/slug";
 import { saveStore } from "@/lib/ensureStore";
-import OfferFormModal, { OfferDraft, ItemType } from "@/components/storefront/OfferFormModal";
+import OfferFormModalEnhanced, { OfferDraft, ItemType } from "@/components/storefront/OfferFormModalEnhanced";
 import StorefrontPreview from "@/components/storefront/StorefrontPreview";
 
 interface OfferRow {
@@ -44,6 +44,7 @@ const StorefrontBuilder = () => {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [storeSlug, setStoreSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // UX state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -219,6 +220,10 @@ const StorefrontBuilder = () => {
       duration: o.duration || "",
       location_type: (o.location_type as any) || "",
       category: o.category || "",
+      discount_type: (o as any).discount_type || "none",
+      discount_value: (o as any).discount_value ? String((o as any).discount_value) : "",
+      variants: (o as any).variants || [],
+      media_gallery: (o as any).media_gallery || [],
     });
     setOfferOpen(true);
   };
@@ -428,36 +433,83 @@ const StorefrontBuilder = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[680px] overflow-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[680px] overflow-auto pr-1">
                 <AnimatePresence>
                   {filtered.map((o) => {
                     const isService = o.item_type === "service";
+                    const totalStock = (o as any).variants
+                      ? (o as any).variants.reduce((sum: number, v: any) => sum + v.quantity, 0)
+                      : o.stock_count || 0;
+                    const hasDiscount = (o as any).discount_type && (o as any).discount_type !== "none";
                     return (
-                      <motion.div key={o.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                        className="border border-border rounded-xl overflow-hidden bg-background group">
-                        <div className="h-24 bg-secondary/30 relative">
+                      <motion.div
+                        key={o.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="border border-border rounded-2xl overflow-hidden bg-card hover:border-primary/40 transition-all hover:shadow-lg group">
+                        <div className="h-28 bg-gradient-to-br from-secondary to-muted relative overflow-hidden">
                           {o.image_url ? (
-                            <img src={o.image_url} alt={o.product_name || ""} className="w-full h-full object-cover" />
+                            <img src={o.image_url} alt={o.product_name || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              {isService ? <Briefcase size={22} className="text-muted-foreground/40" /> : <Package size={22} className="text-muted-foreground/40" />}
+                              {isService ? <Briefcase size={32} className="text-muted-foreground/40" /> : <Package size={32} className="text-muted-foreground/40" />}
                             </div>
                           )}
-                          <span className="absolute top-2 left-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-foreground/70 text-background backdrop-blur">
-                            {isService ? "Service" : (o.item_type === "digital" ? "Digital" : "Physical")}
-                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+                          {/* Status Badges */}
+                          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-lg bg-foreground/80 text-background backdrop-blur-sm">
+                              {isService ? "Service" : o.item_type === "digital" ? "Digital" : "Physical"}
+                            </span>
+                            {hasDiscount && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-primary text-primary-foreground">
+                                {(o as any).discount_type === "percentage" ? `${(o as any).discount_value}%` : `ZMW ${(o as any).discount_value}`} OFF
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Stock indicator */}
+                          {!isService && (
+                            <div className="absolute bottom-2 right-2.5 px-2 py-1 rounded-lg bg-background/90 backdrop-blur-sm">
+                              <p className="text-xs font-bold text-foreground">{totalStock} stock</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="p-3 space-y-1.5">
-                          <p className="text-sm font-semibold text-foreground truncate">{o.product_name || "Unnamed"}</p>
-                          <p className="text-sm font-bold text-primary">
-                            {isService ? "From " : ""}ZMW {o.price ?? 0}
-                          </p>
-                          <div className="flex gap-1.5 pt-1">
-                            <button onClick={() => handleEditOffer(o)} className="flex-1 text-[10px] font-semibold text-primary border border-primary/30 rounded-md py-1 hover:bg-primary/5 inline-flex items-center justify-center gap-1">
-                              <Edit size={10} /> Edit
+
+                        <div className="p-3.5 space-y-2">
+                          <div>
+                            <p className="text-sm font-bold text-foreground line-clamp-2 mb-0.5">{o.product_name || "Unnamed"}</p>
+                            {o.category && <p className="text-xs text-muted-foreground">{o.category}</p>}
+                          </div>
+
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-base font-bold text-primary">
+                              ZMW {o.price ?? 0}
+                            </p>
+                            {o.old_price && <p className="text-xs text-muted-foreground line-through">ZMW {o.old_price}</p>}
+                          </div>
+
+                          {o.description && <p className="text-xs text-muted-foreground line-clamp-1">{o.description}</p>}
+
+                          {(o as any).media_gallery && (o as any).media_gallery.length > 0 && (
+                            <p className="text-xs text-primary font-semibold flex items-center gap-1">
+                              <FileVideo size={12} /> {(o as any).media_gallery.length} media file(s)
+                            </p>
+                          )}
+
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              onClick={() => handleEditOffer(o)}
+                              className="flex-1 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-2 hover:bg-primary/5 transition-colors inline-flex items-center justify-center gap-1">
+                              <Edit size={12} /> Edit
                             </button>
-                            <button onClick={() => handleDeleteOffer(o.id)} className="flex-1 text-[10px] font-semibold text-destructive border border-destructive/30 rounded-md py-1 hover:bg-destructive/5 inline-flex items-center justify-center gap-1">
-                              <Trash2 size={10} /> Delete
+                            <button
+                              onClick={() => handleDeleteOffer(o.id)}
+                              className="flex-1 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg py-2 hover:bg-destructive/5 transition-colors inline-flex items-center justify-center gap-1">
+                              <Trash2 size={12} /> Delete
                             </button>
                           </div>
                         </div>
@@ -484,7 +536,7 @@ const StorefrontBuilder = () => {
         </div>
       </div>
 
-      <OfferFormModal
+      <OfferFormModalEnhanced
         open={offerOpen}
         onOpenChange={setOfferOpen}
         smeId={currentStore.id}
