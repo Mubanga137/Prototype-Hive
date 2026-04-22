@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BadgeCheck, Store, MessageCircle, Tag, ShoppingCart } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Store, MessageCircle, Tag, ShoppingCart, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import Header from "@/components/Header";
