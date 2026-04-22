@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Globe, Upload, Rocket, Image as ImageIcon, Check, Loader2, Copy,
-  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud,
+  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud, FileVideo,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
