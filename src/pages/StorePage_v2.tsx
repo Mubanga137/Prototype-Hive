@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, BadgeCheck, MessageCircle, ShoppingCart, Plus, Search, 
   ChevronDown, Star, Clock, MapPin, Zap, TrendingUp, Eye, Heart, Share2,
-  Filter, SortAsc, X, Package
+  Filter, SortAsc, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import HoneycombBackground from "@/components/HoneycombBackground";
@@ -44,7 +44,7 @@ interface OfferItem {
   location_type: string | null;
 }
 
-const StorePage = () => {
+const StorePage_v2 = () => {
   const { storeKey } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -231,7 +231,7 @@ const StorePage = () => {
         >
           <div className="max-w-7xl mx-auto px-4">
             {/* Hero Banner */}
-            <div className="relative rounded-3xl overflow-hidden h-64 md:h-80 mb-6 border border-border/50 shadow-lg">
+            <div className="relative rounded-3xl overflow-hidden h-64 md:h-80 mb-6 border border-border/50">
               <div className={`absolute inset-0 ${store.banner_url ? '' : 'bg-gradient-to-br from-primary/20 via-secondary to-muted'}`}>
                 {store.banner_url && (
                   <img src={store.banner_url} alt="Banner" className="w-full h-full object-cover" />
@@ -370,7 +370,6 @@ const StorePage = () => {
         <section className="max-w-7xl mx-auto px-4 mb-12">
           {filtered.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground">
-              <Package size={48} className="mx-auto mb-4 opacity-30" />
               <p className="text-lg font-semibold mb-2">No items found</p>
               <p className="text-sm">Try adjusting your filters or search query</p>
             </div>
@@ -452,4 +451,4 @@ const StorePage = () => {
   );
 };
 
-export default StorePage;
+export default StorePage_v2;

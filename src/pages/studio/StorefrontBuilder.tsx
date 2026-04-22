@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Globe, Upload, Rocket, Image as ImageIcon, Check, Loader2, Copy,
-  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud, FileVideo,
+  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud, FileVideo, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -315,22 +315,66 @@ const StorefrontBuilder = () => {
           </div>
         </div>
 
+        {/* INVENTORY ANALYTICS DASHBOARD */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Items */}
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Total Items</p>
+              <Package size={16} className="text-primary" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Products & Services</p>
+          </div>
+
+          {/* Products */}
+          <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Products</p>
+              <Package size={16} className="text-blue-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.filter((o) => o.item_type !== "service").length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Physical & Digital</p>
+          </div>
+
+          {/* Services */}
+          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Services</p>
+              <Briefcase size={16} className="text-emerald-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.filter((o) => o.item_type === "service").length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Bookable Services</p>
+          </div>
+
+          {/* Available Stock */}
+          <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">In Stock</p>
+              <Zap size={16} className="text-orange-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.reduce((sum, o) => sum + (o.stock_count ?? 0), 0)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Units</p>
+          </div>
+        </motion.div>
+
         {/* Public link card */}
         {storeUrl && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-4 flex items-center gap-3 flex-wrap">
+            className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/30 rounded-2xl p-6 flex items-center gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-0.5">Your public store link</p>
-              <p className="text-sm font-medium text-foreground truncate">{storeUrl}</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase">Your Public Store Link</p>
+              <p className="text-sm md:text-base font-medium text-foreground truncate font-mono">{storeUrl}</p>
             </div>
             <button onClick={copyLink}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
               {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? "Copied" : "Copy"}
+              {copied ? "Copied" : "Copy Link"}
             </button>
             <a href={storeUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-              <ExternalLink size={14} /> Open Store
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+              <ExternalLink size={14} /> View Store
             </a>
           </motion.div>
         )}
