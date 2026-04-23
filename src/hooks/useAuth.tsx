@@ -78,40 +78,86 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentStore, setCurrentStore] = useState<StoreRow | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /** Fetch profile by user id. Returns the row or null. */
+  /** Fetch profile by user id with retry logic. Returns the row or null. */
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, phone, role, preferences, zmw_balance, pulse_credits")
-      .eq("user_id", userId)
-      .maybeSingle();
-    return (data as Profile | null) ?? null;
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name, phone, role, preferences, zmw_balance, pulse_credits")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (error) {
+          lastError = error as Error;
+          // Retry on network errors, but not on auth/permission errors
+          if (attempt < maxRetries - 1 && error.message.includes("Failed")) {
+            await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+            continue;
+          }
+          return null;
+        }
+
+        return (data as Profile | null) ?? null;
+      } catch (err) {
+        lastError = err as Error;
+        // Retry on network errors
+        if (attempt < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+      }
+    }
+
+    console.warn("[fetchProfile] Failed after retries:", lastError?.message);
+    return null; // Gracefully return null instead of crashing
   };
 
   /** Resolve the full chain user → profile → store and commit to state. */
   const resolveSession = useCallback(async (sess: Session | null) => {
-    setSession(sess);
-    setUser(sess?.user ?? null);
+    try {
+      setSession(sess);
+      setUser(sess?.user ?? null);
 
-    if (!sess?.user) {
-      setProfile(null);
-      setCurrentStore(null);
+      if (!sess?.user) {
+        setProfile(null);
+        setCurrentStore(null);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch profile with error handling
+      try {
+        const prof = await fetchProfile(sess.user.id);
+        setProfile(prof);
+
+        // Only vendors get a store row. Other roles never block on store resolution.
+        if (prof?.role === "vendor") {
+          try {
+            const store = await ensureStore(sess.user);
+            setCurrentStore(store);
+          } catch (storeError) {
+            console.warn("[resolveSession] Error fetching store:", storeError);
+            setCurrentStore(null);
+          }
+        } else {
+          setCurrentStore(null);
+        }
+      } catch (profileError) {
+        console.warn("[resolveSession] Error fetching profile:", profileError);
+        // Continue with null profile instead of crashing
+        setProfile(null);
+        setCurrentStore(null);
+      }
+
       setLoading(false);
-      return;
+    } catch (error) {
+      console.error("[resolveSession] Unexpected error:", error);
+      setLoading(false);
     }
-
-    const prof = await fetchProfile(sess.user.id);
-    setProfile(prof);
-
-    // Only vendors get a store row. Other roles never block on store resolution.
-    if (prof?.role === "vendor") {
-      const store = await ensureStore(sess.user);
-      setCurrentStore(store);
-    } else {
-      setCurrentStore(null);
-    }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -123,29 +169,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => { void resolveSession(sess); }, 0);
     });
 
-    supabase.auth.getSession().then(({ data: { session: sess } }) => {
-      void resolveSession(sess);
-    });
+    // Get initial session with error handling
+    supabase.auth.getSession()
+      .then(({ data: { session: sess } }) => {
+        void resolveSession(sess);
+      })
+      .catch((error) => {
+        console.warn("[useAuth] Error getting initial session:", error);
+        // Still allow the app to load even if session fetch fails
+        setLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, [resolveSession]);
 
   const refreshStore = useCallback(async () => {
     if (!user || profile?.role !== "vendor") return;
-    const store = await ensureStore(user);
-    setCurrentStore(store);
+    try {
+      const store = await ensureStore(user);
+      setCurrentStore(store);
+    } catch (error) {
+      console.warn("[refreshStore] Error:", error);
+      // Keep existing store on error
+    }
   }, [user, profile?.role]);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
-    const prof = await fetchProfile(user.id);
-    setProfile(prof);
+    try {
+      const prof = await fetchProfile(user.id);
+      setProfile(prof);
+    } catch (error) {
+      console.warn("[refreshProfile] Error:", error);
+      // Keep existing profile on error
+    }
   }, [user]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
-    setCurrentStore(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn("[signOut] Error signing out:", error);
+    } finally {
+      setProfile(null);
+      setCurrentStore(null);
+    }
   };
 
   return (
