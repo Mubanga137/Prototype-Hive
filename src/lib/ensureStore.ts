@@ -31,9 +31,10 @@ export async function ensureStore(user: User | null | undefined): Promise<StoreR
   if (!user) return null;
 
   // 1) Try to fetch an existing store
+  // Specify exact columns to avoid schema cache issues with newer columns
   const { data: existing, error: fetchErr } = await supabase
     .from(STORES)
-    .select("*")
+    .select("id,owner_user_id,brand_name,description,banner_url,logo_url,whatsapp_number,business_type,store_slug,prepaid_credits,message_debt")
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -60,7 +61,7 @@ export async function ensureStore(user: User | null | undefined): Promise<StoreR
   const { data: created, error: insErr } = await (supabase
     .from(STORES) as any)
     .insert(insertPayload)
-    .select("*")
+    .select("id,owner_user_id,brand_name,description,banner_url,logo_url,whatsapp_number,business_type,store_slug,prepaid_credits,message_debt")
     .maybeSingle();
 
   if (created) return created as unknown as StoreRow;
@@ -69,7 +70,7 @@ export async function ensureStore(user: User | null | undefined): Promise<StoreR
   if (insErr) {
     const { data: retry } = await supabase
       .from(STORES)
-      .select("*")
+      .select("id,owner_user_id,brand_name,description,banner_url,logo_url,whatsapp_number,business_type,store_slug,prepaid_credits,message_debt")
       .eq("owner_user_id", user.id)
       .maybeSingle();
     if (retry) return retry as unknown as StoreRow;
@@ -99,7 +100,7 @@ export async function saveStore(
     .from(STORES) as any)
     .update(next)
     .eq("id", store.id)
-    .select("*")
+    .select("id,owner_user_id,brand_name,description,banner_url,logo_url,whatsapp_number,business_type,store_slug,prepaid_credits,message_debt")
     .maybeSingle();
 
   if (error) return { store, error: error.message };

@@ -104,8 +104,10 @@ const OfferFormModal = ({ open, onOpenChange, smeId, initial, onSaved }: Props) 
       payload.location_type = draft.location_type || null;
       payload.fulfillment_type = draft.location_type === "at_customer" ? "mobile" : "in-store";
       payload.stock_count = 999;
+      payload.stock_quantity = 999;
     } else {
       payload.stock_count = draft.stock ? parseInt(draft.stock) : 0;
+      payload.stock_quantity = draft.stock ? parseInt(draft.stock) : 0;
     }
 
     const op = draft.id

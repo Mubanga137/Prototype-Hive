@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Globe, Upload, Rocket, Image as ImageIcon, Check, Loader2, Copy,
-  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud,
+  ExternalLink, Plus, Edit, Trash2, Package, Briefcase, Cloud, FileVideo, Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { slugify } from "@/lib/slug";
 import { saveStore } from "@/lib/ensureStore";
-import OfferFormModal, { OfferDraft, ItemType } from "@/components/storefront/OfferFormModal";
+import OfferFormModalEnhanced, { OfferDraft, ItemType } from "@/components/storefront/OfferFormModalEnhanced";
 import StorefrontPreview from "@/components/storefront/StorefrontPreview";
 
 interface OfferRow {
@@ -44,6 +44,7 @@ const StorefrontBuilder = () => {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [storeSlug, setStoreSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // UX state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -190,10 +191,19 @@ const StorefrontBuilder = () => {
       return;
     }
 
-    await refreshStore();
+    // Optimize: use the returned store data instead of fetching again
+    // Only call refreshStore if we need to sync auth context
     setStoreSlug(store.store_slug || desiredSlug);
     toast.success("🚀 Store launched!");
-    window.open(`/store/${store.store_slug || store.id}`, "_blank");
+
+    // Open the store in a new tab immediately (don't wait for refreshStore)
+    const storeUrl = store.store_slug
+      ? `/store/${store.store_slug}`
+      : `/store/${store.id}`;
+    window.open(storeUrl, "_blank");
+
+    // Refresh auth context in background (non-blocking)
+    void refreshStore();
   };
 
   // ---------- Offers ----------
@@ -210,6 +220,10 @@ const StorefrontBuilder = () => {
       duration: o.duration || "",
       location_type: (o.location_type as any) || "",
       category: o.category || "",
+      discount_type: (o as any).discount_type || "none",
+      discount_value: (o as any).discount_value ? String((o as any).discount_value) : "",
+      variants: (o as any).variants || [],
+      media_gallery: (o as any).media_gallery || [],
     });
     setOfferOpen(true);
   };
@@ -301,22 +315,66 @@ const StorefrontBuilder = () => {
           </div>
         </div>
 
+        {/* INVENTORY ANALYTICS DASHBOARD */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Items */}
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Total Items</p>
+              <Package size={16} className="text-primary" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Products & Services</p>
+          </div>
+
+          {/* Products */}
+          <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Products</p>
+              <Package size={16} className="text-blue-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.filter((o) => o.item_type !== "service").length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Physical & Digital</p>
+          </div>
+
+          {/* Services */}
+          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Services</p>
+              <Briefcase size={16} className="text-emerald-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.filter((o) => o.item_type === "service").length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Bookable Services</p>
+          </div>
+
+          {/* Available Stock */}
+          <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">In Stock</p>
+              <Zap size={16} className="text-orange-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground">{offers.reduce((sum, o) => sum + (o.stock_count ?? 0), 0)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Units</p>
+          </div>
+        </motion.div>
+
         {/* Public link card */}
         {storeUrl && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-4 flex items-center gap-3 flex-wrap">
+            className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/30 rounded-2xl p-6 flex items-center gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-0.5">Your public store link</p>
-              <p className="text-sm font-medium text-foreground truncate">{storeUrl}</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase">Your Public Store Link</p>
+              <p className="text-sm md:text-base font-medium text-foreground truncate font-mono">{storeUrl}</p>
             </div>
             <button onClick={copyLink}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
               {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? "Copied" : "Copy"}
+              {copied ? "Copied" : "Copy Link"}
             </button>
             <a href={storeUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-              <ExternalLink size={14} /> Open Store
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+              <ExternalLink size={14} /> View Store
             </a>
           </motion.div>
         )}
@@ -419,36 +477,83 @@ const StorefrontBuilder = () => {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[680px] overflow-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[680px] overflow-auto pr-1">
                 <AnimatePresence>
                   {filtered.map((o) => {
                     const isService = o.item_type === "service";
+                    const totalStock = (o as any).variants
+                      ? (o as any).variants.reduce((sum: number, v: any) => sum + v.quantity, 0)
+                      : o.stock_count || 0;
+                    const hasDiscount = (o as any).discount_type && (o as any).discount_type !== "none";
                     return (
-                      <motion.div key={o.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-                        className="border border-border rounded-xl overflow-hidden bg-background group">
-                        <div className="h-24 bg-secondary/30 relative">
+                      <motion.div
+                        key={o.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="border border-border rounded-2xl overflow-hidden bg-card hover:border-primary/40 transition-all hover:shadow-lg group">
+                        <div className="h-28 bg-gradient-to-br from-secondary to-muted relative overflow-hidden">
                           {o.image_url ? (
-                            <img src={o.image_url} alt={o.product_name || ""} className="w-full h-full object-cover" />
+                            <img src={o.image_url} alt={o.product_name || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              {isService ? <Briefcase size={22} className="text-muted-foreground/40" /> : <Package size={22} className="text-muted-foreground/40" />}
+                              {isService ? <Briefcase size={32} className="text-muted-foreground/40" /> : <Package size={32} className="text-muted-foreground/40" />}
                             </div>
                           )}
-                          <span className="absolute top-2 left-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-foreground/70 text-background backdrop-blur">
-                            {isService ? "Service" : (o.item_type === "digital" ? "Digital" : "Physical")}
-                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+                          {/* Status Badges */}
+                          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-lg bg-foreground/80 text-background backdrop-blur-sm">
+                              {isService ? "Service" : o.item_type === "digital" ? "Digital" : "Physical"}
+                            </span>
+                            {hasDiscount && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-primary text-primary-foreground">
+                                {(o as any).discount_type === "percentage" ? `${(o as any).discount_value}%` : `ZMW ${(o as any).discount_value}`} OFF
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Stock indicator */}
+                          {!isService && (
+                            <div className="absolute bottom-2 right-2.5 px-2 py-1 rounded-lg bg-background/90 backdrop-blur-sm">
+                              <p className="text-xs font-bold text-foreground">{totalStock} stock</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="p-3 space-y-1.5">
-                          <p className="text-sm font-semibold text-foreground truncate">{o.product_name || "Unnamed"}</p>
-                          <p className="text-sm font-bold text-primary">
-                            {isService ? "From " : ""}ZMW {o.price ?? 0}
-                          </p>
-                          <div className="flex gap-1.5 pt-1">
-                            <button onClick={() => handleEditOffer(o)} className="flex-1 text-[10px] font-semibold text-primary border border-primary/30 rounded-md py-1 hover:bg-primary/5 inline-flex items-center justify-center gap-1">
-                              <Edit size={10} /> Edit
+
+                        <div className="p-3.5 space-y-2">
+                          <div>
+                            <p className="text-sm font-bold text-foreground line-clamp-2 mb-0.5">{o.product_name || "Unnamed"}</p>
+                            {o.category && <p className="text-xs text-muted-foreground">{o.category}</p>}
+                          </div>
+
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-base font-bold text-primary">
+                              ZMW {o.price ?? 0}
+                            </p>
+                            {o.old_price && <p className="text-xs text-muted-foreground line-through">ZMW {o.old_price}</p>}
+                          </div>
+
+                          {o.description && <p className="text-xs text-muted-foreground line-clamp-1">{o.description}</p>}
+
+                          {(o as any).media_gallery && (o as any).media_gallery.length > 0 && (
+                            <p className="text-xs text-primary font-semibold flex items-center gap-1">
+                              <FileVideo size={12} /> {(o as any).media_gallery.length} media file(s)
+                            </p>
+                          )}
+
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              onClick={() => handleEditOffer(o)}
+                              className="flex-1 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-2 hover:bg-primary/5 transition-colors inline-flex items-center justify-center gap-1">
+                              <Edit size={12} /> Edit
                             </button>
-                            <button onClick={() => handleDeleteOffer(o.id)} className="flex-1 text-[10px] font-semibold text-destructive border border-destructive/30 rounded-md py-1 hover:bg-destructive/5 inline-flex items-center justify-center gap-1">
-                              <Trash2 size={10} /> Delete
+                            <button
+                              onClick={() => handleDeleteOffer(o.id)}
+                              className="flex-1 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg py-2 hover:bg-destructive/5 transition-colors inline-flex items-center justify-center gap-1">
+                              <Trash2 size={12} /> Delete
                             </button>
                           </div>
                         </div>
@@ -475,7 +580,7 @@ const StorefrontBuilder = () => {
         </div>
       </div>
 
-      <OfferFormModal
+      <OfferFormModalEnhanced
         open={offerOpen}
         onOpenChange={setOfferOpen}
         smeId={currentStore.id}
