@@ -296,15 +296,17 @@ const StorefrontBuilder = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+      {/* Split-screen layout: 40% editor + 60% preview */}
+      <div className="flex flex-col h-[calc(100vh-120px)] gap-0">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-6 py-4 bg-card border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <Globe size={22} className="text-primary" />
             </div>
             <div>
               <h2 className="text-2xl font-display font-bold text-foreground">Storefront Builder</h2>
-              <p className="text-sm text-muted-foreground">Design, manage offers, and launch your store</p>
+              <p className="text-sm text-muted-foreground">Design & manage your store</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -315,268 +317,233 @@ const StorefrontBuilder = () => {
           </div>
         </div>
 
-        {/* INVENTORY ANALYTICS DASHBOARD */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Total Items */}
-          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Total Items</p>
-              <Package size={16} className="text-primary" />
-            </div>
-            <p className="text-3xl font-bold text-foreground">{offers.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Products & Services</p>
-          </div>
-
-          {/* Products */}
-          <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Products</p>
-              <Package size={16} className="text-blue-600" />
-            </div>
-            <p className="text-3xl font-bold text-foreground">{offers.filter((o) => o.item_type !== "service").length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Physical & Digital</p>
-          </div>
-
-          {/* Services */}
-          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Services</p>
-              <Briefcase size={16} className="text-emerald-600" />
-            </div>
-            <p className="text-3xl font-bold text-foreground">{offers.filter((o) => o.item_type === "service").length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Bookable Services</p>
-          </div>
-
-          {/* Available Stock */}
-          <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">In Stock</p>
-              <Zap size={16} className="text-orange-600" />
-            </div>
-            <p className="text-3xl font-bold text-foreground">{offers.reduce((sum, o) => sum + (o.stock_count ?? 0), 0)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Total Units</p>
-          </div>
-        </motion.div>
-
-        {/* Public link card */}
-        {storeUrl && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/30 rounded-2xl p-6 flex items-center gap-4 flex-wrap">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase">Your Public Store Link</p>
-              <p className="text-sm md:text-base font-medium text-foreground truncate font-mono">{storeUrl}</p>
-            </div>
-            <button onClick={copyLink}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? "Copied" : "Copy Link"}
-            </button>
-            <a href={storeUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-              <ExternalLink size={14} /> View Store
-            </a>
-          </motion.div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT: Identity controls */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-xl p-6 space-y-5 h-fit">
-            {/* Logo */}
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">Store Logo</label>
-              <div className="flex items-center gap-4">
-                <div onClick={() => logoInputRef.current?.click()}
-                  className="w-16 h-16 rounded-full border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center cursor-pointer overflow-hidden transition-colors">
-                  {uploadingLogo ? <Loader2 size={18} className="animate-spin text-muted-foreground" /> :
-                    logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" /> :
-                    <Upload size={20} className="text-muted-foreground/40" />}
+        {/* Split-screen content */}
+        <div className="flex flex-1 overflow-hidden gap-0">
+          {/* LEFT PANEL: Editor (40%) */}
+          <div className="w-[40%] border-r border-border overflow-y-auto bg-background">
+            <div className="space-y-6 p-6">
+              {/* INVENTORY ANALYTICS DASHBOARD */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-2 gap-3">
+                {/* Total Items */}
+                <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Total</p>
+                    <Package size={14} className="text-primary" />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{offers.length}</p>
                 </div>
-                <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                <p className="text-xs text-muted-foreground">Click to upload your logo</p>
-              </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">Store Name</label>
-              <input value={brandName}
-                onChange={(e) => {
-                  setBrandName(e.target.value);
-                  if (!slugTouched) setStoreSlug(slugify(e.target.value));
-                }}
-                placeholder="e.g. Lusaka Threads" className={inputClass} />
-            </div>
+                {/* Products */}
+                <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Products</p>
+                    <Package size={14} className="text-blue-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{offers.filter((o) => o.item_type !== "service").length}</p>
+                </div>
 
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">Store URL slug</label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">/store/</span>
-                <input value={storeSlug}
-                  onChange={(e) => { setSlugTouched(true); setStoreSlug(slugify(e.target.value)); }}
-                  placeholder="lusaka-threads" className={inputClass} />
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">If taken, we'll automatically append a number.</p>
-            </div>
+                {/* Services */}
+                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Services</p>
+                    <Briefcase size={14} className="text-emerald-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{offers.filter((o) => o.item_type === "service").length}</p>
+                </div>
 
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-                placeholder="Tell customers about your store..." rows={3} className={`${inputClass} resize-none`} />
-            </div>
+                {/* Stock */}
+                <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 border border-orange-500/20 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Stock</p>
+                    <Zap size={14} className="text-orange-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{offers.reduce((sum, o) => sum + (o.stock_count ?? 0), 0)}</p>
+                </div>
+              </motion.div>
 
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">Banner Image</label>
-              <div onClick={() => bannerInputRef.current?.click()}
-                className="w-full h-24 rounded-xl border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center cursor-pointer overflow-hidden transition-colors">
-                {uploadingBanner ? <Loader2 size={20} className="animate-spin text-muted-foreground" /> :
-                  bannerUrl ? <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" /> :
-                  <div className="text-center"><ImageIcon size={24} className="mx-auto text-muted-foreground/40" /><p className="text-xs text-muted-foreground mt-1">Upload banner</p></div>}
-              </div>
-              <input ref={bannerInputRef} type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
-            </div>
+              {/* Public link card */}
+              {storeUrl && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/30 rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Your Store Link</p>
+                  <p className="text-xs font-medium text-foreground truncate font-mono">{storeUrl}</p>
+                  <div className="flex gap-2">
+                    <button onClick={copyLink}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors">
+                      {copied ? <Check size={12} /> : <Copy size={12} />}
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                    <a href={storeUrl} target="_blank" rel="noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
+                      <ExternalLink size={12} /> View
+                    </a>
+                  </div>
+                </motion.div>
+              )}
 
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">WhatsApp Number</label>
-              <input value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)}
-                placeholder="+260 9XX XXX XXX" className={inputClass} />
-            </div>
+              {/* Identity Section */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-card border border-border rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-display font-bold text-foreground">Store Identity</h3>
 
-            <button onClick={handleLaunch} disabled={launching}
-              className="btn-gold w-full py-4 text-base font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-              {launching ? <Loader2 size={18} className="animate-spin" /> : <Rocket size={18} />}
-              🚀 LAUNCH ONLINE STORE
-            </button>
-            <p className="text-[10px] text-center text-muted-foreground">
-              Drafts autosave as you type. Click Launch to publish to your public link.
-            </p>
-          </motion.div>
+                {/* Logo */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">Logo</label>
+                  <div onClick={() => logoInputRef.current?.click()}
+                    className="w-full h-20 rounded-lg border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center cursor-pointer overflow-hidden transition-colors">
+                    {uploadingLogo ? <Loader2 size={16} className="animate-spin text-muted-foreground" /> :
+                      logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" /> :
+                      <Upload size={18} className="text-muted-foreground/40" />}
+                  </div>
+                  <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                </div>
 
-          {/* MIDDLE: Offers list */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-            className="bg-card border border-border rounded-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-display font-bold text-foreground">Your Offers ({offers.length})</h3>
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50">
-                {(["all", "products", "services"] as const).map((f) => (
-                  <button key={f} onClick={() => setFilter(f)}
-                    className={`px-3 py-1 text-[11px] font-semibold rounded-md capitalize transition-colors ${
-                      filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                    }`}>{f}</button>
-                ))}
-              </div>
-            </div>
+                {/* Store Name */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">Store Name</label>
+                  <input value={brandName}
+                    onChange={(e) => {
+                      setBrandName(e.target.value);
+                      if (!slugTouched) setStoreSlug(slugify(e.target.value));
+                    }}
+                    placeholder="e.g. Lusaka Threads" className={inputClass} />
+                </div>
 
-            {filtered.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Package size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm mb-3">No offers yet.</p>
-                <button onClick={openAddOffer}
-                  className="btn-gold inline-flex items-center gap-2 px-4 py-2 text-xs">
-                  <Plus size={14} /> Create your first offer
+                {/* URL Slug */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">Store URL</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">/store/</span>
+                    <input value={storeSlug}
+                      onChange={(e) => { setSlugTouched(true); setStoreSlug(slugify(e.target.value)); }}
+                      placeholder="store-name" className={inputClass} />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">Description</label>
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Tell customers about your store..." rows={2} className={`${inputClass} resize-none`} />
+                </div>
+
+                {/* Banner */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">Banner Image</label>
+                  <div onClick={() => bannerInputRef.current?.click()}
+                    className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center cursor-pointer overflow-hidden transition-colors">
+                    {uploadingBanner ? <Loader2 size={18} className="animate-spin text-muted-foreground" /> :
+                      bannerUrl ? <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" /> :
+                      <ImageIcon size={20} className="text-muted-foreground/40" />}
+                  </div>
+                  <input ref={bannerInputRef} type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+                </div>
+
+                {/* WhatsApp */}
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">WhatsApp Number</label>
+                  <input value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)}
+                    placeholder="+260 9XX XXX XXX" className={inputClass} />
+                </div>
+
+                {/* Launch Button */}
+                <button onClick={handleLaunch} disabled={launching}
+                  className="btn-gold w-full py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                  {launching ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}
+                  LAUNCH STORE
                 </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[680px] overflow-auto pr-1">
-                <AnimatePresence>
-                  {filtered.map((o) => {
-                    const isService = o.item_type === "service";
-                    const totalStock = (o as any).variants
-                      ? (o as any).variants.reduce((sum: number, v: any) => sum + v.quantity, 0)
-                      : o.stock_count || 0;
-                    const hasDiscount = (o as any).discount_type && (o as any).discount_type !== "none";
-                    return (
-                      <motion.div
-                        key={o.id}
-                        layout
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="border border-border rounded-2xl overflow-hidden bg-card hover:border-primary/40 transition-all hover:shadow-lg group">
-                        <div className="h-28 bg-gradient-to-br from-secondary to-muted relative overflow-hidden">
-                          {o.image_url ? (
-                            <img src={o.image_url} alt={o.product_name || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              {isService ? <Briefcase size={32} className="text-muted-foreground/40" /> : <Package size={32} className="text-muted-foreground/40" />}
+              </motion.div>
+
+              {/* Offers Section */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-card border border-border rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-display font-bold text-foreground">Offers ({offers.length})</h3>
+                  <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary/50">
+                    {(["all", "products", "services"] as const).map((f) => (
+                      <button key={f} onClick={() => setFilter(f)}
+                        className={`px-2 py-1 text-[10px] font-semibold rounded-md capitalize transition-colors ${
+                          filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                        }`}>{f}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {filtered.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package size={32} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-xs mb-2">No offers yet</p>
+                    <button onClick={openAddOffer}
+                      className="btn-gold inline-flex items-center gap-2 px-3 py-1.5 text-xs">
+                      <Plus size={12} /> Add Offer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 max-h-80 overflow-auto pr-1">
+                    <AnimatePresence>
+                      {filtered.map((o) => {
+                        const isService = o.item_type === "service";
+                        const totalStock = (o as any).variants
+                          ? (o as any).variants.reduce((sum: number, v: any) => sum + v.quantity, 0)
+                          : o.stock_count || 0;
+                        return (
+                          <motion.div
+                            key={o.id}
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="border border-border rounded-lg overflow-hidden bg-card hover:border-primary/40 transition-all group">
+                            <div className="h-16 bg-gradient-to-br from-secondary to-muted relative overflow-hidden">
+                              {o.image_url ? (
+                                <img src={o.image_url} alt={o.product_name || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  {isService ? <Briefcase size={20} className="text-muted-foreground/40" /> : <Package size={20} className="text-muted-foreground/40" />}
+                                </div>
+                              )}
                             </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
-                          {/* Status Badges */}
-                          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                            <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-lg bg-foreground/80 text-background backdrop-blur-sm">
-                              {isService ? "Service" : o.item_type === "digital" ? "Digital" : "Physical"}
-                            </span>
-                            {hasDiscount && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg bg-primary text-primary-foreground">
-                                {(o as any).discount_type === "percentage" ? `${(o as any).discount_value}%` : `ZMW ${(o as any).discount_value}`} OFF
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Stock indicator */}
-                          {!isService && (
-                            <div className="absolute bottom-2 right-2.5 px-2 py-1 rounded-lg bg-background/90 backdrop-blur-sm">
-                              <p className="text-xs font-bold text-foreground">{totalStock} stock</p>
+                            <div className="p-2.5 space-y-1">
+                              <p className="text-xs font-bold text-foreground line-clamp-1">{o.product_name || "Unnamed"}</p>
+                              <p className="text-xs font-bold text-primary">ZMW {o.price ?? 0}</p>
+                              <div className="flex gap-2 pt-1">
+                                <button
+                                  onClick={() => handleEditOffer(o)}
+                                  className="flex-1 text-[10px] font-semibold text-primary border border-primary/30 rounded py-1 hover:bg-primary/5 transition-colors">
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteOffer(o.id)}
+                                  className="flex-1 text-[10px] font-semibold text-destructive border border-destructive/30 rounded py-1 hover:bg-destructive/5 transition-colors">
+                                  Delete
+                                </button>
+                              </div>
                             </div>
-                          )}
-                        </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          </div>
 
-                        <div className="p-3.5 space-y-2">
-                          <div>
-                            <p className="text-sm font-bold text-foreground line-clamp-2 mb-0.5">{o.product_name || "Unnamed"}</p>
-                            {o.category && <p className="text-xs text-muted-foreground">{o.category}</p>}
-                          </div>
-
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-base font-bold text-primary">
-                              ZMW {o.price ?? 0}
-                            </p>
-                            {o.old_price && <p className="text-xs text-muted-foreground line-through">ZMW {o.old_price}</p>}
-                          </div>
-
-                          {o.description && <p className="text-xs text-muted-foreground line-clamp-1">{o.description}</p>}
-
-                          {(o as any).media_gallery && (o as any).media_gallery.length > 0 && (
-                            <p className="text-xs text-primary font-semibold flex items-center gap-1">
-                              <FileVideo size={12} /> {(o as any).media_gallery.length} media file(s)
-                            </p>
-                          )}
-
-                          <div className="flex gap-2 pt-2">
-                            <button
-                              onClick={() => handleEditOffer(o)}
-                              className="flex-1 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-2 hover:bg-primary/5 transition-colors inline-flex items-center justify-center gap-1">
-                              <Edit size={12} /> Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteOffer(o.id)}
-                              className="flex-1 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg py-2 hover:bg-destructive/5 transition-colors inline-flex items-center justify-center gap-1">
-                              <Trash2 size={12} /> Delete
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            )}
-          </motion.div>
-
-          {/* RIGHT: Live Preview */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="lg:sticky lg:top-4 h-fit">
-            <StorefrontPreview
-              brandName={brandName}
-              description={description}
-              bannerUrl={bannerUrl}
-              logoUrl={logoUrl}
-              storeSlug={storeSlug}
-              offers={offers}
-            />
-          </motion.div>
+          {/* RIGHT PANEL: Live Preview (60%) */}
+          <div className="flex-1 bg-card overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto">
+              <StorefrontPreview
+                brandName={brandName}
+                description={description}
+                bannerUrl={bannerUrl}
+                logoUrl={logoUrl}
+                storeSlug={storeSlug}
+                offers={offers}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

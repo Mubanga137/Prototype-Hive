@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, Loader2, Package, Briefcase, Cloud, Plus, Trash2, FileVideo, Image as ImageIcon, Tag, Percent } from "lucide-react";
+import { X, Upload, Loader2, Package, Briefcase, Cloud, Plus, Trash2, FileVideo, Image as ImageIcon, Tag, Percent, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ensureStore } from "@/lib/ensureStore";
+import { generateOfferVariants, shouldAutoGenerateVariants } from "@/lib/offerVariantGenerator";
 import { toast } from "sonner";
 
 export type ItemType = "physical" | "digital" | "service";
@@ -157,6 +158,23 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
     setSubmitting(true);
 
     const isService = draft.item_type === "service";
+    
+    // Auto-generate variants if empty (minimum 4 per offer)
+    let variants = draft.variants && draft.variants.length > 0 ? draft.variants : [];
+    if (shouldAutoGenerateVariants(variants)) {
+      const basePrice = parseFloat(draft.price) || 0;
+      const stockQty = draft.stock ? parseInt(draft.stock) : 10;
+      const generatedVariants = generateOfferVariants(draft.name, draft.item_type, basePrice, stockQty);
+      variants = generatedVariants.map((v) => ({
+        id: v.id,
+        name: v.name,
+        sku: v.sku,
+        quantity: v.quantity,
+        price: v.price,
+      }));
+      toast.success("Auto-generated 4 offer variants!");
+    }
+    
     const payload: any = {
       product_name: draft.name.trim(),
       price: parseFloat(draft.price) || 0,
@@ -168,7 +186,7 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
       discount_type: draft.discount_type || "none",
       discount_value: draft.discount_value ? parseFloat(draft.discount_value) : null,
       media_gallery: draft.media_gallery && draft.media_gallery.length > 0 ? draft.media_gallery : [],
-      variants: draft.variants && draft.variants.length > 0 ? draft.variants : [],
+      variants: variants,
     };
 
     if (isService) {
