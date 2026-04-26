@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Search, ChevronDown, SortAsc, Package
+  ArrowLeft, Search, ChevronDown, SortAsc, Package, ShoppingCart
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import HoneycombBackground from "@/components/HoneycombBackground";
@@ -47,6 +47,126 @@ interface OfferItem {
   location_type: string | null;
 }
 
+// Dummy store data for store ID 1
+const DUMMY_STORE: StoreInfo = {
+  id: 1,
+  brand_name: "Lelayrilan",
+  business_type: "Fashion & Accessories",
+  description: "Premium fashion and accessories crafted with quality and care. Fast delivery and trusted by our customers.",
+  banner_url: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=400&fit=crop",
+  logo_url: "https://images.unsplash.com/photo-1515562141207-5dfd823d3816?w=200&h=200&fit=crop",
+  whatsapp_number: "+260960000001",
+  store_slug: "lelayrilan",
+  owner_user_id: null,
+};
+
+const DUMMY_PRODUCTS: OfferItem[] = [
+  {
+    id: 1,
+    product_name: "Premium Leather Bag",
+    price: 2500,
+    old_price: 3200,
+    image_url: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&h=300&fit=crop",
+    category: "Bags",
+    stock_count: 15,
+    item_type: "product",
+    description: "Handcrafted leather bag with premium materials",
+    duration: null,
+    location_type: null,
+  },
+  {
+    id: 2,
+    product_name: "Designer Sunglasses",
+    price: 1200,
+    old_price: 1500,
+    image_url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=300&fit=crop",
+    category: "Eyewear",
+    stock_count: 20,
+    item_type: "product",
+    description: "UV-protected designer sunglasses",
+    duration: null,
+    location_type: null,
+  },
+  {
+    id: 3,
+    product_name: "Elegant Scarf",
+    price: 800,
+    old_price: null,
+    image_url: "https://images.unsplash.com/photo-1565631066963-c5facf338b96?w=300&h=300&fit=crop",
+    category: "Accessories",
+    stock_count: 30,
+    item_type: "product",
+    description: "Silk blend elegant scarf",
+    duration: null,
+    location_type: null,
+  },
+  {
+    id: 4,
+    product_name: "Style Consultation",
+    price: 500,
+    old_price: null,
+    image_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop",
+    category: "Services",
+    stock_count: null,
+    item_type: "service",
+    description: "Personal style consultation service",
+    duration: "1 hour",
+    location_type: "online",
+  },
+  {
+    id: 5,
+    product_name: "Gold Watch",
+    price: 3500,
+    old_price: 4500,
+    image_url: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300&h=300&fit=crop",
+    category: "Watches",
+    stock_count: 8,
+    item_type: "product",
+    description: "Luxury gold-plated watch",
+    duration: null,
+    location_type: null,
+  },
+  {
+    id: 6,
+    product_name: "Casual Shoes",
+    price: 1800,
+    old_price: 2200,
+    image_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
+    category: "Footwear",
+    stock_count: 25,
+    item_type: "product",
+    description: "Comfortable and stylish casual shoes",
+    duration: null,
+    location_type: null,
+  },
+  {
+    id: 7,
+    product_name: "Jewelry Set",
+    price: 2200,
+    old_price: 2800,
+    image_url: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=300&h=300&fit=crop",
+    category: "Jewelry",
+    stock_count: 12,
+    item_type: "product",
+    description: "Elegant jewelry set with premium finish",
+    duration: null,
+    location_type: null,
+  },
+  {
+    id: 8,
+    product_name: "Fashion Makeover",
+    price: 1200,
+    old_price: null,
+    image_url: "https://images.unsplash.com/photo-1488426862026-56a8ae30b134?w=300&h=300&fit=crop",
+    category: "Services",
+    stock_count: null,
+    item_type: "service",
+    description: "Complete fashion makeover service",
+    duration: "3 hours",
+    location_type: "in-person",
+  },
+];
+
 const StorePage = () => {
   const { storeKey } = useParams();
   const navigate = useNavigate();
@@ -69,6 +189,15 @@ const StorePage = () => {
     (async () => {
       setLoading(true);
       const isNumeric = /^\d+$/.test(storeKey);
+
+      // Check if this is the demo store ID 1
+      if (isNumeric && Number(storeKey) === 1) {
+        setStore(DUMMY_STORE);
+        setItems(DUMMY_PRODUCTS);
+        setLoading(false);
+        return;
+      }
+
       const { data: storeData } = isNumeric
         ? await supabase.from("sme_stores").select("*").eq("id", Number(storeKey)).maybeSingle()
         : await (supabase.from("sme_stores").select("*") as any).eq("store_slug", storeKey).maybeSingle();
