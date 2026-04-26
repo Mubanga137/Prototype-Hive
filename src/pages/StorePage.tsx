@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, BadgeCheck, MessageCircle, ShoppingCart, Plus, Search, 
-  ChevronDown, Star, Clock, MapPin, Zap, TrendingUp, Eye, Heart, Share2,
-  Filter, SortAsc, X, Package
+import {
+  ArrowLeft, Search, ChevronDown, SortAsc, Package
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import HoneycombBackground from "@/components/HoneycombBackground";
@@ -13,6 +11,11 @@ import CheckoutDrawer from "@/components/CheckoutDrawer";
 import CartDrawer from "@/components/CartDrawer";
 import ProductCard from "@/components/storefront/ProductCard";
 import StorefrontBot from "@/components/storefront/StorefrontBot";
+import HeroSectionEditorial from "@/components/storefront/HeroSectionEditorial";
+import {
+  ProfileHeader, TrustBar, ActivityFeed, HowItWorks, WhatYouGet,
+  AvailabilityStatus, FeaturedOffers, ReviewsSection, FullOfferGrid
+} from "@/components/storefront/StorefrontSections";
 import { useStoreCart } from "@/hooks/useStoreCart";
 import { useAuth } from "@/hooks/useAuth";
 import { loadCampaigns } from "@/lib/promoEngine";
@@ -215,201 +218,156 @@ const StorePage = () => {
       <HoneycombBackground />
       <Header />
 
+      {/* SECTION 1: PROFILE HEADER */}
+      {store && <ProfileHeader storeName={store.brand_name || 'Store'} businessType={store.business_type} />}
+
       <main className="relative z-10">
-        {/* Back Button */}
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft size={16} /> Back
-          </button>
-        </div>
+        {/* SECTION 2: HERO SECTION with editorial design */}
+        {store && (
+          <HeroSectionEditorial
+            storeName={store.brand_name || 'Store'}
+            heroTitle={store.brand_name || 'Store'}
+            heroSubtitle="Premium Quality, Fast Delivery"
+            heroImageUrl={(store as any).hero_image_url}
+            bannerUrl={store.banner_url}
+            logoUrl={store.logo_url}
+            description={store.description}
+            whatsappNumber={store.whatsapp_number}
+            onMessageClick={handleMessageStore}
+            onShopClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+          />
+        )}
 
-        {/* HERO SECTION */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative mb-8"
-        >
-          <div className="max-w-7xl mx-auto px-4">
-            {/* Hero Banner */}
-            <div className="relative rounded-3xl overflow-hidden h-64 md:h-80 mb-6 border border-border/50 shadow-lg">
-              <div className={`absolute inset-0 ${store.banner_url ? '' : 'bg-gradient-to-br from-primary/20 via-secondary to-muted'}`}>
-                {store.banner_url && (
-                  <img src={store.banner_url} alt="Banner" className="w-full h-full object-cover" />
-                )}
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              
-              {/* Store Info Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                <div className="flex items-end gap-4 md:gap-6">
-                  {/* Logo */}
-                  <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl md:rounded-3xl bg-card border-4 border-primary/20 flex items-center justify-center text-3xl md:text-5xl font-display font-bold text-primary shadow-2xl overflow-hidden shrink-0">
-                    {store.logo_url ? (
-                      <img src={store.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      store.brand_name?.[0] || "S"
-                    )}
+        {/* SECTION 3: TRUST BAR */}
+        <TrustBar />
+
+        {/* SECTION 4: ACTIVITY FEED */}
+        <ActivityFeed />
+
+        {/* SECTION 5: HOW IT WORKS */}
+        <HowItWorks businessType={store?.business_type} />
+
+        {/* SECTION 6: WHAT YOU GET */}
+        <WhatYouGet businessType={store?.business_type} />
+
+        {/* SECTION 7: AVAILABILITY STATUS */}
+        <AvailabilityStatus />
+
+        {/* SECTION 8: FEATURED OFFERS (top 4) */}
+        <FeaturedOffers offers={filtered.slice(0, 4)} />
+
+        {/* SECTION 9: REVIEWS */}
+        <ReviewsSection />
+
+        {/* SECTION 10: FULL OFFER GRID with filters and search */}
+        <section className="py-8 md:py-12 bg-gradient-to-br from-secondary/30 to-background">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
+            <div className="space-y-6">
+              {/* Search & Filter Controls */}
+              <div className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search products, services, brands..."
+                    className="w-full pl-12 pr-4 py-3 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm md:text-base"
+                  />
+                </div>
+
+                {/* Filter & Sort Controls */}
+                <div className="flex gap-2 flex-wrap items-center">
+                  {/* Category Tabs */}
+                  <div className="flex gap-1 p-1.5 rounded-xl bg-secondary/50 border border-border">
+                    {(["all", "products", "services"] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={`px-4 py-2 rounded-lg text-xs md:text-sm font-semibold capitalize transition-all ${
+                          filter === f
+                            ? "bg-primary text-primary-foreground shadow-md"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {f} {f === "all" ? `(${stats.total})` : f === "products" ? `(${stats.products})` : `(${stats.services})`}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Store Title & Stats */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <h1 className="text-2xl md:text-4xl font-display font-bold text-white">{store.brand_name}</h1>
-                      <BadgeCheck size={24} className="text-blue-400 shrink-0" />
-                    </div>
-                    <p className="text-white/90 text-sm md:text-base mb-3">{store.business_type || "Retail"}</p>
-                    
-                    {/* Quick Stats */}
-                    <div className="flex gap-4 flex-wrap text-white text-xs md:text-sm">
-                      <div className="flex items-center gap-1">
-                        <Zap size={14} className="text-yellow-400" />
-                        <span>{stats.total} items</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                        <span>{stats.avgRating} rating</span>
-                      </div>
-                    </div>
-                  </div>
+                  <div className="flex-1" />
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={handleMessageStore}
-                      className="p-3 rounded-xl bg-primary/90 text-primary-foreground hover:bg-primary transition-colors shadow-lg hidden md:flex items-center gap-2"
-                    >
-                      <MessageCircle size={18} />
-                      <span className="text-sm font-semibold">Message</span>
+                  {/* Sort Dropdown */}
+                  <div className="relative group">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border text-xs md:text-sm font-semibold text-foreground hover:bg-secondary transition-colors">
+                      <SortAsc size={16} />
+                      <span className="hidden sm:inline">Sort</span>
+                      <ChevronDown size={14} className="group-hover:rotate-180 transition-transform" />
                     </button>
-                    <button
-                      onClick={handleMessageStore}
-                      className="p-3 rounded-xl bg-primary/90 text-primary-foreground hover:bg-primary transition-colors shadow-lg md:hidden"
-                    >
-                      <MessageCircle size={18} />
-                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[60]">
+                      {(["newest", "popular", "price-low", "price-high"] as const).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setSortBy(s)}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                            sortBy === s
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground hover:bg-secondary/50"
+                          }`}
+                        >
+                          {s === "price-low" ? "Price: Low to High" : s === "price-high" ? "Price: High to Low" : s === "newest" ? "Newest First" : "Most Popular"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Description */}
-            {store.description && (
-              <p className="text-muted-foreground text-sm md:text-base max-w-2xl leading-relaxed mb-6">{store.description}</p>
-            )}
-          </div>
-        </motion.section>
-
-        {/* FILTER & SEARCH SECTION */}
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="max-w-7xl mx-auto px-4 mb-8"
-        >
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, services, brands..."
-                className="w-full pl-12 pr-4 py-3 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm md:text-base"
-              />
-            </div>
-
-            {/* Filter & Sort Controls */}
-            <div className="flex gap-2 flex-wrap items-center">
-              {/* Category Tabs */}
-              <div className="flex gap-1 p-1.5 rounded-xl bg-secondary/50 border border-border">
-                {(["all", "products", "services"] as const).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-4 py-2 rounded-lg text-xs md:text-sm font-semibold capitalize transition-all ${
-                      filter === f
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {f} {f === "all" ? `(${stats.total})` : f === "products" ? `(${stats.products})` : `(${stats.services})`}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1" />
-
-              {/* Sort Dropdown */}
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border text-xs md:text-sm font-semibold text-foreground hover:bg-secondary transition-colors">
-                  <SortAsc size={16} />
-                  <span className="hidden sm:inline">Sort</span>
-                  <ChevronDown size={14} className="group-hover:rotate-180 transition-transform" />
-                </button>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[60]">
-                  {(["newest", "popular", "price-low", "price-high"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSortBy(s)}
-                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                        sortBy === s
-                          ? "bg-primary/10 text-primary"
-                          : "text-foreground hover:bg-secondary/50"
-                      }`}
-                    >
-                      {s === "price-low" ? "Price: Low to High" : s === "price-high" ? "Price: High to Low" : s === "newest" ? "Newest First" : "Most Popular"}
-                    </button>
+              {/* Offers Grid */}
+              {filtered.length === 0 ? (
+                <div className="text-center py-20 text-muted-foreground">
+                  <Package size={48} className="mx-auto mb-4 opacity-30" />
+                  <p className="text-lg font-semibold mb-2">No items found</p>
+                  <p className="text-sm">Try adjusting your filters or search query</p>
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+                >
+                  {filtered.map((item) => (
+                    <ProductCard
+                      key={item.id}
+                      id={item.id}
+                      product_name={item.product_name}
+                      price={item.price}
+                      old_price={item.old_price}
+                      image_url={item.image_url}
+                      category={item.category}
+                      stock_count={item.stock_count}
+                      item_type={item.item_type}
+                      description={item.description}
+                      duration={item.duration}
+                      location_type={item.location_type}
+                      rating={(item as any).rating}
+                      review_count={(item as any).review_count}
+                      discount_type={(item as any).discount_type}
+                      discount_value={(item as any).discount_value}
+                      variants={(item as any).variants}
+                      media_gallery={(item as any).media_gallery}
+                      isService={item.item_type === "service"}
+                      onBuyNow={handleBuyNow}
+                      onAddToCart={handleAddToCart}
+                      disabled={!sellerHasCapacity || (item.item_type !== "service" && item.item_type !== "digital" && (item.stock_count ?? 0) <= 0)}
+                      disabledReason={!sellerHasCapacity ? "Vendor Unavailable" : "Out of Stock"}
+                    />
                   ))}
-                </div>
-              </div>
+                </motion.div>
+              )}
             </div>
           </div>
-        </motion.section>
-
-        {/* PRODUCTS GRID */}
-        <section className="max-w-7xl mx-auto px-4 mb-12">
-          {filtered.length === 0 ? (
-            <div className="text-center py-20 text-muted-foreground">
-              <Package size={48} className="mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-semibold mb-2">No items found</p>
-              <p className="text-sm">Try adjusting your filters or search query</p>
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
-            >
-              {filtered.map((item, i) => (
-                <ProductCard
-                  key={item.id}
-                  id={item.id}
-                  product_name={item.product_name}
-                  price={item.price}
-                  old_price={item.old_price}
-                  image_url={item.image_url}
-                  category={item.category}
-                  stock_count={item.stock_count}
-                  item_type={item.item_type}
-                  description={item.description}
-                  duration={item.duration}
-                  location_type={item.location_type}
-                  rating={(item as any).rating}
-                  review_count={(item as any).review_count}
-                  discount_type={(item as any).discount_type}
-                  discount_value={(item as any).discount_value}
-                  variants={(item as any).variants}
-                  media_gallery={(item as any).media_gallery}
-                  isService={item.item_type === "service"}
-                  onBuyNow={handleBuyNow}
-                  onAddToCart={handleAddToCart}
-                  disabled={!sellerHasCapacity || (item.item_type !== "service" && item.item_type !== "digital" && (item.stock_count ?? 0) <= 0)}
-                  disabledReason={!sellerHasCapacity ? "Vendor Unavailable" : "Out of Stock"}
-                />
-              ))}
-            </motion.div>
-          )}
         </section>
       </main>
 
