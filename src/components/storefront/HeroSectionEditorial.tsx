@@ -97,7 +97,7 @@ const HeroSectionEditorial = ({
               </button>
               {whatsappNumber && (
                 <button
-                  onClick={onMessageClick}
+                  onClick={() => onMessageClick?.()}
                   className="flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 border-2 border-[#B37C1C] text-[#0F1A35] font-semibold rounded-lg hover:bg-[#FFFBF2] transition-colors"
                 >
                   <MessageCircle size={18} />

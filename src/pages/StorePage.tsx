@@ -11,7 +11,7 @@ import CheckoutDrawer from "@/components/CheckoutDrawer";
 import CartDrawer from "@/components/CartDrawer";
 import ProductCard from "@/components/storefront/ProductCard";
 import StorefrontBot from "@/components/storefront/StorefrontBot";
-import HeroSection from "@/components/storefront/HeroSection";
+import HeroSectionEditorial from "@/components/storefront/HeroSectionEditorial";
 import {
   ProfileHeader, TrustBar, ActivityFeed, HowItWorks, WhatYouGet,
   AvailabilityStatus, FeaturedOffers, ReviewsSection, FullOfferGrid
@@ -222,11 +222,13 @@ const StorePage = () => {
       {store && <ProfileHeader storeName={store.brand_name || 'Store'} businessType={store.business_type} />}
 
       <main className="relative z-10">
-        {/* SECTION 2: HERO SECTION with layered design */}
+        {/* SECTION 2: HERO SECTION with editorial design */}
         {store && (
-          <HeroSection
+          <HeroSectionEditorial
             storeName={store.brand_name || 'Store'}
-            tagline="Premium Quality, Fast Delivery"
+            heroTitle={store.brand_name || 'Store'}
+            heroSubtitle="Premium Quality, Fast Delivery"
+            heroImageUrl={(store as any).hero_image_url}
             bannerUrl={store.banner_url}
             logoUrl={store.logo_url}
             description={store.description}
