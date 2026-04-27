@@ -11,10 +11,10 @@ import CheckoutDrawer from "@/components/CheckoutDrawer";
 import CartDrawer from "@/components/CartDrawer";
 import ProductCard from "@/components/storefront/ProductCard";
 import StorefrontBot from "@/components/storefront/StorefrontBot";
-import HeroSectionEditorial from "@/components/storefront/HeroSectionEditorial";
+import HeroSectionRefined from "@/components/storefront/HeroSectionRefined";
 import {
   ProfileHeader, TrustBar, ActivityFeed, HowItWorks, WhatYouGet,
-  AvailabilityStatus, FeaturedOffers, ReviewsSection, FullOfferGrid
+  AvailabilityStatus, ReviewsSection, FullOfferGrid
 } from "@/components/storefront/StorefrontSections";
 import { useStoreCart } from "@/hooks/useStoreCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -324,19 +324,18 @@ const StorePage = () => {
       {store && <ProfileHeader storeName={store.brand_name || 'Store'} businessType={store.business_type} />}
 
       <main className="relative z-10">
-        {/* SECTION 2: HERO SECTION with editorial design */}
+        {/* SECTION 2: HERO SECTION - Refined Canva Design */}
         {store && (
-          <HeroSectionEditorial
+          <HeroSectionRefined
             storeName={store.brand_name || 'Store'}
-            heroTitle={store.brand_name || 'Store'}
-            heroSubtitle="Premium Quality, Fast Delivery"
-            heroImageUrl={(store as any).hero_image_url}
-            bannerUrl={store.banner_url}
-            logoUrl={store.logo_url}
-            description={store.description}
-            whatsappNumber={store.whatsapp_number}
-            onMessageClick={handleMessageStore}
-            onShopClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+            storeLogoUrl={store.logo_url}
+            heroTitle={store.brand_name || 'Curated Premium Selection'}
+            heroSubtitle={store.description || 'Premium Quality, Fast Delivery'}
+            heroImageUrl={store.banner_url || (store as any).hero_image_url}
+            totalItems={items.length}
+            rating={4.8}
+            onShopClick={() => document.querySelector('[data-section=featured-products]')?.scrollIntoView({ behavior: 'smooth' })}
+            onContactClick={handleMessageStore}
           />
         )}
 
@@ -355,25 +354,88 @@ const StorePage = () => {
         {/* SECTION 7: AVAILABILITY STATUS */}
         <AvailabilityStatus />
 
-        {/* SECTION 8: FEATURED OFFERS (top 4) */}
-        <FeaturedOffers offers={filteredVariants.slice(0, 4).map((v, idx) => ({
-          id: 5000 + idx, // Unique ID based on position
-          product_name: v.title,
-          price: v.price,
-          old_price: v.originalPrice,
-          image_url: v.baseProductImage,
-          category: v.baseProductName,
-          stock_count: 10,
-          item_type: v.baseItemType,
-          description: v.description,
-          duration: null,
-          location_type: null,
-        }))} />
+        {/* SECTION 8: FEATURED PRODUCTS (Top 6 variants) */}
+        <section data-section="featured-products" className="py-12 md:py-16 lg:py-20 bg-white border-t border-border">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
+            <div className="space-y-8">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="space-y-2"
+              >
+                <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">Featured Products</h2>
+                <p className="text-muted-foreground text-lg">Handpicked selection of our best offerings</p>
+              </motion.div>
 
-        {/* SECTION 9: REVIEWS */}
+              {filteredVariants.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p>No products available</p>
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 }}
+                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+                >
+                  {filteredVariants.slice(0, 6).map((variant, index) => {
+                    const variantId = parseInt(variant.id.replace(/\D/g, ''), 10) || (2000 + index);
+                    return (
+                      <ProductCard
+                        key={`featured-${variant.id}-${index}`}
+                        id={variantId}
+                        product_name={variant.title}
+                        price={variant.price}
+                        old_price={variant.originalPrice}
+                        image_url={variant.baseProductImage}
+                        category={variant.baseProductName}
+                        stock_count={10}
+                        item_type={variant.baseItemType}
+                        description={variant.description}
+                        rating={variant.tag === "Most Popular" ? 4.8 : variant.tag === "Premium" ? 4.9 : 4.5}
+                        review_count={Math.floor(Math.random() * 100) + 10}
+                        isService={variant.baseItemType === "service"}
+                        onBuyNow={() => {
+                          setSelectedItem({
+                            id: variantId,
+                            item_name: variant.title,
+                            price: variant.price,
+                            image_url: variant.baseProductImage,
+                            store_name: store?.brand_name || "Store",
+                            sme_id: store?.id,
+                            store_id: store?.id,
+                            store_whatsapp: store?.whatsapp_number || null,
+                            item_type: variant.baseItemType,
+                          });
+                          setDrawerOpen(true);
+                        }}
+                        onAddToCart={() => {
+                          addItem({
+                            offer_id: variantId,
+                            item_name: variant.title,
+                            unit_price: variant.price,
+                            image_url: variant.baseProductImage,
+                            item_type: variant.baseItemType === "service" ? "service" : "physical",
+                          });
+                          toast.success(`Added "${variant.title}" to cart`);
+                        }}
+                        disabled={!sellerHasCapacity}
+                        disabledReason={!sellerHasCapacity ? "Vendor Unavailable" : undefined}
+                      />
+                    );
+                  })}
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 9: REVIEWS & SOCIAL PROOF */}
         <ReviewsSection />
 
-        {/* SECTION 10: FULL OFFER GRID with filters and search */}
+        {/* SECTION 10: ALL PRODUCTS GRID with search */}
         <section className="py-8 md:py-12 bg-gradient-to-br from-secondary/30 to-background">
           <div className="max-w-7xl mx-auto px-4 md:px-8">
             <div className="space-y-6">
