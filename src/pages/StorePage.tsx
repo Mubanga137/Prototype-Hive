@@ -379,6 +379,7 @@ const StorePage = () => {
                 >
                   {filteredVariants.slice(0, 6).map((variant, index) => {
                     const variantId = parseInt(variant.id.replace(/\D/g, ''), 10) || (2000 + index);
+                    const isFeatured = index === 1 && variant.tag === "Most Popular";
                     return (
                       <ProductCard
                         key={`featured-${variant.id}-${index}`}
@@ -394,6 +395,9 @@ const StorePage = () => {
                         rating={variant.tag === "Most Popular" ? 4.8 : variant.tag === "Premium" ? 4.9 : 4.5}
                         review_count={Math.floor(Math.random() * 100) + 10}
                         isService={variant.baseItemType === "service"}
+                        variant={variant as any}
+                        isFeatured={isFeatured}
+                        storeWhatsapp={store?.whatsapp_number || null}
                         onBuyNow={() => {
                           setSelectedItem({
                             id: variantId,
@@ -482,6 +486,8 @@ const StorePage = () => {
                       rating={variant.tag === "Most Popular" ? 4.8 : variant.tag === "Premium" ? 4.9 : 4.5}
                       review_count={Math.floor(Math.random() * 100) + 10}
                       isService={variant.baseItemType === "service"}
+                      variant={variant as any}
+                      storeWhatsapp={store?.whatsapp_number || null}
                       onBuyNow={() => {
                         setSelectedItem({
                           id: variantId,

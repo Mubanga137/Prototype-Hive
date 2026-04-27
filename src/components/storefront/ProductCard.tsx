@@ -1,21 +1,26 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Package, Briefcase, Clock, MapPin, Star, Plus, ShoppingCart, FileVideo, Image as ImageIcon, Tag, TrendingDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Package,
+  Briefcase,
+  Clock,
+  MapPin,
+  Star,
+  ShoppingCart,
+  MessageCircle,
+  X,
+  ChevronDown,
+} from "lucide-react";
 
-interface Variant {
+interface ProductVariant {
   id: string;
-  name: string;
-  sku?: string;
-  quantity: number;
-  price?: number;
-}
-
-interface MediaItem {
-  id: string;
-  type: "image" | "video";
-  url: string;
-  thumbnail?: string;
-  alt?: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  description: string;
+  valueProposition: string;
+  tag?: "Best Value" | "Most Popular" | "Premium" | "Starter";
+  features: string[];
 }
 
 interface ProductCardProps {
@@ -32,19 +37,38 @@ interface ProductCardProps {
   location_type?: string | null;
   rating?: number | null;
   review_count?: number | null;
-  discount_type?: string | null;
-  discount_value?: number | null;
-  variants?: Variant[] | null;
-  media_gallery?: MediaItem[] | null;
   isService?: boolean;
   onBuyNow?: (item: any) => void;
   onAddToCart?: (item: any) => void;
   disabled?: boolean;
   disabledReason?: string;
+  variant?: ProductVariant;
+  isFeatured?: boolean;
+  storeWhatsapp?: string | null;
 }
 
 const locLabel = (l?: string | null) =>
   l === "at_customer" ? "At you" : l === "at_sme" ? "At store" : l === "remote" ? "Online" : null;
+
+// Badge colors based on tag type
+const getBadgeStyles = (tag?: string) => {
+  const styles: Record<
+    string,
+    { bg: string; text: string; emoji: string }
+  > = {
+    "Most Popular": { bg: "bg-red-500", text: "text-white", emoji: "🔥" },
+    "Best Value": { bg: "bg-emerald-500", text: "text-white", emoji: "💰" },
+    Premium: { bg: "bg-amber-500", text: "text-white", emoji: "⭐" },
+    Starter: { bg: "bg-blue-500", text: "text-white", emoji: "⚡" },
+  };
+  return styles[tag || ""] || { bg: "bg-slate-400", text: "text-white", emoji: "•" };
+};
+
+// Discount calculation
+const calculateDiscount = (price?: number | null, oldPrice?: number | null) => {
+  if (!oldPrice || !price || oldPrice <= price) return 0;
+  return Math.round(((oldPrice - price) / oldPrice) * 100);
+};
 
 const ProductCard = ({
   id,
@@ -60,302 +84,399 @@ const ProductCard = ({
   location_type,
   rating = 0,
   review_count = 0,
-  discount_type,
-  discount_value,
-  variants,
-  media_gallery,
   isService = item_type === "service",
   onBuyNow,
   onAddToCart,
   disabled = false,
   disabledReason = "Unavailable",
+  variant,
+  isFeatured = false,
+  storeWhatsapp,
 }: ProductCardProps) => {
-  const [showMedia, setShowMedia] = useState(false);
-  const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(variants?.[0] || null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    variant || null
+  );
 
-  // Calculate discounted price
-  const effectivePrice = (() => {
-    if (!price) return 0;
-    if (!discount_type || discount_type === "none") return price;
-    if (discount_type === "percentage") {
-      return price * (1 - (discount_value || 0) / 100);
-    }
-    if (discount_type === "fixed") {
-      return Math.max(0, price - (discount_value || 0));
-    }
-    return price;
-  })();
+  // Use variant data if available, otherwise use card props
+  const displayTitle = selectedVariant?.title || product_name || "Product";
+  const displayPrice = selectedVariant?.price ?? price ?? 0;
+  const displayOldPrice = selectedVariant?.originalPrice ?? old_price;
+  const displayTag = selectedVariant?.tag;
+  const displayFeatures = selectedVariant?.features || [];
+  const displayDescription = selectedVariant?.description || description;
 
-  const discountPercent = (() => {
-    if (old_price && price) {
-      return Math.round(((old_price - price) / old_price) * 100);
-    }
-    if (discount_type === "percentage") {
-      return Math.round(discount_value || 0);
-    }
-    return 0;
-  })();
+  const discountPercent = calculateDiscount(displayPrice, displayOldPrice);
 
-  const totalStock = variants ? variants.reduce((sum, v) => sum + v.quantity, 0) : stock_count || 0;
-  const isOutOfStock = !isService && totalStock <= 0;
+  const badgeStyle = getBadgeStyles(displayTag);
 
-  const hasMedia = media_gallery && media_gallery.length > 0;
-  const hasVariants = variants && variants.length > 0;
+  // Don't show price with decimals if it's a whole number
+  const formattedPrice = displayPrice % 1 === 0 ? displayPrice.toFixed(0) : displayPrice.toFixed(2);
+  const formattedOldPrice =
+    displayOldPrice && displayOldPrice % 1 === 0
+      ? displayOldPrice.toFixed(0)
+      : displayOldPrice?.toFixed(2);
+
+  const handleDetailsClick = () => {
+    setShowDetailsModal(true);
+  };
+
+  const handleWhatsAppClick = () => {
+    if (storeWhatsapp) {
+      const message = `Hi, I'm interested in "${displayTitle}" (ZMW ${formattedPrice})`;
+      const encodedMessage = encodeURIComponent(message);
+      window.open(
+        `https://wa.me/${storeWhatsapp.replace(/\D/g, "")}?text=${encodedMessage}`,
+        "_blank"
+      );
+    }
+  };
+
+  const handleBuyNow = () => {
+    onBuyNow?.({
+      id,
+      product_name: displayTitle,
+      price: displayPrice,
+      image_url,
+      variant: selectedVariant,
+    });
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`bg-card rounded-2xl border transition-all overflow-hidden flex flex-col h-full hover:shadow-lg hover:border-primary/40 ${
-        disabled ? "opacity-60 border-muted" : "border-border"
-      }`}
-    >
-      {/* Media Section */}
-      <div className="relative h-48 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden group">
-        {image_url ? (
-          <img
-            src={image_url}
-            alt={product_name || "Product"}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="flex items-center justify-center text-muted-foreground/40">
-            {isService ? <Briefcase size={40} /> : <Package size={40} />}
-          </div>
-        )}
-
-        {/* Badges */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-          <span className="text-[9px] font-bold uppercase px-2 py-1 rounded-lg bg-foreground/80 text-background backdrop-blur-sm">
-            {isService ? "Service" : item_type === "digital" ? "Digital" : "Product"}
-          </span>
-          {hasMedia && (
-            <button
-              onClick={() => setShowMedia(true)}
-              className="p-1.5 rounded-lg bg-primary/90 text-primary-foreground hover:bg-primary transition-colors"
-            >
-              <FileVideo size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Discount/Rating Badge */}
-        <div className="absolute bottom-3 right-3 flex gap-2">
-          {discountPercent > 0 && (
-            <span className="flex items-center gap-1 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-lg">
-              <TrendingDown size={12} /> -{discountPercent}%
-            </span>
-          )}
-          {review_count > 0 && (
-            <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-600 text-xs font-bold px-2 py-1 rounded-lg backdrop-blur-sm">
-              <Star size={12} fill="currentColor" /> {rating?.toFixed(1)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Content Section */}
-      <div className="p-4 flex-1 flex flex-col">
-        {/* Header */}
-        <div className="mb-3">
-          <p className="text-sm font-bold text-foreground line-clamp-2 mb-1">{product_name || "Item"}</p>
-          <div className="flex items-center justify-between gap-2">
-            {category && <span className="text-xs text-muted-foreground">{category}</span>}
-            {totalStock > 0 && (
-              <span className="text-xs text-primary font-semibold flex items-center gap-1">
-                <Package size={12} /> {totalStock} available
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Service-specific info */}
-        {isService && (
-          <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground mb-2">
-            {duration && (
-              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/50">
-                <Clock size={10} /> {duration}
-              </span>
-            )}
-            {locLabel(location_type) && (
-              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/50">
-                <MapPin size={10} /> {locLabel(location_type)}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Description */}
-        {description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{description}</p>
-        )}
-
-        {/* Variants Selector */}
-        {hasVariants && (
-          <div className="mb-3">
-            <label className="text-xs font-semibold text-foreground mb-1 block">Variant:</label>
-            <div className="flex gap-1 flex-wrap">
-              {variants?.map((variant) => (
-                <button
-                  key={variant.id}
-                  onClick={() => setSelectedVariant(variant)}
-                  className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
-                    selectedVariant?.id === variant.id
-                      ? "border-primary bg-primary/10 text-primary font-semibold"
-                      : "border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {variant.name}
-                </button>
-              ))}
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`flex flex-col h-full rounded-2xl border transition-all overflow-hidden ${
+          isFeatured
+            ? "scale-105 ring-2 ring-primary/40 shadow-lg border-primary/40"
+            : "border-border hover:border-primary/40"
+        } ${disabled ? "opacity-50" : ""} bg-white`}
+      >
+        {/* SECTION 1: MEDIA */}
+        <div className="relative h-48 md:h-56 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden group">
+          {image_url ? (
+            <img
+              src={image_url}
+              alt={displayTitle}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="flex items-center justify-center text-muted-foreground/40">
+              {isService ? <Briefcase size={40} /> : <Package size={40} />}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Price Section */}
-        <div className="mb-4">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-lg font-bold text-primary">
-              ZMW {effectivePrice.toFixed(2)}
-            </span>
-            {(old_price || (discount_type && discount_type !== "none")) && (
-              <span className="text-sm text-muted-foreground line-through">
-                ZMW {(old_price || price)?.toFixed(2)}
-              </span>
-            )}
-          </div>
-          {review_count > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {review_count} review{review_count !== 1 ? "s" : ""}
-            </p>
+          {/* Subtle gradient overlay (bottom fade) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+          {/* SECTION 2: BADGE (floating, top-right) */}
+          {displayTag && (
+            <div className="absolute top-3 right-3">
+              <div
+                className={`${badgeStyle.bg} ${badgeStyle.text} px-3 py-1.5 rounded-full text-xs font-bold shadow-md flex items-center gap-1`}
+              >
+                <span>{badgeStyle.emoji}</span>
+                <span>{displayTag}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Discount badge (if applicable) */}
+          {discountPercent > 0 && (
+            <div className="absolute top-3 left-3">
+              <div className="bg-red-500 text-white px-2.5 py-1.5 rounded-full text-xs font-bold shadow-md">
+                -{discountPercent}%
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Action Buttons */}
-        {isService ? (
-          <button
-            onClick={() => onBuyNow?.({ id, product_name, price: effectivePrice })}
-            disabled={disabled}
-            className={`mt-auto w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-              disabled
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
-            }`}
-          >
-            📅 Book Now
-          </button>
-        ) : (
-          <div className="mt-auto flex gap-2">
-            <button
-              onClick={() =>
-                onAddToCart?.({
-                  offer_id: id,
-                  item_name: product_name,
-                  unit_price: effectivePrice,
-                  image_url,
-                  variant: selectedVariant,
-                })
-              }
-              disabled={disabled || isOutOfStock}
-              aria-label="Add to cart"
-              className={`flex-shrink-0 w-10 rounded-xl border flex items-center justify-center transition-colors ${
-                disabled || isOutOfStock
-                  ? "border-muted bg-muted text-muted-foreground cursor-not-allowed"
-                  : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              onClick={() =>
-                onBuyNow?.({
-                  id,
-                  product_name,
-                  price: effectivePrice,
-                  image_url,
-                  variant: selectedVariant,
-                })
-              }
-              disabled={disabled || isOutOfStock}
-              className={`flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-                disabled || isOutOfStock
-                  ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              }`}
-            >
-              {isOutOfStock ? "Out of Stock" : "🛒 Buy Now"}
-            </button>
-          </div>
-        )}
-      </div>
+        {/* CONTENT WRAPPER */}
+        <div className="p-4 md:p-5 flex-1 flex flex-col">
+          {/* SECTION 3: TITLE */}
+          <h3 className="text-sm md:text-base font-bold text-foreground mb-1 line-clamp-2">
+            {displayTitle}
+          </h3>
 
-      {/* Media Lightbox */}
-      {showMedia && hasMedia && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setShowMedia(false)}
-          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-        >
-          <motion.div
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl space-y-4"
-          >
-            {/* Display selected media */}
-            <div className="rounded-2xl overflow-hidden bg-black flex items-center justify-center h-96">
-              {media_gallery![selectedMediaIndex].type === "video" ? (
-                <video
-                  src={media_gallery![selectedMediaIndex].url}
-                  controls
-                  className="w-full h-full"
-                />
-              ) : (
-                <img
-                  src={media_gallery![selectedMediaIndex].url}
-                  alt=""
-                  className="w-full h-full object-contain"
-                />
+          {/* Subtitle/category */}
+          {category && (
+            <p className="text-xs text-muted-foreground mb-3">{category}</p>
+          )}
+
+          {/* Service-specific metadata */}
+          {isService && (
+            <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground mb-3">
+              {duration && (
+                <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/50">
+                  <Clock size={10} /> {duration}
+                </span>
+              )}
+              {locLabel(location_type) && (
+                <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-secondary/50">
+                  <MapPin size={10} /> {locLabel(location_type)}
+                </span>
               )}
             </div>
+          )}
 
-            {/* Thumbnails */}
-            {media_gallery!.length > 1 && (
-              <div className="flex gap-2 overflow-auto pb-2">
-                {media_gallery!.map((media, idx) => (
-                  <button
-                    key={media.id}
-                    onClick={() => setSelectedMediaIndex(idx)}
-                    className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedMediaIndex === idx ? "border-primary" : "border-muted"
-                    }`}
-                  >
-                    {media.type === "video" ? (
-                      <div className="w-full h-full bg-secondary flex items-center justify-center">
-                        <FileVideo size={20} className="text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <img src={media.url} alt="" className="w-full h-full object-cover" />
-                    )}
-                  </button>
-                ))}
+          {/* SECTION 4: PRICE BLOCK */}
+          <div className="mb-4">
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-2xl md:text-3xl font-bold text-primary">
+                ZMW {formattedPrice}
+              </span>
+              {displayOldPrice && displayOldPrice > displayPrice && (
+                <span className="text-sm text-muted-foreground line-through">
+                  ZMW {formattedOldPrice}
+                </span>
+              )}
+            </div>
+            {discountPercent > 0 && (
+              <p className="text-xs text-emerald-600 font-semibold">
+                Save {discountPercent}%
+              </p>
+            )}
+            {review_count > 0 && (
+              <div className="flex items-center gap-1 mt-1">
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={12}
+                      className={`${
+                        i < Math.round(rating || 0)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-muted-foreground/30"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  ({review_count})
+                </span>
               </div>
             )}
+          </div>
 
+          {/* SECTION 5: VALUE BULLETS */}
+          {displayFeatures && displayFeatures.length > 0 && (
+            <div className="mb-4 space-y-1.5 flex-1">
+              {displayFeatures.slice(0, 4).map((feature, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-sm">
+                  <span className="text-primary font-bold shrink-0 mt-0.5">✔</span>
+                  <span className="text-foreground text-xs md:text-sm leading-snug">
+                    {feature}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* SECTION 6: CTA SECTION */}
+          <div className="space-y-2.5">
+            {/* PRIMARY CTA */}
             <button
-              onClick={() => setShowMedia(false)}
-              className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+              onClick={handleBuyNow}
+              disabled={disabled}
+              className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                disabled
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg"
+              }`}
             >
-              Close
+              <ShoppingCart size={16} />
+              {isService ? "Book Now" : "Buy Now"}
             </button>
+
+            {/* SECONDARY CTA */}
+            {storeWhatsapp && (
+              <button
+                onClick={handleWhatsAppClick}
+                disabled={disabled}
+                className={`w-full py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-2 ${
+                  disabled
+                    ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
+                    : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60"
+                }`}
+              >
+                <MessageCircle size={16} />
+                WhatsApp
+              </button>
+            )}
+
+            {/* TERTIARY CTA */}
+            <button
+              onClick={handleDetailsClick}
+              disabled={disabled}
+              className={`w-full py-2 rounded-xl font-semibold text-sm transition-all ${
+                disabled
+                  ? "text-muted-foreground cursor-not-allowed"
+                  : "text-primary hover:text-primary/80 hover:underline"
+              }`}
+            >
+              View Details
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* DETAILS MODAL */}
+      <AnimatePresence>
+        {showDetailsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDetailsModal(false)}
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-white rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors"
+              >
+                <X size={20} className="text-primary" />
+              </button>
+
+              {/* Large media display */}
+              <div className="h-80 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden relative">
+                {image_url ? (
+                  <img
+                    src={image_url}
+                    alt={displayTitle}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center text-muted-foreground/40">
+                    {isService ? <Briefcase size={64} /> : <Package size={64} />}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
+              </div>
+
+              {/* Modal content */}
+              <div className="p-6 md:p-8">
+                {/* Title + badge */}
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+                      {displayTitle}
+                    </h2>
+                    {displayTag && (
+                      <div className={`${badgeStyle.bg} ${badgeStyle.text} px-3 py-1.5 rounded-full text-xs font-bold w-fit flex items-center gap-1`}>
+                        <span>{badgeStyle.emoji}</span>
+                        <span>{displayTag}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-4xl font-bold text-primary">
+                      ZMW {formattedPrice}
+                    </span>
+                    {displayOldPrice && displayOldPrice > displayPrice && (
+                      <span className="text-lg text-muted-foreground line-through">
+                        ZMW {formattedOldPrice}
+                      </span>
+                    )}
+                  </div>
+                  {discountPercent > 0 && (
+                    <p className="text-emerald-600 font-semibold">
+                      Save {discountPercent}%
+                    </p>
+                  )}
+                </div>
+
+                {/* Description */}
+                {displayDescription && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-foreground mb-2">About</h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {displayDescription}
+                    </p>
+                  </div>
+                )}
+
+                {/* What you get */}
+                {displayFeatures && displayFeatures.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-foreground mb-3">What You Get</h3>
+                    <div className="space-y-2">
+                      {displayFeatures.map((feature, idx) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          <span className="text-primary font-bold shrink-0 text-lg">✔</span>
+                          <span className="text-foreground text-sm leading-relaxed">
+                            {feature}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Service info */}
+                {isService && (
+                  <div className="mb-6 space-y-3">
+                    {duration && (
+                      <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                        <Clock size={18} className="text-primary shrink-0" />
+                        <span className="text-sm text-foreground">
+                          Duration: <strong>{duration}</strong>
+                        </span>
+                      </div>
+                    )}
+                    {locLabel(location_type) && (
+                      <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                        <MapPin size={18} className="text-primary shrink-0" />
+                        <span className="text-sm text-foreground">
+                          Location: <strong>{locLabel(location_type)}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* CTA buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      handleBuyNow();
+                      setShowDetailsModal(false);
+                    }}
+                    disabled={disabled}
+                    className="w-full py-3.5 rounded-xl font-bold text-base bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isService ? "Book Now" : "Buy Now"}
+                  </button>
+                  {storeWhatsapp && (
+                    <button
+                      onClick={() => {
+                        handleWhatsAppClick();
+                        setShowDetailsModal(false);
+                      }}
+                      className="w-full py-3 rounded-xl font-semibold text-base border-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 transition-all"
+                    >
+                      Message on WhatsApp
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
