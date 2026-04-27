@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import HeroSectionEditorial from './HeroSectionEditorial';
 import {
-  ProfileHeader,
   TrustBar,
   ActivityFeed,
   HowItWorks,
@@ -52,10 +51,7 @@ const StorefrontPreviewLiveEditorial = ({
       className="h-full overflow-y-auto bg-white"
       style={{ scrollBehavior: 'smooth' }}
     >
-      {/* SECTION 1: PROFILE HEADER */}
-      <ProfileHeader storeName={storeName} businessType={businessType} />
-
-      {/* SECTION 2: HERO SECTION - Editorial Layout */}
+      {/* SECTION 1: HERO SECTION - Editorial Layout */}
       <HeroSectionEditorial
         storeName={storeName}
         heroTitle={heroTitle}

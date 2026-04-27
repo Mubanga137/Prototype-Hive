@@ -1,4 +1,4 @@
-import { Star, Zap, MapPin, TrendingUp, CheckCircle, Users, Clock } from 'lucide-react';
+import { Star, Zap, TrendingUp, CheckCircle, Users, Clock } from 'lucide-react';
 import { generateSmartSectionContent } from '@/lib/offerEngine';
 
 export interface StorefrontSectionsProps {
@@ -8,22 +8,6 @@ export interface StorefrontSectionsProps {
   offers?: any[];
   storeId?: number;
 }
-
-export const ProfileHeader = ({ storeName, businessType }: StorefrontSectionsProps) => (
-  <div className="h-16 bg-card border-b border-border sticky top-16 z-20 flex items-center px-4 md:px-8">
-    <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-      <div>
-        <h3 className="font-bold text-foreground text-sm md:text-base">{storeName}</h3>
-        {businessType && <p className="text-xs text-muted-foreground">{businessType}</p>}
-      </div>
-      <div className="flex items-center gap-2 text-xs">
-        <span className="flex items-center gap-1 text-primary">
-          <Zap size={12} /> Online Now
-        </span>
-      </div>
-    </div>
-  </div>
-);
 
 export const TrustBar = () => (
   <section className="bg-primary/5 border-y border-primary/20 py-4">
