@@ -289,34 +289,37 @@ const ProductCard = ({
               {isService ? "Book Now" : "Buy Now"}
             </button>
 
-            {/* SECONDARY CTA */}
-            {storeWhatsapp && (
+            {/* SECONDARY CTAs - Both as pill buttons */}
+            <div className="space-y-2">
+              {/* WHATSAPP CTA */}
+              {storeWhatsapp && (
+                <button
+                  onClick={handleWhatsAppClick}
+                  disabled={disabled}
+                  className={`w-full py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-2 ${
+                    disabled
+                      ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
+                      : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60"
+                  }`}
+                >
+                  <MessageCircle size={16} />
+                  WhatsApp
+                </button>
+              )}
+
+              {/* VIEW DETAILS CTA - Now a proper pill button */}
               <button
-                onClick={handleWhatsAppClick}
+                onClick={handleDetailsClick}
                 disabled={disabled}
                 className={`w-full py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-2 ${
                   disabled
                     ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
-                    : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60"
+                    : "border-muted-foreground/30 bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:border-muted-foreground/50"
                 }`}
               >
-                <MessageCircle size={16} />
-                WhatsApp
+                View Details
               </button>
-            )}
-
-            {/* TERTIARY CTA */}
-            <button
-              onClick={handleDetailsClick}
-              disabled={disabled}
-              className={`w-full py-2 rounded-xl font-semibold text-sm transition-all ${
-                disabled
-                  ? "text-muted-foreground cursor-not-allowed"
-                  : "text-primary hover:text-primary/80 hover:underline"
-              }`}
-            >
-              View Details
-            </button>
+            </div>
           </div>
         </div>
       </motion.div>
