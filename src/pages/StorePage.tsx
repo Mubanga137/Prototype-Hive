@@ -356,7 +356,19 @@ const StorePage = () => {
         <AvailabilityStatus />
 
         {/* SECTION 8: FEATURED OFFERS (top 4) */}
-        <FeaturedOffers offers={filtered.slice(0, 4)} />
+        <FeaturedOffers offers={filteredVariants.slice(0, 4).map((v) => ({
+          id: parseInt(v.id.replace(/\D/g, ''), 10) || 1,
+          product_name: v.title,
+          price: v.price,
+          old_price: v.originalPrice,
+          image_url: v.baseProductImage,
+          category: v.baseProductName,
+          stock_count: 10,
+          item_type: v.baseItemType,
+          description: v.description,
+          duration: null,
+          location_type: null,
+        }))} />
 
         {/* SECTION 9: REVIEWS */}
         <ReviewsSection />
