@@ -356,8 +356,8 @@ const StorePage = () => {
         <AvailabilityStatus />
 
         {/* SECTION 8: FEATURED OFFERS (top 4) */}
-        <FeaturedOffers offers={filteredVariants.slice(0, 4).map((v) => ({
-          id: parseInt(v.id.replace(/\D/g, ''), 10) || 1,
+        <FeaturedOffers offers={filteredVariants.slice(0, 4).map((v, idx) => ({
+          id: 5000 + idx, // Unique ID based on position
           product_name: v.title,
           price: v.price,
           old_price: v.originalPrice,
