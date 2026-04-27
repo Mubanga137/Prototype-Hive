@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import HeroSection from './HeroSection';
 import {
-  ProfileHeader,
   TrustBar,
   ActivityFeed,
   HowItWorks,
@@ -48,10 +47,7 @@ const StorefrontPreviewLive = ({
       className="h-full overflow-y-auto bg-white"
       style={{ scrollBehavior: 'smooth' }}
     >
-      {/* SECTION 1: PROFILE HEADER */}
-      <ProfileHeader storeName={brandName} businessType={businessType} />
-
-      {/* SECTION 2: HERO SECTION */}
+      {/* SECTION 1: HERO SECTION */}
       <HeroSection
         storeName={brandName}
         tagline="Premium Quality, Fast Delivery"

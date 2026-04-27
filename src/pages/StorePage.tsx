@@ -13,7 +13,7 @@ import ProductCard from "@/components/storefront/ProductCard";
 import StorefrontBot from "@/components/storefront/StorefrontBot";
 import HeroSectionRefined from "@/components/storefront/HeroSectionRefined";
 import {
-  ProfileHeader, TrustBar, ActivityFeed, HowItWorks, WhatYouGet,
+  TrustBar, ActivityFeed, HowItWorks, WhatYouGet,
   AvailabilityStatus, ReviewsSection, FullOfferGrid
 } from "@/components/storefront/StorefrontSections";
 import { useStoreCart } from "@/hooks/useStoreCart";
@@ -319,9 +319,6 @@ const StorePage = () => {
     <div className="min-h-screen relative">
       <HoneycombBackground />
       <Header />
-
-      {/* SECTION 1: PROFILE HEADER */}
-      {store && <ProfileHeader storeName={store.brand_name || 'Store'} businessType={store.business_type} />}
 
       <main className="relative z-10">
         {/* SECTION 2: HERO SECTION - Refined Canva Design */}
