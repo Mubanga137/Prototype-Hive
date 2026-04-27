@@ -19,7 +19,19 @@ import {
 import { useStoreCart } from "@/hooks/useStoreCart";
 import { useAuth } from "@/hooks/useAuth";
 import { loadCampaigns } from "@/lib/promoEngine";
+import { generateVariants } from "@/lib/variantGenerator";
 import { toast } from "sonner";
+
+interface ProductVariant {
+  id: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  description: string;
+  valueProposition: string;
+  tag?: "Best Value" | "Most Popular" | "Premium" | "Starter";
+  features: string[];
+}
 
 interface StoreInfo {
   id: number;
@@ -45,6 +57,7 @@ interface OfferItem {
   description: string | null;
   duration: string | null;
   location_type: string | null;
+  variants?: ProductVariant[];
 }
 
 // Dummy store data for store ID 1
@@ -60,112 +73,68 @@ const DUMMY_STORE: StoreInfo = {
   owner_user_id: null,
 };
 
-const DUMMY_PRODUCTS: OfferItem[] = [
-  {
-    id: 1,
-    product_name: "Premium Leather Bag",
-    price: 2500,
-    old_price: 3200,
-    image_url: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&h=300&fit=crop",
-    category: "Bags",
-    stock_count: 15,
-    item_type: "product",
-    description: "Handcrafted leather bag with premium materials",
-    duration: null,
-    location_type: null,
-  },
-  {
-    id: 2,
-    product_name: "Designer Sunglasses",
-    price: 1200,
-    old_price: 1500,
-    image_url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=300&fit=crop",
-    category: "Eyewear",
-    stock_count: 20,
-    item_type: "product",
-    description: "UV-protected designer sunglasses",
-    duration: null,
-    location_type: null,
-  },
-  {
-    id: 3,
-    product_name: "Elegant Scarf",
-    price: 800,
-    old_price: null,
-    image_url: "https://images.unsplash.com/photo-1565631066963-c5facf338b96?w=300&h=300&fit=crop",
-    category: "Accessories",
-    stock_count: 30,
-    item_type: "product",
-    description: "Silk blend elegant scarf",
-    duration: null,
-    location_type: null,
-  },
-  {
-    id: 4,
-    product_name: "Style Consultation",
-    price: 500,
-    old_price: null,
-    image_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop",
-    category: "Services",
-    stock_count: null,
-    item_type: "service",
-    description: "Personal style consultation service",
-    duration: "1 hour",
-    location_type: "online",
-  },
-  {
-    id: 5,
-    product_name: "Gold Watch",
-    price: 3500,
-    old_price: 4500,
-    image_url: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=300&h=300&fit=crop",
-    category: "Watches",
-    stock_count: 8,
-    item_type: "product",
-    description: "Luxury gold-plated watch",
-    duration: null,
-    location_type: null,
-  },
-  {
-    id: 6,
-    product_name: "Casual Shoes",
-    price: 1800,
-    old_price: 2200,
-    image_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
-    category: "Footwear",
-    stock_count: 25,
-    item_type: "product",
-    description: "Comfortable and stylish casual shoes",
-    duration: null,
-    location_type: null,
-  },
-  {
-    id: 7,
-    product_name: "Jewelry Set",
-    price: 2200,
-    old_price: 2800,
-    image_url: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=300&h=300&fit=crop",
-    category: "Jewelry",
-    stock_count: 12,
-    item_type: "product",
-    description: "Elegant jewelry set with premium finish",
-    duration: null,
-    location_type: null,
-  },
-  {
-    id: 8,
-    product_name: "Fashion Makeover",
-    price: 1200,
-    old_price: null,
-    image_url: "https://images.unsplash.com/photo-1488426862026-56a8ae30b134?w=300&h=300&fit=crop",
-    category: "Services",
-    stock_count: null,
-    item_type: "service",
-    description: "Complete fashion makeover service",
-    duration: "3 hours",
-    location_type: "in-person",
-  },
-];
+// Create dummy products with auto-generated variants
+const createDummyProducts = (): OfferItem[] => {
+  const baseProducts = [
+    {
+      id: 1,
+      product_name: "Premium Leather Bag",
+      price: 2500,
+      old_price: 3200,
+      image_url: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&h=300&fit=crop",
+      category: "Bags",
+      stock_count: 15,
+      item_type: "product" as const,
+      description: "Handcrafted leather bag with premium materials",
+      duration: null,
+      location_type: null,
+    },
+    {
+      id: 2,
+      product_name: "Designer Sunglasses",
+      price: 1200,
+      old_price: 1500,
+      image_url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=300&h=300&fit=crop",
+      category: "Eyewear",
+      stock_count: 20,
+      item_type: "product" as const,
+      description: "UV-protected designer sunglasses",
+      duration: null,
+      location_type: null,
+    },
+    {
+      id: 3,
+      product_name: "Style Consultation",
+      price: 500,
+      old_price: null,
+      image_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop",
+      category: "Services",
+      stock_count: null,
+      item_type: "service" as const,
+      description: "Personal style consultation service",
+      duration: "1 hour",
+      location_type: "online",
+    },
+  ];
+
+  // Generate variants for each product
+  return baseProducts.map((product) => {
+    const generated = generateVariants(
+      product.product_name!,
+      product.price || 1000,
+      product.item_type as "product" | "service",
+      product.category,
+      product.description || undefined
+    );
+
+    return {
+      ...product,
+      variants: generated.variants,
+    };
+  });
+};
+
+const DUMMY_PRODUCTS = createDummyProducts();
 
 const StorePage = () => {
   const { storeKey } = useParams();
@@ -227,36 +196,40 @@ const StorePage = () => {
 
   const sellerHasCapacity = sellerOrdersLeft > 0;
 
-  // Filter & Search
-  const filtered = useMemo(() => {
-    let result = items.filter((i) => {
-      const matchesType =
-        filter === "all" ? true : filter === "services" ? i.item_type === "service" : i.item_type !== "service";
-      const matchesSearch =
-        !searchQuery ||
-        i.product_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        i.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        i.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesType && matchesSearch;
+  // Filter & Search - VARIANTS ONLY
+  const filteredVariants = useMemo(() => {
+    // Flatten all variants from all products
+    const allVariants: Array<ProductVariant & { baseProductName: string; baseProductImage: string; baseItemType: string }> = [];
+
+    items.forEach((product) => {
+      if (product.variants && product.variants.length > 0) {
+        product.variants.forEach((variant) => {
+          allVariants.push({
+            ...variant,
+            baseProductName: product.product_name || "Product",
+            baseProductImage: product.image_url || "",
+            baseItemType: product.item_type || "product",
+          });
+        });
+      }
     });
 
-    // Sort
-    switch (sortBy) {
-      case "price-low":
-        result = [...result].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-        break;
-      case "price-high":
-        result = [...result].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-        break;
-      case "popular":
-        result = [...result].sort((a, b) => (b.stock_count ?? 0) - (a.stock_count ?? 0));
-        break;
-      default:
-        // newest - already ordered by created_at
-    }
+    // Filter by search query
+    const result = allVariants.filter((v) => {
+      const searchLower = searchQuery.toLowerCase();
+      return (
+        !searchQuery ||
+        v.title.toLowerCase().includes(searchLower) ||
+        v.baseProductName.toLowerCase().includes(searchLower) ||
+        v.description.toLowerCase().includes(searchLower) ||
+        v.valueProposition.toLowerCase().includes(searchLower) ||
+        v.features.some((f) => f.toLowerCase().includes(searchLower))
+      );
+    });
 
-    return result;
-  }, [items, filter, searchQuery, sortBy]);
+    // Sort by price (low to high) by default
+    return result.sort((a, b) => a.price - b.price);
+  }, [items, searchQuery]);
 
   // Stats
   const stats = {
@@ -405,59 +378,14 @@ const StorePage = () => {
                   />
                 </div>
 
-                {/* Filter & Sort Controls */}
-                <div className="flex gap-2 flex-wrap items-center">
-                  {/* Category Tabs */}
-                  <div className="flex gap-1 p-1.5 rounded-xl bg-secondary/50 border border-border">
-                    {(["all", "products", "services"] as const).map((f) => (
-                      <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        className={`px-4 py-2 rounded-lg text-xs md:text-sm font-semibold capitalize transition-all ${
-                          filter === f
-                            ? "bg-primary text-primary-foreground shadow-md"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {f} {f === "all" ? `(${stats.total})` : f === "products" ? `(${stats.products})` : `(${stats.services})`}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex-1" />
-
-                  {/* Sort Dropdown */}
-                  <div className="relative group">
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border text-xs md:text-sm font-semibold text-foreground hover:bg-secondary transition-colors">
-                      <SortAsc size={16} />
-                      <span className="hidden sm:inline">Sort</span>
-                      <ChevronDown size={14} className="group-hover:rotate-180 transition-transform" />
-                    </button>
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[60]">
-                      {(["newest", "popular", "price-low", "price-high"] as const).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setSortBy(s)}
-                          className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                            sortBy === s
-                              ? "bg-primary/10 text-primary"
-                              : "text-foreground hover:bg-secondary/50"
-                          }`}
-                        >
-                          {s === "price-low" ? "Price: Low to High" : s === "price-high" ? "Price: High to Low" : s === "newest" ? "Newest First" : "Most Popular"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Offers Grid */}
-              {filtered.length === 0 ? (
+              {/* Variants Grid */}
+              {filteredVariants.length === 0 ? (
                 <div className="text-center py-20 text-muted-foreground">
                   <Package size={48} className="mx-auto mb-4 opacity-30" />
                   <p className="text-lg font-semibold mb-2">No items found</p>
-                  <p className="text-sm">Try adjusting your filters or search query</p>
+                  <p className="text-sm">Try adjusting your search query</p>
                 </div>
               ) : (
                 <motion.div
@@ -466,33 +394,52 @@ const StorePage = () => {
                   transition={{ delay: 0.2 }}
                   className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
                 >
-                  {filtered.map((item) => (
+                  {filteredVariants.map((variant, index) => {
+                    const variantId = parseInt(variant.id.replace(/\D/g, ''), 10) || (1000 + index);
+                    return (
                     <ProductCard
-                      key={item.id}
-                      id={item.id}
-                      product_name={item.product_name}
-                      price={item.price}
-                      old_price={item.old_price}
-                      image_url={item.image_url}
-                      category={item.category}
-                      stock_count={item.stock_count}
-                      item_type={item.item_type}
-                      description={item.description}
-                      duration={item.duration}
-                      location_type={item.location_type}
-                      rating={(item as any).rating}
-                      review_count={(item as any).review_count}
-                      discount_type={(item as any).discount_type}
-                      discount_value={(item as any).discount_value}
-                      variants={(item as any).variants}
-                      media_gallery={(item as any).media_gallery}
-                      isService={item.item_type === "service"}
-                      onBuyNow={handleBuyNow}
-                      onAddToCart={handleAddToCart}
-                      disabled={!sellerHasCapacity || (item.item_type !== "service" && item.item_type !== "digital" && (item.stock_count ?? 0) <= 0)}
-                      disabledReason={!sellerHasCapacity ? "Vendor Unavailable" : "Out of Stock"}
+                      key={variant.id}
+                      id={variantId}
+                      product_name={variant.title}
+                      price={variant.price}
+                      old_price={variant.originalPrice}
+                      image_url={variant.baseProductImage}
+                      category={variant.baseProductName}
+                      stock_count={10}
+                      item_type={variant.baseItemType}
+                      description={variant.description}
+                      rating={variant.tag === "Most Popular" ? 4.8 : variant.tag === "Premium" ? 4.9 : 4.5}
+                      review_count={Math.floor(Math.random() * 100) + 10}
+                      isService={variant.baseItemType === "service"}
+                      onBuyNow={() => {
+                        setSelectedItem({
+                          id: variantId,
+                          item_name: variant.title,
+                          price: variant.price,
+                          image_url: variant.baseProductImage,
+                          store_name: store?.brand_name || "Store",
+                          sme_id: store?.id,
+                          store_id: store?.id,
+                          store_whatsapp: store?.whatsapp_number || null,
+                          item_type: variant.baseItemType,
+                        });
+                        setDrawerOpen(true);
+                      }}
+                      onAddToCart={() => {
+                        addItem({
+                          offer_id: variantId,
+                          item_name: variant.title,
+                          unit_price: variant.price,
+                          image_url: variant.baseProductImage,
+                          item_type: variant.baseItemType === "service" ? "service" : "physical",
+                        });
+                        toast.success(`Added "${variant.title}" to cart`);
+                      }}
+                      disabled={!sellerHasCapacity}
+                      disabledReason={!sellerHasCapacity ? "Vendor Unavailable" : undefined}
                     />
-                  ))}
+                    );
+                  })}
                 </motion.div>
               )}
             </div>
