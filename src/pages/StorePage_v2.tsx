@@ -12,6 +12,7 @@ import Header from "@/components/Header";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
 import CartDrawer from "@/components/CartDrawer";
 import ProductCard from "@/components/storefront/ProductCard";
+import HeroSectionLanding from "@/components/storefront/HeroSectionLanding";
 import StorefrontBot from "@/components/storefront/StorefrontBot";
 import { useStoreCart } from "@/hooks/useStoreCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -299,6 +300,19 @@ const StorePage_v2 = () => {
           </div>
         </motion.section>
 
+        {/* NEW 2-COLUMN HERO SECTION */}
+        <HeroSectionLanding
+          storeName={store.brand_name || "Store"}
+          headline={`${store.brand_name || "Store"} Collection`}
+          subheading={store.business_type || "Premium Quality, Fast Delivery"}
+          description={store.description}
+          featuredImageUrl={store.banner_url}
+          logoUrl={store.logo_url}
+          whatsappNumber={store.whatsapp_number}
+          onShopClick={() => document.querySelector('[data-filter-products]')?.scrollIntoView({ behavior: 'smooth' })}
+          onMessageClick={handleMessageStore}
+        />
+
         {/* FILTER & SEARCH SECTION */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
@@ -367,7 +381,7 @@ const StorePage_v2 = () => {
         </motion.section>
 
         {/* PRODUCTS GRID */}
-        <section className="max-w-7xl mx-auto px-4 mb-12">
+        <section className="max-w-7xl mx-auto px-4 mb-12" data-filter-products>
           {filtered.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground">
               <p className="text-lg font-semibold mb-2">No items found</p>
