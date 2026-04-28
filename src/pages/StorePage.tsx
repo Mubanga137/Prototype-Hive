@@ -198,8 +198,8 @@ const StorePage = () => {
 
   // Filter & Search - VARIANTS ONLY
   const filteredVariants = useMemo(() => {
-    // Flatten all variants from all products
-    const allVariants: Array<ProductVariant & { baseProductName: string; baseProductImage: string; baseItemType: string }> = [];
+    // Flatten all variants from all products and track parent product
+    const allVariants: Array<ProductVariant & { baseProductName: string; baseProductImage: string; baseItemType: string; baseProductVariants: ProductVariant[] }> = [];
 
     items.forEach((product) => {
       if (product.variants && product.variants.length > 0) {
@@ -209,6 +209,7 @@ const StorePage = () => {
             baseProductName: product.product_name || "Product",
             baseProductImage: product.image_url || "",
             baseItemType: product.item_type || "product",
+            baseProductVariants: product.variants || [],
           });
         });
       }
@@ -396,6 +397,7 @@ const StorePage = () => {
                         review_count={Math.floor(Math.random() * 100) + 10}
                         isService={variant.baseItemType === "service"}
                         variant={variant as any}
+                        allVariants={variant.baseProductVariants as any}
                         isFeatured={isFeatured}
                         storeWhatsapp={store?.whatsapp_number || null}
                         onBuyNow={() => {
@@ -487,6 +489,7 @@ const StorePage = () => {
                       review_count={Math.floor(Math.random() * 100) + 10}
                       isService={variant.baseItemType === "service"}
                       variant={variant as any}
+                      allVariants={variant.baseProductVariants as any}
                       storeWhatsapp={store?.whatsapp_number || null}
                       onBuyNow={() => {
                         setSelectedItem({
