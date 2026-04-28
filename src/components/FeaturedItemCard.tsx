@@ -113,7 +113,7 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
               : variant === "hot" ? "bg-red-500 hover:bg-red-600 text-white" : variant === "trending" ? "bg-orange-500 hover:bg-orange-600 text-white" : "btn-gold"
           }`}
         >
-          🛒 {isService ? "BOOK ORDER" : "BUY NOW"}
+          {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
         </button>
         <div className="grid grid-cols-2 gap-2 mt-2">
           <button onClick={() => onVisitStore?.(item)} className="flex items-center justify-center gap-1 text-[11px] font-semibold text-primary border border-primary/30 rounded-lg py-1.5 hover:bg-primary/5 transition-colors">

@@ -48,18 +48,18 @@ const GigSidenav = ({
   const st = statusConfig[liveStatus];
 
   const primaryLinks = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/gig-radar", badge: 0 },
+    { label: "Dashboard", icon: LayoutDashboard, path: "/gig-dashboard", badge: 0 },
     { label: "Gig Radar", icon: Radar, path: "/gig-radar", badge: 0 },
-    { label: "Tasks / Jobs", icon: ClipboardList, path: "/gig-radar", badge: activeOrderCount },
-    { label: "Messages", icon: MessageSquare, path: "/gig-radar", badge: unreadMessages },
-    { label: "Earnings", icon: Wallet, path: "/gig-radar", badge: 0 },
-    { label: "Routes", icon: Route, path: "/gig-radar", badge: 0 },
-    { label: "Notifications", icon: Bell, path: "/gig-radar", badge: unreadNotifications },
+    { label: "Tasks / Jobs", icon: ClipboardList, path: "/gig-tasks", badge: activeOrderCount },
+    { label: "Messages", icon: MessageSquare, path: "/messages", badge: unreadMessages },
+    { label: "Earnings", icon: Wallet, path: "/gig-earnings", badge: 0 },
+    { label: "Routes", icon: Route, path: "/gig-routes", badge: 0 },
+    { label: "Notifications", icon: Bell, path: "/gig-notifications", badge: unreadNotifications },
   ];
 
   const hubLinks = [
-    { label: "Inventory", icon: Package, path: "/gig-radar" },
-    { label: "Dispatch Panel", icon: Send, path: "/gig-radar" },
+    { label: "Inventory", icon: Package, path: "/hub-inventory" },
+    { label: "Dispatch Panel", icon: Send, path: "/hub-dispatch" },
   ];
 
   const handleLogout = async () => {
@@ -151,8 +151,11 @@ const GigSidenav = ({
             {hubLinks.map((item) => (
               <button
                 key={item.label}
-                onClick={() => setOpen(false)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium"
+                onClick={() => {
+                  navigate(item.path);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{ color: "hsl(220,55%,13%)" }}
               >
                 <item.icon size={18} style={{ color: "hsl(220,20%,46%)" }} />
@@ -166,7 +169,10 @@ const GigSidenav = ({
       {/* Bottom */}
       <div className="border-t px-4 py-4 space-y-2" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <button
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            navigate("/gig-settings");
+            setOpen(false);
+          }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium"
           style={{ color: "hsl(220,55%,13%)" }}
         >
