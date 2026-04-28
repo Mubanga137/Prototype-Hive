@@ -58,16 +58,18 @@ const HeroSectionEditorial = ({
               </div>
             </div>
 
-            {/* Main Slogan - Playfair Display style */}
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="text-5xl md:text-6xl font-serif font-bold text-[#0F1A35] leading-tight"
-              style={{ fontFamily: 'Georgia, serif' }}
-            >
-              {heroTitle}
-            </motion.h1>
+            {/* Main Slogan - Only show if different from storeName (to avoid redundancy) */}
+            {heroTitle !== storeName && (
+              <motion.h1
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-5xl md:text-6xl font-serif font-bold text-[#0F1A35] leading-tight"
+                style={{ fontFamily: 'Georgia, serif' }}
+              >
+                {heroTitle}
+              </motion.h1>
+            )}
 
             {/* Body Copy */}
             <motion.div
