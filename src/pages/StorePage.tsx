@@ -327,7 +327,7 @@ const StorePage = () => {
           <HeroSectionRefined
             storeName={store.brand_name || 'Store'}
             storeLogoUrl={store.logo_url}
-            heroTitle={store.brand_name || 'Curated Premium Selection'}
+            heroTitle="Curated Premium Selection"
             heroSubtitle={store.description || 'Premium Quality, Fast Delivery'}
             heroImageUrl={store.banner_url || (store as any).hero_image_url}
             totalItems={items.length}

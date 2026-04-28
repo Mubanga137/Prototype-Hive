@@ -106,15 +106,17 @@ const HeroSectionRefined = ({
                 </div>
               </motion.div>
 
-              {/* MAIN HEADLINE */}
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-[#0F1A35] leading-tight tracking-tight"
-              >
-                {heroTitle}
-              </motion.h1>
+              {/* MAIN HEADLINE - Removed redundant store name since it appears in identity strip with verified badge */}
+              {heroTitle && (
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-[#0F1A35] leading-tight tracking-tight"
+                >
+                  {heroTitle}
+                </motion.h1>
+              )}
 
               {/* SUBTITLE */}
               {heroSubtitle && (
