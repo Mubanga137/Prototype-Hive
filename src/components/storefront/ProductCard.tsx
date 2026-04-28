@@ -43,6 +43,7 @@ interface ProductCardProps {
   disabled?: boolean;
   disabledReason?: string;
   variant?: ProductVariant;
+  allVariants?: ProductVariant[];
   isFeatured?: boolean;
   storeWhatsapp?: string | null;
 }
@@ -275,7 +276,7 @@ const ProductCard = ({
 
           {/* SECTION 6: CTA SECTION */}
           <div className="space-y-2.5">
-            {/* PRIMARY CTA */}
+            {/* PRIMARY CTA - FULL WIDTH */}
             <button
               onClick={handleBuyNow}
               disabled={disabled}
@@ -286,38 +287,40 @@ const ProductCard = ({
               }`}
             >
               <ShoppingCart size={16} />
-              {isService ? "Book Now" : "Buy Now"}
+              {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
             </button>
 
-            {/* SECONDARY CTAs - Both as pill buttons */}
-            <div className="space-y-2">
-              {/* WHATSAPP CTA */}
+            {/* SECONDARY CTAs - 50/50 SPLIT */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* WHATSAPP CTA - LEFT */}
               {storeWhatsapp && (
                 <button
                   onClick={handleWhatsAppClick}
                   disabled={disabled}
-                  className={`w-full py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-1.5 ${
                     disabled
                       ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
                       : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60"
                   }`}
                 >
-                  <MessageCircle size={16} />
-                  WhatsApp
+                  <MessageCircle size={14} />
+                  <span className="hidden sm:inline">WhatsApp</span>
+                  <span className="sm:hidden">Chat</span>
                 </button>
               )}
 
-              {/* VIEW DETAILS CTA - Now a proper pill button */}
+              {/* VIEW DETAILS CTA - RIGHT */}
               <button
                 onClick={handleDetailsClick}
                 disabled={disabled}
-                className={`w-full py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-2 ${
+                className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-1.5 ${
                   disabled
                     ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
                     : "border-muted-foreground/30 bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:border-muted-foreground/50"
                 }`}
               >
-                View Details
+                👁️
+                <span className="hidden sm:inline">Details</span>
               </button>
             </div>
           </div>
@@ -450,17 +453,41 @@ const ProductCard = ({
                   </div>
                 )}
 
-                {/* CTA buttons */}
-                <div className="space-y-3">
+                {/* VARIANT SWITCHER - Only show if multiple variants exist */}
+                {(allVariants?.length ?? 0) > 1 && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-foreground mb-3">Choose Your Variant</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {allVariants?.map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => setSelectedVariant(v)}
+                          className={`py-2.5 px-3 rounded-lg font-semibold text-sm transition-all ${
+                            selectedVariant?.id === v.id
+                              ? "bg-primary text-primary-foreground border-2 border-primary"
+                              : "bg-muted text-foreground border-2 border-border hover:border-primary/40"
+                          }`}
+                        >
+                          <div className="text-xs line-clamp-1">{v.title}</div>
+                          <div className="text-xs opacity-75 mt-0.5">ZMW {v.price}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* CTA buttons - Modal layout (stacked for emphasis) */}
+                <div className="space-y-2.5">
                   <button
                     onClick={() => {
                       handleBuyNow();
                       setShowDetailsModal(false);
                     }}
                     disabled={disabled}
-                    className="w-full py-3.5 rounded-xl font-bold text-base bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 rounded-xl font-bold text-base bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {isService ? "Book Now" : "Buy Now"}
+                    <ShoppingCart size={18} />
+                    {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
                   </button>
                   {storeWhatsapp && (
                     <button
@@ -468,8 +495,9 @@ const ProductCard = ({
                         handleWhatsAppClick();
                         setShowDetailsModal(false);
                       }}
-                      className="w-full py-3 rounded-xl font-semibold text-base border-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 transition-all"
+                      className="w-full py-3 rounded-xl font-semibold text-base border-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
                     >
+                      <MessageCircle size={16} />
                       Message on WhatsApp
                     </button>
                   )}
