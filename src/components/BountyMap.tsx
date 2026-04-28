@@ -114,7 +114,7 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
         minHeight: 260,
         zIndex: 1,
         position: "relative",
-        touchAction: "none",
+        touchAction: "auto",
       }}
     />
   );

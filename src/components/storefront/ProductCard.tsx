@@ -276,51 +276,45 @@ const ProductCard = ({
 
           {/* SECTION 6: CTA SECTION */}
           <div className="space-y-2.5">
-            {/* PRIMARY CTA - FULL WIDTH */}
+            {/* PRIMARY CTA - FULL WIDTH GOLD BUTTON */}
             <button
               onClick={handleBuyNow}
               disabled={disabled}
-              className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              className={`w-full py-3 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
                 disabled
                   ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg"
+                  : "btn-gold shadow-md hover:shadow-lg"
               }`}
             >
-              <ShoppingCart size={16} />
               {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
             </button>
 
             {/* SECONDARY CTAs - 50/50 SPLIT */}
             <div className="grid grid-cols-2 gap-2">
-              {/* WHATSAPP CTA - LEFT */}
-              {storeWhatsapp && (
-                <button
-                  onClick={handleWhatsAppClick}
-                  disabled={disabled}
-                  className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-1.5 ${
-                    disabled
-                      ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
-                      : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/60"
-                  }`}
-                >
-                  <MessageCircle size={14} />
-                  <span className="hidden sm:inline">WhatsApp</span>
-                  <span className="sm:hidden">Chat</span>
-                </button>
-              )}
+              {/* MESSAGE CTA - LEFT - GHOST NAVY BUTTON */}
+              <button
+                onClick={handleWhatsAppClick}
+                disabled={disabled}
+                className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center ${
+                  disabled
+                    ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
+                    : "border-navy/30 bg-navy/5 text-navy hover:bg-navy/10 hover:border-navy/60"
+                }`}
+              >
+                Message
+              </button>
 
-              {/* VIEW DETAILS CTA - RIGHT */}
+              {/* VIEW DETAILS CTA - RIGHT - GHOST NAVY BUTTON */}
               <button
                 onClick={handleDetailsClick}
                 disabled={disabled}
-                className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center gap-1.5 ${
+                className={`py-2.5 rounded-xl font-semibold text-sm border-2 transition-all flex items-center justify-center ${
                   disabled
                     ? "border-muted bg-muted/30 text-muted-foreground cursor-not-allowed"
-                    : "border-muted-foreground/30 bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:border-muted-foreground/50"
+                    : "border-navy/30 bg-navy/5 text-navy hover:bg-navy/10 hover:border-navy/60"
                 }`}
               >
-                👁️
-                <span className="hidden sm:inline">Details</span>
+                View Details
               </button>
             </div>
           </div>
@@ -484,9 +478,8 @@ const ProductCard = ({
                       setShowDetailsModal(false);
                     }}
                     disabled={disabled}
-                    className="w-full py-3.5 rounded-xl font-bold text-base bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-xl font-bold text-base btn-gold shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    <ShoppingCart size={18} />
                     {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
                   </button>
                   {storeWhatsapp && (
@@ -495,10 +488,9 @@ const ProductCard = ({
                         handleWhatsAppClick();
                         setShowDetailsModal(false);
                       }}
-                      className="w-full py-3 rounded-xl font-semibold text-base border-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-xl font-semibold text-base border-2 border-navy/30 bg-navy/5 text-navy hover:bg-navy/10 transition-all flex items-center justify-center"
                     >
-                      <MessageCircle size={16} />
-                      Message on WhatsApp
+                      Message
                     </button>
                   )}
                 </div>

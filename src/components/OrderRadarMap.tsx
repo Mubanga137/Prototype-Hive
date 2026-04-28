@@ -108,7 +108,7 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
         border: "2px solid hsl(38,73%,40%,0.2)",
         position: "relative",
         zIndex: 1,
-        touchAction: "none",
+        touchAction: "auto",
       }}
     />
   );
