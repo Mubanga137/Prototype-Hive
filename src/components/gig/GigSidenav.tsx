@@ -203,7 +203,7 @@ const GigSidenav = ({
       </button>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 relative z-20 flex-col h-screen sticky top-0" style={{ background: "hsl(39,100%,97%)", borderRight: "1px solid hsl(38,40%,85%)" }}>
+      <aside className="hidden lg:flex w-56 shrink-0 relative z-20 flex-col h-screen sticky top-0" style={{ background: "hsl(39,100%,97%)", borderRight: "1px solid hsl(38,40%,85%)" }}>
         <NavContent />
       </aside>
 
@@ -223,7 +223,7 @@ const GigSidenav = ({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 left-0 h-full w-72 max-w-[85vw] z-[120] shadow-2xl lg:hidden overflow-hidden"
+              className="fixed top-0 left-0 h-full w-64 max-w-[75vw] z-[120] shadow-2xl lg:hidden overflow-hidden"
               style={{ borderRight: "1px solid hsl(38,73%,40%,0.2)" }}
             >
               <div className="absolute top-4 right-4 z-10">

@@ -122,7 +122,7 @@ const CustomerDashboard = () => {
     <div className="min-h-screen relative flex">
       <HoneycombBackground />
 
-      <aside className="hidden lg:flex w-64 shrink-0 bg-card/80 backdrop-blur-xl border-r border-border relative z-20 flex-col">
+      <aside className="hidden lg:flex w-56 shrink-0 bg-card/80 backdrop-blur-xl border-r border-border relative z-20 flex-col">
         <SidebarContent />
       </aside>
 
@@ -133,7 +133,7 @@ const CustomerDashboard = () => {
               onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-[60] lg:hidden" />
             <motion.aside initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 left-0 h-full w-72 max-w-[85vw] z-[70] bg-card/95 backdrop-blur-xl border-r border-primary/15 shadow-2xl lg:hidden">
+              className="fixed top-0 left-0 h-full w-64 max-w-[75vw] z-[70] bg-card/95 backdrop-blur-xl border-r border-primary/15 shadow-2xl lg:hidden">
               <div className="absolute top-4 right-4 z-10">
                 <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-secondary text-foreground"><X size={20} /></button>
               </div>
