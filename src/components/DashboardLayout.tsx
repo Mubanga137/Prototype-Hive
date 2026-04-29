@@ -165,7 +165,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     <div className="min-h-screen relative flex">
       <HoneycombBackground />
 
-      <aside className="hidden lg:flex w-64 shrink-0 bg-card/80 backdrop-blur-xl border-r border-border relative z-20 flex-col">
+      <aside className="hidden lg:flex w-56 shrink-0 bg-card/80 backdrop-blur-xl border-r border-border relative z-20 flex-col">
         <SidebarContent />
       </aside>
 
@@ -184,7 +184,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 left-0 h-full w-72 max-w-[85vw] z-[70] bg-card/95 backdrop-blur-xl border-r border-primary/15 shadow-2xl lg:hidden"
+              className="fixed top-0 left-0 h-full w-64 max-w-[75vw] z-[70] bg-card/95 backdrop-blur-xl border-r border-primary/15 shadow-2xl lg:hidden"
             >
               <div className="absolute top-4 right-4 z-10">
                 <button onClick={() => setSidebarOpen(false)} className="p-2 rounded-lg hover:bg-secondary text-foreground">

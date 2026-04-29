@@ -3,11 +3,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   User, Phone, Lock, Mail, UserPlus, ShoppingBag, Store, Warehouse, Bike,
-  ChevronDown
+  ChevronDown, Eye, EyeOff
 } from "lucide-react";
 import hiveLogo from "@/assets/hive-logo.jpeg";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import CustomerOnboarding from "@/components/CustomerOnboarding";
+import LoadingScreen from "@/components/LoadingScreen";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -38,6 +39,7 @@ const Signup = () => {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [businessType, setBusinessType] = useState("");
   const [serviceFulfillment, setServiceFulfillment] = useState("");
@@ -46,6 +48,7 @@ const Signup = () => {
   const [wholesaleCategoryOther, setWholesaleCategoryOther] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [signupUserId, setSignupUserId] = useState<string | null>(null);
 
   const handleRoleSelect = (selectedRole: AccountType) => {
@@ -75,6 +78,7 @@ const Signup = () => {
     e.preventDefault();
     if (!role) return;
     setLoading(true);
+    setShowLoadingScreen(true);
 
     const { data: authData, error } = await supabase.auth.signUp({
       email,
@@ -85,6 +89,7 @@ const Signup = () => {
     if (error) {
       toast.error(error.message);
       setLoading(false);
+      setShowLoadingScreen(false);
       return;
     }
 
@@ -93,6 +98,7 @@ const Signup = () => {
       if (signInError) {
         toast.error(signInError.message);
         setLoading(false);
+        setShowLoadingScreen(false);
         return;
       }
 
@@ -120,6 +126,7 @@ const Signup = () => {
       if (role === "customer") {
         setSignupUserId(authData.user.id);
         setStep("onboarding");
+        setShowLoadingScreen(false);
         return;
       }
 
@@ -128,7 +135,11 @@ const Signup = () => {
         wholesaler: "/warehouse",
         gig_worker: "/gig-radar",
       };
-      navigate(routes[role] || "/", { replace: true });
+
+      // Keep loading screen visible while navigating
+      setTimeout(() => {
+        navigate(routes[role] || "/", { replace: true });
+      }, 1000);
     }
   };
 
@@ -138,6 +149,15 @@ const Signup = () => {
 
   const inputClass = "w-full pl-10 pr-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
   const selectClass = "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm appearance-none";
+
+  // Show loading screen instantly
+  if (showLoadingScreen) {
+    return (
+      <LoadingScreen
+        message={role === "customer" ? "dashboard" : "workspace"}
+      />
+    );
+  }
 
   // Customer progressive disclosure: full 5-step signup+onboarding flow
   if (step === "onboarding") {
@@ -218,7 +238,14 @@ const Signup = () => {
                   <label className="text-xs font-semibold text-foreground mb-1.5 block">Password</label>
                   <div className="relative">
                     <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
+                    <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-10 pr-10 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 

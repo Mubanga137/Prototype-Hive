@@ -399,7 +399,7 @@ const Warehouse = () => {
   return (
     <div className="min-h-screen relative flex">
       <HoneycombBackground />
-      <aside className="hidden md:flex w-64 bg-card/90 backdrop-blur-md border-r border-border/40 flex-col fixed left-0 top-0 bottom-0 z-30">
+      <aside className="hidden lg:flex w-56 bg-card/90 backdrop-blur-md border-r border-border/40 flex-col fixed left-0 top-0 bottom-0 z-30">
         <SidebarContent />
       </aside>
 
@@ -407,9 +407,9 @@ const Warehouse = () => {
         {sidebarOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-40 md:hidden" />
+              onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-40 lg:hidden" />
             <motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 25 }}
-              className="fixed left-0 top-0 bottom-0 w-64 bg-card/95 backdrop-blur-md border-r border-border/40 z-50 md:hidden">
+              className="fixed left-0 top-0 bottom-0 w-64 max-w-[75vw] bg-card/95 backdrop-blur-md border-r border-border/40 z-50 lg:hidden">
               <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"><X size={20} /></button>
               <SidebarContent />
             </motion.aside>
@@ -417,14 +417,14 @@ const Warehouse = () => {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 md:ml-64 relative z-10">
-        <div className="md:hidden sticky top-0 z-20 bg-card/80 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center gap-3">
+      <main className="flex-1 lg:ml-56 relative z-10 w-full min-w-0">
+        <div className="lg:hidden sticky top-0 z-20 bg-card/80 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="text-foreground"><Menu size={22} /></button>
           <img src={hiveLogo} alt="The Hive" className="w-8 h-8 rounded-full object-cover border border-primary/30" />
           <h1 className="text-sm font-display font-bold text-foreground">Wholesale Hub</h1>
         </div>
 
-        <div className="px-4 md:px-8 py-6 max-w-6xl mx-auto">
+        <div className="px-4 lg:px-8 py-6 max-w-6xl mx-auto w-full">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center"><WarehouseIcon size={22} className="text-primary" /></div>
             <div>

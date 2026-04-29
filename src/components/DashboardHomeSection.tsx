@@ -65,7 +65,7 @@ const HorizontalScrollRow = ({
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </div>
-    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pt-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pt-3">
       {children}
     </div>
   </div>
@@ -172,7 +172,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
         </motion.div>
       </div>
 
-      {/* Row 1: Recommended For You */}
+            {/* Row 1: Recommended For You */}
       <HorizontalScrollRow
         title="Recommended For You"
         icon={<Sparkles size={20} className="text-primary" />}
@@ -181,39 +181,33 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
         badgeColor="bg-primary"
       >
         {recommended.map((item, i) => (
-          <div key={item.id} className="shrink-0 w-[220px]">
-            <FeaturedItemCard item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} />
-          </div>
+          <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} />
         ))}
       </HorizontalScrollRow>
 
       {/* Row 2: Trending Now */}
       <HorizontalScrollRow
         title="Trending Now"
-        icon={<TrendingUp size={20} className="text-orange-500" />}
+        icon={<TrendingUp size={20} className="text-primary" />}
         subtitle="Most popular products right now"
-        badge="HOT"
-        badgeColor="bg-orange-500"
+        badge="TRENDING"
+        badgeColor="bg-primary"
       >
         {trending.map((item, i) => (
-          <div key={item.id} className="shrink-0 w-[220px]">
-            <FeaturedItemCard item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="trending" />
-          </div>
+          <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="trending" />
         ))}
       </HorizontalScrollRow>
 
       {/* Row 3: Hot Deals */}
       <HorizontalScrollRow
         title="Hot Deals"
-        icon={<Flame size={20} className="text-red-500" />}
+        icon={<Flame size={20} className="text-primary" />}
         subtitle="Biggest discounts right now"
         badge="SAVE BIG"
-        badgeColor="bg-red-500"
+        badgeColor="bg-primary"
       >
         {(hotDeals.length > 0 ? hotDeals : items.slice(0, 6)).map((item, i) => (
-          <div key={item.id} className="shrink-0 w-[220px]">
-            <FeaturedItemCard item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="hot" />
-          </div>
+          <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="hot" />
         ))}
       </HorizontalScrollRow>
 
