@@ -376,7 +376,7 @@ const StorePage = () => {
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+                  className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
                 >
                   {filteredVariants.slice(0, 6).map((variant, index) => {
                     const variantId = parseInt(variant.id.replace(/\D/g, ''), 10) || (2000 + index);
@@ -390,6 +390,7 @@ const StorePage = () => {
                         old_price={variant.originalPrice}
                         image_url={variant.baseProductImage}
                         category={variant.baseProductName}
+                        storeName={store?.brand_name || "The Hive Store"}
                         stock_count={10}
                         item_type={variant.baseItemType}
                         description={variant.description}
@@ -469,7 +470,7 @@ const StorePage = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
+                  className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
                 >
                   {filteredVariants.map((variant, index) => {
                     const variantId = parseInt(variant.id.replace(/\D/g, ''), 10) || (1000 + index);
@@ -482,6 +483,7 @@ const StorePage = () => {
                       old_price={variant.originalPrice}
                       image_url={variant.baseProductImage}
                       category={variant.baseProductName}
+                      storeName={store?.brand_name || "The Hive Store"}
                       stock_count={10}
                       item_type={variant.baseItemType}
                       description={variant.description}
