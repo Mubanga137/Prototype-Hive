@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { DollarSign, ShoppingCart, Users, Coins, TrendingUp, Plus, ClipboardList, TriangleAlert as AlertTriangle, Package, Wallet } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -65,7 +65,7 @@ const RetailerStudioDashboard = () => {
   ];
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
@@ -252,7 +252,7 @@ const RetailerStudioDashboard = () => {
           </motion.div>
         </div>
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

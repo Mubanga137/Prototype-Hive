@@ -3,14 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Radar, ClipboardList, MessageSquare, Phone,
-  Wallet, Route, Bell, Package, Send, Settings, LogOut, Menu, X,
-  User, ChevronRight
+  Wallet, Route, Bell, Package, Send, Settings, LogOut, X,
+  User
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import hiveLogo from "@/assets/hive-logo.jpeg";
+import DashboardHeader from "@/components/DashboardHeader";
 
 interface GigSidenavProps {
   isOnline: boolean;
@@ -67,6 +67,11 @@ const GigSidenav = ({
     navigate("/");
   };
 
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setOpen(false);
+  };
+
   const NavContent = () => (
     <div className="flex flex-col h-full" style={{ background: "hsl(39,100%,97%)" }}>
       {/* Profile block */}
@@ -114,7 +119,7 @@ const GigSidenav = ({
           return (
             <button
               key={item.label}
-              onClick={() => setOpen(false)}
+              onClick={() => handleNavigate(item.path)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
               style={{
                 background: active ? "hsl(38,73%,40%,0.12)" : "transparent",
@@ -193,14 +198,10 @@ const GigSidenav = ({
 
   return (
     <>
-      {/* Mobile hamburger trigger — fixed top-left over map */}
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 z-[100] p-2.5 rounded-xl shadow-lg lg:hidden"
-        style={{ background: "hsl(39,100%,97%)", border: "2px solid hsl(38,40%,85%)" }}
-      >
-        <Menu size={22} style={{ color: "hsl(220,55%,13%)" }} />
-      </button>
+      {/* Mobile Header */}
+      <div className="lg:hidden sticky top-0 z-30">
+        <DashboardHeader title="Gig Radar" onMenuToggle={() => setOpen(true)} />
+      </div>
 
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-56 shrink-0 relative z-20 flex-col h-screen sticky top-0" style={{ background: "hsl(39,100%,97%)", borderRight: "1px solid hsl(38,40%,85%)" }}>

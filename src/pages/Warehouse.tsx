@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Warehouse as WarehouseIcon, Package, TrendingUp, Truck, Search,
-  LayoutDashboard, Boxes, Users, CreditCard, Settings, Plus, X,
-  Image, DollarSign, Hash, Lock, LogOut, Menu, Trash2, Edit
+  LayoutDashboard, Boxes, Users, CreditCard, Settings, Plus,
+  Image, DollarSign, Hash, Lock, Trash2, Edit
 } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import hiveLogo from "@/assets/hive-logo.jpeg";
 import { toast } from "sonner";
+import WarehouseSidebar from "@/components/WarehouseSidebar";
 
 const sidebarItems = [
-  { label: "Dashboard", icon: LayoutDashboard, id: "dashboard", emoji: "📊" },
-  { label: "Bulk Inventory", icon: Boxes, id: "inventory", emoji: "📦" },
-  { label: "SME Partner Network", icon: Users, id: "partners", emoji: "🤝" },
-  { label: "Payouts & Ledger", icon: CreditCard, id: "payouts", emoji: "💰" },
-  { label: "Store Settings", icon: Settings, id: "settings", emoji: "⚙️" },
+  { label: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
+  { label: "Bulk Inventory", icon: Boxes, id: "inventory" },
+  { label: "SME Partner Network", icon: Users, id: "partners" },
+  { label: "Payouts & Ledger", icon: CreditCard, id: "payouts" },
+  { label: "Store Settings", icon: Settings, id: "settings" },
 ];
 
 interface InventoryItem {
@@ -187,35 +187,6 @@ const Warehouse = () => {
   ];
 
   const inputClass = "w-full px-4 py-3 rounded-2xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
-
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="p-4 flex items-center gap-3 border-b border-border/30">
-        <img src={hiveLogo} alt="The Hive" className="w-10 h-10 rounded-full object-cover border-2 border-primary/30" />
-        <div className="min-w-0">
-          <h2 className="text-sm font-display font-bold text-foreground truncate">Wholesale Hub</h2>
-          <p className="text-xs text-muted-foreground truncate">{profile?.full_name || "Wholesaler"}</p>
-        </div>
-      </div>
-      <nav className="flex-1 p-3 space-y-1">
-        {sidebarItems.map((item) => (
-          <button key={item.id}
-            onClick={() => { setActiveSection(item.id); setSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-medium transition-all ${
-              activeSection === item.id ? "bg-primary text-primary-foreground shadow-md" : "text-foreground hover:bg-secondary/60"
-            }`}>
-            <span className="text-base">{item.emoji}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-border/30">
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-all">
-          <LogOut size={16} /> <span>Sign Out</span>
-        </button>
-      </div>
-    </div>
-  );
 
   const renderDashboard = () => (
     <>
@@ -396,45 +367,26 @@ const Warehouse = () => {
     }
   };
 
+  const renderPageContent = () => (
+    <div className="max-w-6xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center"><WarehouseIcon size={22} className="text-primary" /></div>
+        <div>
+          <h2 className="text-2xl font-display font-bold text-foreground">Wholesale <span className="text-primary">Warehouse</span></h2>
+          <p className="text-sm text-muted-foreground">Bulk Sourcing Portal</p>
+        </div>
+      </div>
+      {renderContent()}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen relative flex">
+    <div className="min-h-screen relative">
       <HoneycombBackground />
-      <aside className="hidden lg:flex w-56 bg-card/90 backdrop-blur-md border-r border-border/40 flex-col fixed left-0 top-0 bottom-0 z-30">
-        <SidebarContent />
-      </aside>
+      <WarehouseSidebar activeSection={activeSection} onSectionChange={setActiveSection}>
+        {renderPageContent()}
 
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-40 lg:hidden" />
-            <motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 25 }}
-              className="fixed left-0 top-0 bottom-0 w-64 max-w-[75vw] bg-card/95 backdrop-blur-md border-r border-border/40 z-50 lg:hidden">
-              <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"><X size={20} /></button>
-              <SidebarContent />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-
-      <main className="flex-1 lg:ml-56 relative z-10 w-full min-w-0">
-        <div className="lg:hidden sticky top-0 z-20 bg-card/80 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="text-foreground"><Menu size={22} /></button>
-          <img src={hiveLogo} alt="The Hive" className="w-8 h-8 rounded-full object-cover border border-primary/30" />
-          <h1 className="text-sm font-display font-bold text-foreground">Wholesale Hub</h1>
-        </div>
-
-        <div className="px-4 lg:px-8 py-6 max-w-6xl mx-auto w-full">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center"><WarehouseIcon size={22} className="text-primary" /></div>
-            <div>
-              <h2 className="text-2xl font-display font-bold text-foreground">Wholesale <span className="text-primary">Warehouse</span></h2>
-              <p className="text-sm text-muted-foreground">Bulk Sourcing Portal</p>
-            </div>
-          </div>
-          {renderContent()}
-        </div>
-      </main>
+      </WarehouseSidebar>
 
       {/* Add/Edit Item Slide-over */}
       <AnimatePresence>
@@ -447,7 +399,6 @@ const Warehouse = () => {
               className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-card border-l border-border z-50 flex flex-col">
               <div className="flex items-center justify-between p-6 border-b border-border/40">
                 <h3 className="text-lg font-display font-bold text-foreground">{editingId ? "Edit" : "Add"} Bulk Item</h3>
-                <button onClick={() => { setAddItemOpen(false); resetForm(); }} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
               <form onSubmit={handleAddItem} className="flex-1 overflow-y-auto p-6 space-y-5">
                 <div>
