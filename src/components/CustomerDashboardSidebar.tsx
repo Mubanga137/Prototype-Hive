@@ -29,6 +29,7 @@ const sidebarItems = [
 const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: CustomerDashboardSidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
+  const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const unreadCount = useUnreadCount();
@@ -38,7 +39,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
     navigate("/");
   };
 
-  const SidebarContent = ({ isCollapsed }: { isCollapsed?: boolean }) => (
+  const SidebarContent = ({ isCollapsed, isMobile = false }: { isCollapsed?: boolean; isMobile?: boolean }) => (
     <div className="flex flex-col h-full bg-[#FFFBF2]">
       {/* Top Area: Logo & Profile (Pinned) */}
       <div className="px-5 py-5 border-b shrink-0 flex items-center justify-between" style={{ borderColor: "hsl(38,40%,85%)" }}>
@@ -50,7 +51,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
           </div>
         </div>
         {/* Desktop collapse toggle - only show on desktop */}
-        {isCollapsed !== undefined && (
+        {isCollapsed !== undefined && !isMobile && (
           <motion.button
             onClick={() => setDesktopSidebarCollapsed(!isCollapsed)}
             className="hidden lg:flex p-2 rounded-lg hover:bg-secondary transition-colors items-center justify-center shrink-0"
@@ -58,6 +59,21 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
             whileTap={{ scale: 0.95 }}
           >
             {isCollapsed ? (
+              <Menu size={18} style={{ color: "#B37C1C" }} />
+            ) : (
+              <X size={18} style={{ color: "#B37C1C" }} />
+            )}
+          </motion.button>
+        )}
+        {/* Mobile collapse toggle - only show on mobile */}
+        {isMobile && (
+          <motion.button
+            onClick={() => setMobileSidebarCollapsed(!mobileSidebarCollapsed)}
+            className="flex lg:hidden p-2 rounded-lg hover:bg-secondary transition-colors items-center justify-center shrink-0"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {mobileSidebarCollapsed ? (
               <Menu size={18} style={{ color: "#B37C1C" }} />
             ) : (
               <X size={18} style={{ color: "#B37C1C" }} />
@@ -187,7 +203,11 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 left-0 h-full w-64 max-w-[75vw] z-[70] shadow-2xl lg:hidden flex flex-col"
+              className="fixed top-0 left-0 h-full z-[70] shadow-2xl lg:hidden flex flex-col"
+              style={{
+                width: mobileSidebarCollapsed ? "80px" : "256px",
+                maxWidth: "75vw"
+              }}
             >
               <div className="absolute top-4 right-4 z-10 lg:hidden">
                 <button
@@ -198,7 +218,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
                   <X size={20} />
                 </button>
               </div>
-              <SidebarContent isCollapsed={false} />
+              <SidebarContent isCollapsed={mobileSidebarCollapsed} isMobile={true} />
             </motion.aside>
           </>
         )}
