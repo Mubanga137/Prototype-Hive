@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Warehouse as WarehouseIcon, Package, TrendingUp, Truck, Search,
   LayoutDashboard, Boxes, Users, CreditCard, Settings, Plus,
