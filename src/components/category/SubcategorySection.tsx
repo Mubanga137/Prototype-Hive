@@ -57,7 +57,7 @@ const SubcategorySection = ({
         {items.slice(0, 8).map((item, i) => (
           <div
             key={item.id}
-            className="min-w-[220px] max-w-[240px] shrink-0"
+            className="min-w-[calc(50%-8px)] sm:min-w-[220px] md:min-w-[240px] max-w-[calc(50%-8px)] sm:max-w-[240px] shrink-0"
           >
             <FeaturedItemCard
               item={item}
