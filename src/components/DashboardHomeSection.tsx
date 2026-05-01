@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import FeaturedItemCard, { FeaturedItem } from "@/components/FeaturedItemCard";
 import VendorCard, { VendorData } from "@/components/VendorCard";
+import PremiumCategoryCard from "@/components/PremiumCategoryCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,11 +21,41 @@ const demoVendors: VendorData[] = [
 ];
 
 const categoryCards = [
-  { label: "Fashion", emoji: "👗", gradient: "from-blue-900/20 to-blue-500/10", path: "/category/fashion" },
-  { label: "Tech", emoji: "📱", gradient: "from-cyan-500/20 to-cyan-300/10", path: "/category/tech" },
-  { label: "Entertainment", emoji: "🎬", gradient: "from-violet-500/20 to-purple-300/10", path: "/category/entertainment" },
-  { label: "Food", emoji: "🍟", gradient: "from-orange-500/20 to-amber-300/10", path: "/category/food" },
-  { label: "Beauty", emoji: "💄", gradient: "from-rose-400/20 to-pink-300/10", path: "/category/beauty" },
+  {
+    label: "Fashion",
+    description: "Trending styles, streetwear & formal wear",
+    imageUrl: "https://images.unsplash.com/photo-1595777707802-82d4e3d64856?w=600&h=400&fit=crop",
+    path: "/category/fashion",
+    accentColor: "#3B4C8F",
+  },
+  {
+    label: "Tech",
+    description: "Latest gadgets, phones & smart devices",
+    imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=400&fit=crop",
+    path: "/category/tech",
+    accentColor: "#06B6D4",
+  },
+  {
+    label: "Entertainment",
+    description: "Events, experiences & media services",
+    imageUrl: "https://images.unsplash.com/photo-1489749798305-4fea3ba63d60?w=600&h=400&fit=crop",
+    path: "/category/entertainment",
+    accentColor: "#8B5CF6",
+  },
+  {
+    label: "Food",
+    description: "Fresh meals, snacks & local delicacies",
+    imageUrl: "https://images.unsplash.com/photo-1495596411223-4d71bcdd2085?w=600&h=400&fit=crop",
+    path: "/category/food",
+    accentColor: "#F97316",
+  },
+  {
+    label: "Beauty",
+    description: "Skincare, makeup & cosmetics",
+    imageUrl: "https://images.unsplash.com/photo-1596462502278-af407e13aecd?w=600&h=400&fit=crop",
+    path: "/category/beauty",
+    accentColor: "#EC4899",
+  },
 ];
 
 // Fallback demo items when Supabase has no data
@@ -229,7 +260,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
         </div>
       </div>
 
-      {/* Row 5: Explore Categories */}
+      {/* Row 5: Explore Categories (Premium) */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
@@ -237,22 +268,20 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           </div>
           <div>
             <h3 className="text-lg font-display font-bold text-foreground">Explore Categories</h3>
-            <p className="text-xs text-muted-foreground">Browse by interest</p>
+            <p className="text-xs text-muted-foreground">Curated shopping experiences</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {categoryCards.map((cat, i) => (
-            <motion.div
+            <PremiumCategoryCard
               key={cat.label}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.05 * i }}
-              onClick={() => navigate(cat.path)}
-              className={`relative bg-gradient-to-br ${cat.gradient} border border-border rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all group min-h-[120px]`}
-            >
-              <span className="text-4xl group-hover:scale-110 transition-transform">{cat.emoji}</span>
-              <span className="text-sm font-semibold text-foreground">{cat.label}</span>
-            </motion.div>
+              label={cat.label}
+              description={cat.description}
+              imageUrl={cat.imageUrl}
+              path={cat.path}
+              accentColor={cat.accentColor}
+              index={i}
+            />
           ))}
         </div>
       </div>

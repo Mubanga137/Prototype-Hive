@@ -135,8 +135,8 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
 
   return (
     <div className="min-h-screen relative flex bg-[#FFFBF2]">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-56 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen" style={{ borderColor: "hsl(38,40%,85%)" }}>
+      {/* Desktop Sidebar - Collapsible */}
+      <aside className="hidden lg:flex w-56 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen overflow-hidden" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <SidebarContent />
       </aside>
 
