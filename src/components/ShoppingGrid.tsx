@@ -107,7 +107,7 @@ const ShoppingGrid = () => {
           <p className="text-sm">No products found. Check back soon!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {filteredItems.map((item, i) => (
             <FeaturedItemCard
               key={item.id}

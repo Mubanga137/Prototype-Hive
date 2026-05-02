@@ -62,6 +62,7 @@ const sidebarModules = [
 
 const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
@@ -76,30 +77,50 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isCollapsed = false, isMobile = false }: { isCollapsed?: boolean; isMobile?: boolean }) => (
     <div className="flex flex-col h-full bg-[#FFFBF2]">
       {/* Top Area: Logo & Profile (Pinned) */}
-      <div className="px-5 py-5 border-b shrink-0" style={{ borderColor: "hsl(38,40%,85%)" }}>
-        <div className="flex items-center gap-2.5 mb-3">
-          <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-[#B37C1C]/30" />
-          <div>
+      <div className="px-5 py-5 border-b shrink-0 flex items-center justify-between" style={{ borderColor: "hsl(38,40%,85%)" }}>
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-[#B37C1C]/30 shrink-0" />
+          <div className={isCollapsed ? "hidden" : ""}>
             <p className="font-display font-bold text-[#0F1A35] text-sm tracking-tight">THE HIVE</p>
             <p className="text-[10px] text-[#0F1A35]/70">Retailer Studio</p>
           </div>
         </div>
-        {/* Capacity meter — pulse_credits surfaced as Orders Left */}
-        <div
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-            outOfCapacity
-              ? "bg-red-100/40 border-red-200 text-red-700"
-              : "border-[#B37C1C]/30 text-[#0F1A35]"
-          }`}
-          style={outOfCapacity ? {} : { background: "hsl(38,73%,40%,0.08)" }}
-          title={outOfCapacity ? "Top up to receive new orders" : "Orders you can still receive"}
-        >
-          <span className="text-base leading-none">📦</span>
-          <span className="tabular-nums">{ordersLeft.toLocaleString()}</span>
-          <span className="opacity-80">Orders Left</span>
+        {/* Mobile collapse toggle */}
+        {isMobile && (
+          <motion.button
+            onClick={() => setMobileSidebarCollapsed(!mobileSidebarCollapsed)}
+            className="flex lg:hidden p-2 rounded-lg hover:bg-secondary transition-colors items-center justify-center shrink-0"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {isCollapsed ? (
+              <Menu size={18} style={{ color: "#B37C1C" }} />
+            ) : (
+              <X size={18} style={{ color: "#B37C1C" }} />
+            )}
+          </motion.button>
+        )}
+      </div>
+
+      {/* Capacity meter — pulse_credits surfaced as Orders Left */}
+      <div className={isCollapsed ? "hidden" : ""}>
+        <div className="px-5 pb-0">
+          <div
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+              outOfCapacity
+                ? "bg-red-100/40 border-red-200 text-red-700"
+                : "border-[#B37C1C]/30 text-[#0F1A35]"
+            }`}
+            style={outOfCapacity ? {} : { background: "hsl(38,73%,40%,0.08)" }}
+            title={outOfCapacity ? "Top up to receive new orders" : "Orders you can still receive"}
+          >
+            <span className="text-base leading-none">📦</span>
+            <span className="tabular-nums">{ordersLeft.toLocaleString()}</span>
+            <span className="opacity-80">Orders Left</span>
+          </div>
         </div>
       </div>
 
@@ -118,7 +139,7 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
                     navigate(item.path);
                     setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all justify-center lg:justify-start ${
                     isActive(item.path)
                       ? "border"
                       : "border border-transparent"
@@ -135,13 +156,14 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
                         }
                   }
                 >
-                  <item.icon 
-                    size={18} 
+                  <item.icon
+                    size={18}
                     style={{
                       color: isActive(item.path) ? "#B37C1C" : "#0F1A35"
-                    }} 
+                    }}
+                    className="shrink-0"
                   />
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className={`flex-1 text-left hidden lg:inline ${isCollapsed ? "lg:hidden" : ""}`}>{item.label}</span>
                   {item.label === "Messages" && unreadCount > 0 && (
                     <span 
                       className="ml-auto min-w-[20px] h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-[#FFFBF2]"
@@ -221,23 +243,27 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
               className="fixed inset-0 backdrop-blur-sm z-[60] lg:hidden"
               style={{ background: "hsl(220,55%,13%,0.4)" }}
             />
-            <motion.aside 
-              initial={{ x: "-100%" }} 
-              animate={{ x: 0 }} 
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 left-0 h-full w-64 max-w-[75vw] z-[70] shadow-2xl lg:hidden flex flex-col"
+              className="fixed top-0 left-0 h-full z-[70] shadow-2xl lg:hidden flex flex-col"
+              style={{
+                width: mobileSidebarCollapsed ? "80px" : "256px",
+                maxWidth: "75vw"
+              }}
             >
               <div className="absolute top-4 right-4 z-10 lg:hidden">
-                <button 
-                  onClick={() => setSidebarOpen(false)} 
+                <button
+                  onClick={() => setSidebarOpen(false)}
                   className="p-2 rounded-lg transition-colors"
                   style={{ background: "#FFFBF2", color: "#0F1A35" }}
                 >
                   <X size={20} />
                 </button>
               </div>
-              <SidebarContent />
+              <SidebarContent isCollapsed={mobileSidebarCollapsed} isMobile={true} />
             </motion.aside>
           </>
         )}

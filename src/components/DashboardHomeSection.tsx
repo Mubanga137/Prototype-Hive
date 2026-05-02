@@ -96,7 +96,7 @@ const HorizontalScrollRow = ({
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </div>
     </div>
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pt-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 pt-3">
       {children}
     </div>
   </div>
@@ -271,7 +271,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
             <p className="text-xs text-muted-foreground">Curated shopping experiences</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
           {categoryCards.map((cat, i) => (
             <PremiumCategoryCard
               key={cat.label}
