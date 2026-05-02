@@ -9,6 +9,7 @@ import { saveStore } from "@/lib/ensureStore";
 import OfferFormModalEnhanced, { OfferDraft, ItemType } from "@/components/storefront/OfferFormModalEnhanced";
 import StorefrontPreviewLiveEditorial from "@/components/storefront/StorefrontPreviewLiveEditorial";
 import StorefrontEditorPanel from "@/components/studio/StorefrontEditorPanel";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 
 interface OfferRow {
   id: number;
@@ -228,7 +229,7 @@ const StorefrontBuilder = () => {
     );
   }
 
-  return (
+  const StorefrontContent = () => (
     <div className="h-screen w-full flex bg-background">
       {/* LEFT PANEL: 40% Accordion Editor */}
       <div className="w-2/5 border-r border-border bg-card flex flex-col">
@@ -295,6 +296,12 @@ const StorefrontBuilder = () => {
         onSaved={() => fetchOffers(currentStore.id)}
       />
     </div>
+  );
+
+  return (
+    <RetailerStudioSidebar>
+      <StorefrontContent />
+    </RetailerStudioSidebar>
   );
 };
 

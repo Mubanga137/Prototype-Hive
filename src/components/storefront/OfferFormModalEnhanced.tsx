@@ -4,6 +4,7 @@ import { X, Upload, Loader2, Package, Briefcase, Cloud, Plus, Trash2, FileVideo,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ensureStore } from "@/lib/ensureStore";
+import { generateVariants } from "@/lib/variantGenerator";
 import { toast } from "sonner";
 
 export type ItemType = "physical" | "digital" | "service";
@@ -157,9 +158,32 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
     setSubmitting(true);
 
     const isService = draft.item_type === "service";
+    const basePrice = parseFloat(draft.price) || 0;
+
+    // Auto-generate 4 variants for new products (not services)
+    let generatedVariants: any[] = [];
+    if (!draft.id && !isService && (!draft.variants || draft.variants.length === 0)) {
+      const variantData = generateVariants(
+        draft.name.trim(),
+        basePrice,
+        "product",
+        draft.category,
+        draft.description
+      );
+      generatedVariants = variantData.variants.map((v: any) => ({
+        id: `${Date.now()}-${Math.random()}`,
+        name: v.title,
+        price: v.price,
+        description: v.description,
+        tag: v.tag,
+        features: v.features || [],
+        quantity: 100, // Default stock per variant
+      }));
+    }
+
     const payload: any = {
       product_name: draft.name.trim(),
-      price: parseFloat(draft.price) || 0,
+      price: basePrice,
       description: draft.description || null,
       image_url: draft.image_url || null,
       item_type: draft.item_type,
@@ -168,7 +192,7 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
       discount_type: draft.discount_type || "none",
       discount_value: draft.discount_value ? parseFloat(draft.discount_value) : null,
       media_gallery: draft.media_gallery && draft.media_gallery.length > 0 ? draft.media_gallery : [],
-      variants: draft.variants && draft.variants.length > 0 ? draft.variants : [],
+      variants: generatedVariants.length > 0 ? generatedVariants : (draft.variants && draft.variants.length > 0 ? draft.variants : []),
     };
 
     if (isService) {
@@ -178,9 +202,10 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
       payload.stock_count = 999;
       payload.stock_quantity = 999;
     } else {
-      // For products: use variants if available, otherwise use simple stock
-      if (draft.variants && draft.variants.length > 0) {
-        const totalStock = draft.variants.reduce((sum, v) => sum + v.quantity, 0);
+      // For products: use total of variant quantities
+      const variantsToUse = generatedVariants.length > 0 ? generatedVariants : draft.variants;
+      if (variantsToUse && variantsToUse.length > 0) {
+        const totalStock = variantsToUse.reduce((sum: number, v: any) => sum + (v.quantity || 0), 0);
         payload.stock_count = totalStock;
         payload.stock_quantity = totalStock;
       } else {
@@ -216,9 +241,9 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => onOpenChange(false)}
-            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[80]" />
+            className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[90]" />
           <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
-            className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[620px] bg-card border border-border rounded-2xl shadow-2xl z-[90] overflow-auto max-h-[92vh]">
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 inset-4 sm:inset-auto sm:w-[620px] bg-card border border-border rounded-2xl shadow-2xl z-[100] overflow-auto max-h-[92vh]">
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-display font-bold text-foreground">
