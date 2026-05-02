@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Package, Copy, Check, CircleAlert as AlertCircle, DollarSign } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -100,7 +100,7 @@ const WholesaleBountyHub = () => {
   };
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">
@@ -286,7 +286,7 @@ const WholesaleBountyHub = () => {
           </motion.div>
         </div>
       )}
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

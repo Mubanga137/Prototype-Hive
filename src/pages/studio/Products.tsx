@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Package, Plus, Edit, Trash2, X, Loader2, Briefcase, Cloud } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,7 +110,7 @@ const Products = () => {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -127,7 +127,7 @@ const Products = () => {
           {formOpen && (
             <>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setFormOpen(false)} className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[80]" />
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] bg-card border border-border rounded-2xl shadow-2xl z-[90] overflow-auto max-h-[90vh]">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="fixed inset-0 flex items-center justify-center p-4 z-[90]"><div className="w-full max-w-[480px] bg-card border border-border rounded-2xl shadow-2xl overflow-auto max-h-[90vh]">
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-display font-bold text-foreground">{editingId ? "Edit Item" : "Add Item"}</h3>
@@ -184,7 +184,7 @@ const Products = () => {
                     {submitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : editingId ? "Update Item" : "Add Item"}
                   </button>
                 </form>
-              </motion.div>
+</div></motion.div>
             </>
           )}
         </AnimatePresence>
@@ -242,7 +242,7 @@ const Products = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

@@ -1,4 +1,4 @@
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Coins, ArrowUpRight, ArrowDownRight, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -10,7 +10,7 @@ const transactions = [
 ];
 
 const PulseCredits = () => (
-  <DashboardLayout>
+  <RetailerStudioSidebar>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold text-foreground">Pulse Credits</h1>
@@ -77,7 +77,7 @@ const PulseCredits = () => (
         </div>
       </div>
     </div>
-  </DashboardLayout>
+  </RetailerStudioSidebar>
 );
 
 export default PulseCredits;

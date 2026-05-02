@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Phone, Paperclip, Send, Search, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import HoneycombBackground from "@/components/HoneycombBackground";
-import hiveLogo from "@/assets/hive-logo.jpeg";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
+import hiveLogo from "@/assets/hive-logo.jpeg"
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -417,8 +417,8 @@ const Messages = () => {
   // ---- Mobile: list or chat ----
   if (isMobile) {
     return (
-      <div className="h-screen flex flex-col relative">
-        <HoneycombBackground />
+      <RetailerStudioSidebar>
+        <div className="h-screen flex flex-col relative">
         <AnimatePresence mode="wait">
           {activeConv ? (
             <motion.div key="chat" initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
@@ -435,14 +435,15 @@ const Messages = () => {
           )}
         </AnimatePresence>
         <AttachProductModal open={attachOpen} onClose={() => setAttachOpen(false)} onSelect={handleAttachProduct} />
-      </div>
+        </div>
+      </RetailerStudioSidebar>
     );
   }
 
   // ---- Desktop: two-panel ----
   return (
-    <div className="h-screen flex relative">
-      <HoneycombBackground />
+    <RetailerStudioSidebar>
+      <div className="h-screen flex relative">
       <div className="relative z-10 w-[360px] shrink-0 border-r border-border flex flex-col">
         <InboxPanel />
       </div>
@@ -450,7 +451,8 @@ const Messages = () => {
         <ChatPanel />
       </div>
       <AttachProductModal open={attachOpen} onClose={() => setAttachOpen(false)} onSelect={handleAttachProduct} />
-    </div>
+      </div>
+    </RetailerStudioSidebar>
   );
 };
 

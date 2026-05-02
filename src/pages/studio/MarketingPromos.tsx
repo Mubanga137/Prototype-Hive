@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import {
   Tag, Plus, X, Loader2, Trash2, Percent, Pause, Play, Edit3, Copy, Megaphone,
   TrendingUp, Users, DollarSign, Check, Calendar as CalendarIcon, Sparkles,
@@ -228,7 +228,7 @@ const MarketingPromos = () => {
     c.discount_type === "percentage" ? `${c.discount_value}%` : `K${c.discount_value}`;
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6 max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -274,7 +274,7 @@ const MarketingPromos = () => {
                 onClick={() => setFormOpen(false)}
                 className="fixed inset-0 bg-foreground/30 backdrop-blur-sm z-[80]" />
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-                className="fixed inset-x-2 top-4 bottom-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[560px] md:max-h-[88vh] bg-card border border-border rounded-2xl shadow-2xl z-[90] overflow-auto">
+                className="fixed inset-0 flex items-center justify-center p-4 z-[90]"><div className="w-full max-w-[560px] bg-card border border-border rounded-2xl shadow-2xl overflow-auto max-h-[88vh]">
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   <div className="flex items-center justify-between sticky top-0 bg-card pb-2 z-10">
                     <h3 className="text-lg font-display font-bold text-foreground">
@@ -401,7 +401,7 @@ const MarketingPromos = () => {
                     {submitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : (editingId ? "Update Campaign" : "Launch Campaign")}
                   </button>
                 </form>
-              </motion.div>
+</div></motion.div>
             </>
           )}
         </AnimatePresence>
@@ -478,7 +478,7 @@ const MarketingPromos = () => {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

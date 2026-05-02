@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Wallet, ArrowDownRight, ArrowUpRight, Shield, Loader2, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +80,7 @@ const HiveEscrowWallet = () => {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -179,7 +179,7 @@ const HiveEscrowWallet = () => {
           </>
         )}
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 
