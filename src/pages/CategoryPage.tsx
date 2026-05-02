@@ -8,9 +8,45 @@ import CategoryHero from "@/components/category/CategoryHero";
 import CategorySearch from "@/components/category/CategorySearch";
 import SubcategorySection from "@/components/category/SubcategorySection";
 import DiscoverySection from "@/components/category/DiscoverySection";
+import VendorCarousel from "@/components/category/VendorCarousel";
+import CategoryFooter from "@/components/category/CategoryFooter";
 import { categoryThemes } from "@/lib/categoryThemes";
 import { subcategoryDefinitions } from "@/lib/categorySubcategories";
 import { supabase } from "@/integrations/supabase/client";
+
+// Sample featured vendors for each category
+const featuredVendors: Record<string, any[]> = {
+  tech: [
+    { id: 1, store_name: "TechZone Zambia", description: "Premium gadgets and smart devices", rating: 4.8, review_count: 342, verified: true, featured: true, location: "Lusaka", initials: "TZ" },
+    { id: 2, store_name: "Audio Pro Zambia", description: "High-quality audio and accessories", rating: 4.7, review_count: 218, verified: true, featured: false, location: "Ndola", initials: "AP" },
+    { id: 3, store_name: "Mobile Tech Zambia", description: "Latest smartphones and protection gear", rating: 4.6, review_count: 195, verified: true, featured: true, location: "Kitwe", initials: "MT" },
+    { id: 4, store_name: "Electronics Hub", description: "Complete tech solutions for home and office", rating: 4.5, review_count: 156, verified: false, featured: false, location: "Livingstone", initials: "EH" },
+  ],
+  fashion: [
+    { id: 1, store_name: "Lusaka Threads", description: "Contemporary and traditional fashion", rating: 4.9, review_count: 287, verified: true, featured: true, location: "Lusaka", initials: "LT" },
+    { id: 2, store_name: "Zambian Heritage Fashion", description: "Authentic African print collections", rating: 4.8, review_count: 234, verified: true, featured: true, location: "Lusaka", initials: "ZH" },
+    { id: 3, store_name: "Urban Kicks", description: "Street style and premium footwear", rating: 4.6, review_count: 201, verified: true, featured: false, location: "Ndola", initials: "UK" },
+    { id: 4, store_name: "Craft & Culture", description: "Handmade jewelry and accessories", rating: 4.7, review_count: 142, verified: false, featured: false, location: "Livingstone", initials: "CC" },
+  ],
+  food: [
+    { id: 1, store_name: "Harvest Hub", description: "Fresh organic produce and gourmet foods", rating: 4.8, review_count: 456, verified: true, featured: true, location: "Lusaka", initials: "HH" },
+    { id: 2, store_name: "Artisan Market", description: "Local specialty foods and spices", rating: 4.7, review_count: 298, verified: true, featured: true, location: "Livingstone", initials: "AM" },
+    { id: 3, store_name: "Farm Fresh Zambia", description: "Direct from local farmers", rating: 4.6, review_count: 214, verified: true, featured: false, location: "Kitwe", initials: "FF" },
+    { id: 4, store_name: "Gourmet Delights", description: "Premium international and local cuisine", rating: 4.5, review_count: 167, verified: false, featured: false, location: "Ndola", initials: "GD" },
+  ],
+  entertainment: [
+    { id: 1, store_name: "Lusaka Events", description: "Professional event planning and services", rating: 4.9, review_count: 367, verified: true, featured: true, location: "Lusaka", initials: "LE" },
+    { id: 2, store_name: "Entertainment Plus", description: "Tickets, experiences, and exclusive events", rating: 4.7, review_count: 245, verified: true, featured: true, location: "Livingstone", initials: "EP" },
+    { id: 3, store_name: "Audio Pro Zambia", description: "Sound systems and entertainment gear", rating: 4.6, review_count: 189, verified: true, featured: false, location: "Ndola", initials: "AP" },
+    { id: 4, store_name: "Electronics Hub", description: "Cinema and home theater solutions", rating: 4.5, review_count: 134, verified: false, featured: false, location: "Kitwe", initials: "EH" },
+  ],
+  beauty: [
+    { id: 1, store_name: "Glow Africa", description: "Natural beauty and skincare products", rating: 4.9, review_count: 512, verified: true, featured: true, location: "Lusaka", initials: "GA" },
+    { id: 2, store_name: "Radiant Beauty", description: "Premium cosmetics and wellness", rating: 4.8, review_count: 378, verified: true, featured: true, location: "Ndola", initials: "RB" },
+    { id: 3, store_name: "Zambian Natural", description: "Organic skincare and haircare", rating: 4.7, review_count: 291, verified: true, featured: false, location: "Livingstone", initials: "ZN" },
+    { id: 4, store_name: "Beauty Boutique", description: "Luxury beauty treatments and products", rating: 4.6, review_count: 223, verified: false, featured: false, location: "Kitwe", initials: "BB" },
+  ],
+};
 
 const fallbackItems: Record<string, FeaturedItem[]> = {
   tech: [
@@ -188,34 +224,16 @@ const CategoryPage = () => {
       />
 
       <div className="relative z-10">
-        {/* Sticky header */}
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="sticky top-0 z-30 glass-header px-4 py-3 flex items-center gap-3"
-        >
-          <button
-            onClick={() => navigate("/customer-dash")}
-            className="p-2 rounded-xl hover:bg-secondary transition-colors text-foreground"
-          >
-            ← Back
-          </button>
-          <span className="text-2xl">{theme.emoji}</span>
-          <h1 className="text-lg font-display font-bold text-foreground">
-            {theme.title}
-          </h1>
-        </motion.div>
-
         <div className="max-w-6xl mx-auto px-4 py-8">
           {/* 1. CATEGORY HERO */}
-          <CategoryHero theme={theme} onBackClick={() => navigate("/customer-dash")} />
+          <CategoryHero theme={theme} />
 
           {/* 2. SEARCH BAR */}
           <CategorySearch theme={theme} onSearch={setSearchQuery} />
 
           {/* 3. MAIN PRODUCT GRID */}
           {loading ? (
-            <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <motion.div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-10">
               {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
@@ -243,7 +261,7 @@ const CategoryPage = () => {
               <h3 className="text-xl font-display font-bold text-foreground mb-4">
                 All {theme.title}
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {mainGridItems.map((item, i) => (
                   <FeaturedItemCard
                     key={item.id}
@@ -289,8 +307,19 @@ const CategoryPage = () => {
               }
             />
           )}
+
+          {/* 8. FEATURED VENDORS CAROUSEL */}
+          {!searchQuery && (
+            <VendorCarousel
+              vendors={featuredVendors[key] || []}
+              theme={theme}
+            />
+          )}
         </div>
       </div>
+
+      {/* FOOTER */}
+      <CategoryFooter theme={theme} />
 
       <CheckoutDrawer open={drawerOpen} onOpenChange={setDrawerOpen} item={selectedItem} />
     </div>
