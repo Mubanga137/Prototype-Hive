@@ -1,4 +1,4 @@
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Plus, Copy } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -9,7 +9,7 @@ const mockLinks = [
 ];
 
 const ProductLinks = () => (
-  <DashboardLayout>
+  <RetailerStudioSidebar>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -54,7 +54,7 @@ const ProductLinks = () => (
         </table>
       </div>
     </div>
-  </DashboardLayout>
+  </RetailerStudioSidebar>
 );
 
 export default ProductLinks;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { BookOpen, Plus, X, Loader2, DollarSign, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +58,7 @@ const KantembaLedger = () => {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -145,7 +145,7 @@ const KantembaLedger = () => {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

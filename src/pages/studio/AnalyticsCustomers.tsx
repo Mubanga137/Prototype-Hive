@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { BarChart3, Users, Heart, ShoppingCart, TrendingUp, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +57,7 @@ const AnalyticsCustomers = () => {
   ];
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6 max-w-5xl mx-auto">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
@@ -102,7 +102,7 @@ const AnalyticsCustomers = () => {
           </div>
         </motion.div>
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

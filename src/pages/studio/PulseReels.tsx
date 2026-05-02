@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Video, Plus, Eye, Heart, X, Loader2, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,7 +75,7 @@ const PulseReels = () => {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -148,7 +148,7 @@ const PulseReels = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 

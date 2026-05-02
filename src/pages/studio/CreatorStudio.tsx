@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import {
   Upload, Link2, Copy, Send, Trash2, Loader2, Video, Image as ImageIcon,
 } from "lucide-react";
@@ -228,7 +228,7 @@ const CreatorStudio = () => {
     "px-2.5 py-1.5 rounded-lg text-[11px] font-black border-2 shadow-[2px_2px_0px_#0F1A35] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center gap-1";
 
   return (
-    <DashboardLayout>
+    <RetailerStudioSidebar>
       <div className="space-y-8 max-w-6xl mx-auto" style={{ color: NAVY }}>
         {/* ── Header ── */}
         <div>
@@ -555,7 +555,7 @@ const CreatorStudio = () => {
           )}
         </motion.div>
       </div>
-    </DashboardLayout>
+    </RetailerStudioSidebar>
   );
 };
 
