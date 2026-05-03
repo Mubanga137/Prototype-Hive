@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import HeroSectionEditorial from './HeroSectionEditorial';
+import { generateVariants } from '@/lib/variantGenerator';
 import {
   TrustBar,
   ActivityFeed,
@@ -40,10 +41,32 @@ const StorefrontPreviewLiveEditorial = ({
 }: StorefrontPreviewLiveEditorialProps) => {
   const [previewKey, setPreviewKey] = useState(0);
 
+  // Ensure all offers have variants
+  const offersWithVariants = useMemo(() => {
+    return (offers || []).map((offer: any) => {
+      if (offer.variants && offer.variants.length > 0) {
+        return offer;
+      }
+
+      const generated = generateVariants(
+        offer.product_name,
+        offer.price || 1000,
+        offer.item_type === "service" ? "service" : "product",
+        offer.category,
+        offer.description
+      );
+
+      return {
+        ...offer,
+        variants: generated.variants,
+      };
+    });
+  }, [offers]);
+
   // Force re-render when key props change
   useEffect(() => {
     setPreviewKey((prev) => prev + 1);
-  }, [storeName, heroImageUrl, logoUrl, heroTitle, description, offers.length]);
+  }, [storeName, heroImageUrl, logoUrl, heroTitle, description, offersWithVariants.length]);
 
   return (
     <div
@@ -80,13 +103,13 @@ const StorefrontPreviewLiveEditorial = ({
       <AvailabilityStatus />
 
       {/* SECTION 8: FEATURED OFFERS */}
-      <FeaturedOffers offers={offers.slice(0, 4)} />
+      <FeaturedOffers offers={offersWithVariants.slice(0, 4)} />
 
       {/* SECTION 9: REVIEWS */}
       <ReviewsSection />
 
       {/* SECTION 10: FULL OFFER GRID */}
-      <FullOfferGrid offers={offers} />
+      <FullOfferGrid offers={offersWithVariants} />
 
       {/* Footer spacing */}
       <div className="h-12" />

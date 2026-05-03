@@ -185,7 +185,7 @@ const StorefrontEditorPanel = ({
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-card flex flex-col">
+    <div className="h-full bg-card flex flex-col">
       {/* Header */}
       <div className="sticky top-0 bg-card border-b border-border px-4 py-3 z-10">
         <div className="flex items-center justify-between gap-2">
@@ -202,7 +202,7 @@ const StorefrontEditorPanel = ({
       </div>
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scroll-smooth">
         {/* STORE IDENTITY */}
         <Section section={sections.find((s) => s.id === 'identity')!}>
           <div className="space-y-3">

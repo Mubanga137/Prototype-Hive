@@ -4,6 +4,7 @@ import { Package, Plus, Edit, Trash2, X, Loader2, Briefcase, Cloud } from "lucid
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { generateVariants } from "@/lib/variantGenerator";
 import { toast } from "sonner";
 
 interface CatalogueItem {
@@ -63,10 +64,33 @@ const Products = () => {
     if (!name.trim()) { toast.error("Product name is required."); return; }
     setSubmitting(true);
     const isPhysical = itemType === "physical";
-    const stockNum = isPhysical ? (parseInt(stock) || 0) : 999999; // services/digital are infinite
+    const basePrice = parseFloat(price) || 0;
+    const stockNum = isPhysical ? (parseInt(stock) || 0) : 999999;
+
+    // Auto-generate 4 variants for new products
+    let generatedVariants: any[] = [];
+    if (!editingId) {
+      const variantData = generateVariants(
+        name.trim(),
+        basePrice,
+        "product",
+        category,
+        ""
+      );
+      generatedVariants = variantData.variants.map((v: any) => ({
+        id: `${Date.now()}-${Math.random()}`,
+        name: v.title,
+        price: v.price,
+        description: v.description,
+        tag: v.tag,
+        features: v.features || [],
+        quantity: 100,
+      }));
+    }
+
     const payload: any = {
       product_name: name.trim(),
-      price: parseFloat(price) || 0,
+      price: basePrice,
       old_price: oldPrice ? parseFloat(oldPrice) : null,
       stock_count: stockNum,
       stock_quantity: stockNum,
@@ -74,6 +98,7 @@ const Products = () => {
       image_url: imageUrl || null,
       sme_id: currentStore.id,
       item_type: itemType,
+      variants: generatedVariants.length > 0 ? generatedVariants : [],
     };
     if (editingId) {
       const { error } = await supabase.from("hive_catalogue").update(payload).eq("id", editingId);

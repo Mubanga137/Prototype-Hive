@@ -28,6 +28,7 @@ const CreatorStudio = () => {
   const { user } = useAuth();
   const [storeId, setStoreId] = useState<number | null>(null);
   const [storeName, setStoreName] = useState("");
+  const [storeLogoUrl, setStoreLogoUrl] = useState<string | null>(null);
 
   // Media state
   const [file, setFile] = useState<File | null>(null);
@@ -60,12 +61,13 @@ const CreatorStudio = () => {
     (async () => {
       const { data: store } = await supabase
         .from("sme_stores")
-        .select("id, brand_name")
+        .select("id, brand_name, logo_url")
         .eq("owner_user_id", user.id)
         .maybeSingle();
       if (store) {
         setStoreId(store.id);
         setStoreName(store.brand_name || "My Store");
+        setStoreLogoUrl((store as any).logo_url || null);
       }
     })();
   }, [user]);
@@ -280,6 +282,26 @@ const CreatorStudio = () => {
               </button>
             )}
 
+            {/* Clear Media Button */}
+            {(file || uploadedUrl || preview) && (
+              <button
+                onClick={() => {
+                  setFile(null);
+                  setPreview(null);
+                  setUploadedUrl(null);
+                  setHotspots([]);
+                  setGeneratedLink(null);
+                  setTitle("");
+                  setPrice("");
+                  toast.success("Media cleared");
+                }}
+                className="w-full px-4 py-3 rounded-xl text-sm font-bold border-2 hover:bg-red-50 transition-colors"
+                style={{ background: "transparent", borderColor: NAVY, color: NAVY }}
+              >
+                🗑️ Clear Media
+              </button>
+            )}
+
             {uploadedUrl && (
               <div
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black border-2"
@@ -410,6 +432,7 @@ const CreatorStudio = () => {
               onAddHotspot={handleAddHotspot}
               onLockDeal={(product) => toast.success(`⚡ Deal locked: ${product.name}`)}
               storeName={storeName}
+              storeLogoUrl={storeLogoUrl}
             />
           </motion.div>
         </div>

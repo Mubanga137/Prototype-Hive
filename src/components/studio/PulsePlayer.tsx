@@ -26,6 +26,7 @@ interface PulsePlayerProps {
   onAddHotspot?: (x: number, y: number) => void;
   onLockDeal?: (product: HotspotProduct) => void;
   storeName?: string;
+  storeLogoUrl?: string;
   /** When true, the LOCK DEAL CTA is disabled and relabeled "Vendor Unavailable". */
   outOfCapacity?: boolean;
 }
@@ -38,6 +39,7 @@ const PulsePlayer: React.FC<PulsePlayerProps> = ({
   onAddHotspot,
   onLockDeal,
   storeName,
+  storeLogoUrl,
   outOfCapacity = false,
 }) => {
   const [selectedProduct, setSelectedProduct] = useState<HotspotProduct | null>(null);
@@ -99,9 +101,60 @@ const PulsePlayer: React.FC<PulsePlayerProps> = ({
         )}
       </div>
 
+      {/* ── SME Identity Overlay (top-left) ── */}
+      {mediaUrl && storeName && (
+        <div className="absolute top-3 left-3 z-20">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-full border-2 backdrop-blur-md"
+            style={{
+              background: "rgba(255, 251, 242, 0.85)",
+              borderColor: "#B37C1C",
+            }}
+          >
+            {storeLogoUrl ? (
+              <img
+                src={storeLogoUrl}
+                alt={storeName}
+                className="w-5 h-5 rounded-full object-cover border border-[#B37C1C]"
+              />
+            ) : (
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black"
+                style={{ background: "#B37C1C", color: "#FFFBF2" }}
+              >
+                {storeName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="text-[11px] font-black text-[#0F1A35]">{storeName}</span>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ── THE HIVE Logo (top-right) ── */}
+      {mediaUrl && (
+        <div className="absolute top-3 right-3 z-20">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide border-2 backdrop-blur-md"
+            style={{
+              background: "rgba(255, 251, 242, 0.85)",
+              color: "#B37C1C",
+              borderColor: "#B37C1C",
+            }}
+          >
+            THE HIVE
+          </motion.div>
+        </div>
+      )}
+
       {/* ── CTA overlay ── */}
       {mediaUrl && !editable && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -143,23 +196,31 @@ const PulsePlayer: React.FC<PulsePlayerProps> = ({
             if (!editable) openDrawer(hs.product);
           }}
         >
-          {/* Pulsing ring */}
+          {/* Pulsing ring - Gold ring animation */}
           <span
-            className="absolute inset-0 rounded-full animate-ping opacity-40"
-            style={{ background: "#B37C1C", width: 24, height: 24, margin: "-4px" }}
+            className="absolute rounded-full animate-pulse"
+            style={{
+              background: "transparent",
+              border: "2px solid #B37C1C",
+              width: 32,
+              height: 32,
+              margin: "-8px",
+              opacity: 0.6,
+            }}
           />
-          {/* Dot */}
-          <span
-            className="relative block w-4 h-4 rounded-full border-2 shadow-lg"
-            style={{ background: "#B37C1C", borderColor: "#FFFBF2" }}
-          />
-          {/* Label on hover */}
-          <span
-            className="absolute left-1/2 -translate-x-1/2 -top-8 hidden group-hover:block whitespace-nowrap px-2 py-1 rounded text-[10px] font-bold border-2"
-            style={{ background: "#FFFBF2", color: "#0F1A35", borderColor: "#0F1A35" }}
+
+          {/* Glassmorphic tag with price */}
+          <div
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black backdrop-blur-md border-2 shadow-lg whitespace-nowrap"
+            style={{
+              background: "rgba(255, 251, 242, 0.9)",
+              borderColor: "#B37C1C",
+              color: "#B37C1C",
+              boxShadow: "0 8px 32px rgba(179, 124, 28, 0.15)",
+            }}
           >
-            {hs.product.name}
-          </span>
+            <span>ZMW {hs.product.price.toLocaleString()}</span>
+          </div>
         </motion.button>
       ))}
 

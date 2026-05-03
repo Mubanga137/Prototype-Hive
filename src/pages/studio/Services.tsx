@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ensureStore } from "@/lib/ensureStore";
+import { generateVariants } from "@/lib/variantGenerator";
 import { toast } from "sonner";
 
 interface ServiceItem {
@@ -58,14 +59,40 @@ const Services = () => {
     if (!sid) { toast.error("Sign in to add services."); return; }
     if (!name.trim()) { toast.error("Service name is required."); return; }
     setSubmitting(true);
-    const payload = {
+
+    const basePrice = parseFloat(price) || 0;
+
+    // Auto-generate 4 service variants for new services
+    let generatedVariants: any[] = [];
+    if (!editingId) {
+      const variantData = generateVariants(
+        name.trim(),
+        basePrice,
+        "service",
+        category,
+        ""
+      );
+      generatedVariants = variantData.variants.map((v: any) => ({
+        id: `${Date.now()}-${Math.random()}`,
+        name: v.title,
+        price: v.price,
+        description: v.description,
+        tag: v.tag,
+        features: v.features || [],
+        quantity: 999,
+      }));
+    }
+
+    const payload: any = {
       product_name: name.trim(),
-      price: parseFloat(price) || 0,
+      price: basePrice,
       category: category || null,
       fulfillment_type: fulfillment,
       sme_id: sid,
       item_type: "service",
       stock_count: 999,
+      stock_quantity: 999,
+      variants: generatedVariants.length > 0 ? generatedVariants : [],
     };
     if (editingId) {
       const { error } = await supabase.from("hive_catalogue").update(payload).eq("id", editingId);

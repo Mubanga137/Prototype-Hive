@@ -179,7 +179,30 @@ const StorePage = () => {
           .select("*")
           .eq("sme_id", s.id)
           .order("created_at", { ascending: false });
-        setItems((itemsData as unknown as OfferItem[]) || []);
+
+        // Ensure all items have variants
+        const itemsWithVariants = (itemsData || []).map((item: any) => {
+          // If item already has variants stored, keep them
+          if (item.variants && item.variants.length > 0) {
+            return item;
+          }
+
+          // Otherwise, auto-generate variants
+          const generated = generateVariants(
+            item.product_name,
+            item.price || 1000,
+            item.item_type === "service" ? "service" : "product",
+            item.category,
+            item.description
+          );
+
+          return {
+            ...item,
+            variants: generated.variants,
+          };
+        });
+
+        setItems(itemsWithVariants as unknown as OfferItem[]);
 
         if (s.owner_user_id) {
           const { data: ownerProf } = await supabase

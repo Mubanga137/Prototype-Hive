@@ -131,7 +131,21 @@ export const AvailabilityStatus = () => (
 );
 
 export const FeaturedOffers = ({ offers = [] }: StorefrontSectionsProps) => {
-  const featured = offers.slice(0, 4);
+  // Flatten variants from offers
+  const allVariants: any[] = [];
+  offers.forEach((offer) => {
+    if (offer.variants && offer.variants.length > 0) {
+      offer.variants.forEach((v: any) => {
+        allVariants.push({
+          ...v,
+          baseProductImage: offer.image_url,
+          baseProductName: offer.product_name,
+        });
+      });
+    }
+  });
+
+  const featured = allVariants.slice(0, 4);
   if (featured.length === 0) return null;
 
   return (
@@ -139,16 +153,19 @@ export const FeaturedOffers = ({ offers = [] }: StorefrontSectionsProps) => {
       <div className="max-w-7xl mx-auto px-4 md:px-8">
         <h2 className="text-lg md:text-2xl font-bold text-foreground mb-6">Featured Offers</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {featured.map((offer) => (
-            <div key={offer.id} className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-all">
-              {offer.image_url && (
-                <div className="h-24 md:h-32 overflow-hidden">
-                  <img src={offer.image_url} alt={offer.product_name} className="w-full h-full object-cover" />
+          {featured.map((variant, idx) => (
+            <div key={`${variant.baseProductName}-${idx}`} className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-all group">
+              {variant.baseProductImage && (
+                <div className="h-24 md:h-32 overflow-hidden bg-secondary">
+                  <img src={variant.baseProductImage} alt={variant.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 </div>
               )}
               <div className="p-3 md:p-4">
-                <p className="text-xs md:text-sm font-semibold text-foreground line-clamp-2 mb-1">{offer.product_name}</p>
-                <p className="text-base md:text-lg font-bold text-primary">ZMW {offer.price}</p>
+                <p className="text-xs md:text-sm font-semibold text-foreground line-clamp-2 mb-1">{variant.title}</p>
+                {variant.tag && (
+                  <p className="text-[10px] font-bold text-primary mb-1 uppercase">{variant.tag}</p>
+                )}
+                <p className="text-base md:text-lg font-bold text-primary">ZMW {variant.price}</p>
               </div>
             </div>
           ))}
@@ -184,7 +201,21 @@ export const ReviewsSection = () => (
 );
 
 export const FullOfferGrid = ({ offers = [] }: StorefrontSectionsProps) => {
-  if (offers.length === 0) {
+  // Flatten variants from offers
+  const allVariants: any[] = [];
+  offers.forEach((offer) => {
+    if (offer.variants && offer.variants.length > 0) {
+      offer.variants.forEach((v: any) => {
+        allVariants.push({
+          ...v,
+          baseProductImage: offer.image_url,
+          baseProductName: offer.product_name,
+        });
+      });
+    }
+  });
+
+  if (allVariants.length === 0) {
     return (
       <section className="py-12 text-center">
         <p className="text-muted-foreground">No offers available</p>
@@ -197,24 +228,26 @@ export const FullOfferGrid = ({ offers = [] }: StorefrontSectionsProps) => {
       <div className="max-w-7xl mx-auto px-4 md:px-8">
         <h2 className="text-lg md:text-2xl font-bold text-foreground mb-6">All Offers</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {offers.map((offer) => (
-            <div key={offer.id} className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-all group">
-              {offer.image_url && (
+          {allVariants.map((variant, idx) => (
+            <div key={`variant-${idx}`} className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/40 transition-all group">
+              {variant.baseProductImage && (
                 <div className="h-32 md:h-40 overflow-hidden bg-secondary">
                   <img
-                    src={offer.image_url}
-                    alt={offer.product_name}
+                    src={variant.baseProductImage}
+                    alt={variant.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
                 </div>
               )}
               <div className="p-3 md:p-4">
-                <p className="text-xs md:text-sm font-semibold text-foreground line-clamp-2 mb-2">{offer.product_name}</p>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <p className="text-base md:text-lg font-bold text-primary">ZMW {offer.price}</p>
-                  {offer.old_price && <p className="text-xs text-muted-foreground line-through">ZMW {offer.old_price}</p>}
-                </div>
-                {offer.category && <p className="text-xs text-muted-foreground mb-3">{offer.category}</p>}
+                <p className="text-xs md:text-sm font-semibold text-foreground line-clamp-2 mb-2">{variant.title}</p>
+                {variant.tag && (
+                  <p className="text-[10px] font-bold text-primary mb-1 uppercase">{variant.tag}</p>
+                )}
+                <p className="text-base md:text-lg font-bold text-primary">ZMW {variant.price}</p>
+                {variant.description && (
+                  <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{variant.description}</p>
+                )}
                 <button className="w-full py-2 px-2 text-xs md:text-sm font-semibold bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
                   View Details
                 </button>
