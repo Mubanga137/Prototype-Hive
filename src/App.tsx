@@ -14,6 +14,7 @@ import GigRadar from "./pages/GigRadar.tsx";
 import CustomerDashboard from "./pages/CustomerDashboard.tsx";
 import CategoryPage from "./pages/CategoryPage.tsx";
 import StorePage from "./pages/StorePage.tsx";
+import PulsePublic from "./pages/PulsePublic.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import CreatorStudio from "./pages/studio/CreatorStudio.tsx";
 import Products from "./pages/studio/Products.tsx";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/store/:storeKey" element={<StorePage />} />
             <Route path="/category/:name" element={<CategoryPage />} />
+            <Route path="/p/:pulseId" element={<PulsePublic />} />
 
             {/* Customer — temporarily open */}
             <Route path="/customer-dash" element={<CustomerDashboard />} />
