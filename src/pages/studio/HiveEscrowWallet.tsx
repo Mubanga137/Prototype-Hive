@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
-import { Wallet, ArrowDownRight, ArrowUpRight, Shield, Loader2, Smartphone } from "lucide-react";
+import { Wallet, ArrowDownRight, ArrowUpRight, Shield, Loader2, Smartphone, Bike } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
+import { getPayoutColorScheme } from "@/lib/escrowPayoutCalculator";
 
 interface LedgerEntry {
   id: number;
@@ -15,6 +17,7 @@ interface LedgerEntry {
 
 const HiveEscrowWallet = () => {
   const { user, profile } = useAuth();
+  const { role: workerRole, isRider, isRunner, isNode } = useMixedFleetRole();
   const [balance, setBalance] = useState(0);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,10 +25,28 @@ const HiveEscrowWallet = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [momoNumber, setMomoNumber] = useState("");
 
-  // Tax rates: 2% for vendors/wholesalers, 10% for gig workers
-  const role = profile?.role || "vendor";
-  const taxRate = role === "gig_worker" ? 0.10 : 0.02;
-  const taxLabel = role === "gig_worker" ? "10%" : "2%";
+  // Tax rates: different based on worker type
+  const appRole = profile?.role || "vendor";
+  let taxRate = 0.02; // default
+  let taxLabel = "2%";
+  let commissionInfo = "";
+
+  if (appRole === "gig_worker") {
+    if (isRider) {
+      taxRate = 0.10; // Riders pay 10% commission
+      taxLabel = "10% (Commission)";
+      commissionInfo = "10% commission on each completed delivery";
+    } else if (isRunner || isNode) {
+      taxRate = 0.0; // No commission for runners/nodes
+      taxLabel = "0% (Capacity-based)";
+      commissionInfo = "-1 Pulse Credit deduction per completed bounty";
+    }
+  } else {
+    taxRate = 0.02;
+    taxLabel = "2%";
+  }
+
+  const payoutColorScheme = getPayoutColorScheme(workerRole);
 
   useEffect(() => {
     if (!user) return;
@@ -98,6 +119,39 @@ const HiveEscrowWallet = () => {
           </div>
         ) : (
           <>
+            {/* Worker Role & Commission Info (for gig workers) */}
+            {appRole === "gig_worker" && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl border flex items-center gap-3"
+                style={{
+                  background: payoutColorScheme.bg,
+                  borderColor: payoutColorScheme.border,
+                }}
+              >
+                <span className="text-2xl">{payoutColorScheme.icon}</span>
+                <div className="flex-1">
+                  <p
+                    className="text-sm font-bold uppercase tracking-wide"
+                    style={{ color: payoutColorScheme.text }}
+                  >
+                    {workerRole === "rider"
+                      ? "Motorcycle Rider"
+                      : workerRole === "node_operator"
+                      ? "Hub Operator"
+                      : "Runner"}
+                  </p>
+                  <p
+                    className="text-xs mt-0.5"
+                    style={{ color: payoutColorScheme.text, opacity: 0.8 }}
+                  >
+                    {commissionInfo}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             {/* KPI */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}

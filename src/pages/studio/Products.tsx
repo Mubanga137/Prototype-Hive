@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { generateVariants } from "@/lib/variantGenerator";
 import { toast } from "sonner";
+import SquadPromoEditor from "@/components/studio/SquadPromoEditor";
 
 interface CatalogueItem {
   id: number;
@@ -17,6 +18,11 @@ interface CatalogueItem {
   category: string | null;
   image_url: string | null;
   item_type: string | null;
+  squad_enabled?: boolean | null;
+  squad_discount_type?: string | null;
+  squad_discount_value?: number | null;
+  squad_size?: number | null;
+  squad_timer_minutes?: number | null;
 }
 
 const categories = ["Fashion", "Tech", "Beauty", "Food", "Entertainment", "Accessories", "Other"];
@@ -39,8 +45,17 @@ const Products = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [itemType, setItemType] = useState<ProductType>("physical");
 
+  // Squad Promo fields
+  const [squadEnabled, setSquadEnabled] = useState(false);
+  const [squadDiscountType, setSquadDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [squadDiscountValue, setSquadDiscountValue] = useState(15);
+  const [squadSize, setSquadSize] = useState(2);
+  const [squadTimerMinutes, setSquadTimerMinutes] = useState(1440); // 24 hours
+
   const resetForm = () => {
-    setName(""); setPrice(""); setOldPrice(""); setStock(""); setCategory(""); setImageUrl(""); setItemType("physical"); setEditingId(null);
+    setName(""); setPrice(""); setOldPrice(""); setStock(""); setCategory(""); setImageUrl(""); setItemType("physical");
+    setSquadEnabled(false); setSquadDiscountType("percentage"); setSquadDiscountValue(15); setSquadSize(2); setSquadTimerMinutes(1440);
+    setEditingId(null);
   };
 
   const fetchData = async () => {
@@ -98,6 +113,11 @@ const Products = () => {
       image_url: imageUrl || null,
       sme_id: currentStore.id,
       item_type: itemType,
+      squad_enabled: squadEnabled,
+      squad_discount_type: squadEnabled ? squadDiscountType : null,
+      squad_discount_value: squadEnabled ? squadDiscountValue : null,
+      squad_size: squadEnabled ? squadSize : null,
+      squad_timer_minutes: squadEnabled ? squadTimerMinutes : null,
       variants: generatedVariants.length > 0 ? generatedVariants : [],
     };
     if (editingId) {
@@ -122,6 +142,11 @@ const Products = () => {
     setCategory(item.category || "");
     setImageUrl(item.image_url || "");
     setItemType((item.item_type as ProductType) || "physical");
+    setSquadEnabled(item.squad_enabled || false);
+    setSquadDiscountType((item.squad_discount_type as "percentage" | "fixed") || "percentage");
+    setSquadDiscountValue(item.squad_discount_value || 15);
+    setSquadSize(item.squad_size || 2);
+    setSquadTimerMinutes(item.squad_timer_minutes || 1440);
     setFormOpen(true);
   };
 
@@ -205,6 +230,21 @@ const Products = () => {
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="Image URL (optional)" className={inputClass} />
+
+                  {/* Squad Promo Editor */}
+                  <SquadPromoEditor
+                    enabled={squadEnabled}
+                    onEnabledChange={setSquadEnabled}
+                    discountType={squadDiscountType}
+                    onDiscountTypeChange={setSquadDiscountType}
+                    discountValue={squadDiscountValue}
+                    onDiscountValueChange={setSquadDiscountValue}
+                    squadSize={squadSize}
+                    onSquadSizeChange={setSquadSize}
+                    timerLimit={squadTimerMinutes}
+                    onTimerLimitChange={setSquadTimerMinutes}
+                  />
+
                   <button type="submit" disabled={submitting} className="btn-gold w-full py-3 text-sm flex items-center justify-center gap-2">
                     {submitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : editingId ? "Update Item" : "Add Item"}
                   </button>

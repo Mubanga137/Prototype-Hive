@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Radar, ClipboardList, MessageSquare, Phone,
   Wallet, Route, Bell, Package, Send, Settings, LogOut, X,
-  User
+  User, Bike
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import DashboardHeader from "@/components/DashboardHeader";
 import { getCapacityStyles } from "@/hooks/useOrderCapacity";
+import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
 
 interface GigSidenavProps {
   isOnline: boolean;
@@ -38,7 +39,9 @@ const GigSidenav = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
-  const capacity = profile?.order_capacity ?? 50;
+  const { isRider, isRunner, isNode, commissionLabel } = useMixedFleetRole();
+
+  const capacity = profile?.pulse_credits ?? 0;
   const capacityStyles = getCapacityStyles(capacity);
 
   const isActive = (path: string) => location.pathname === path;
@@ -101,19 +104,56 @@ const GigSidenav = ({
         </div>
       </div>
 
-      {/* Bounties Left Capacity Indicator */}
+      {/* Capacity or Commission Badge (based on worker type) */}
       <div className="px-5 py-3 border-b" style={{ borderColor: "hsl(38,40%,85%)" }}>
-        <motion.button
-          onClick={() => navigate("/recharge")}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${capacityStyles.bg} ${capacityStyles.border}`}
-          title="Click to recharge your bounty capacity"
-        >
-          <span className={`text-base leading-none ${capacityStyles.icon}`}>🛵</span>
-          <span className={`tabular-nums font-bold ${capacityStyles.text}`}>{capacity}</span>
-          <span className={`opacity-80 ${capacityStyles.text}`}>Bounties Left</span>
-        </motion.button>
+        {!isRider ? (
+          /* Runners & Nodes: Show Pulse Credits capacity */
+          <motion.button
+            onClick={() => navigate("/recharge")}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+              capacity < 1 ? "border-red-400/30 bg-red-50" : "border-emerald-400/30 bg-emerald-50"
+            }`}
+            title={capacity < 1 ? "No bounty capacity. Click to recharge." : "Click to recharge"}
+            style={
+              capacity < 1
+                ? { borderColor: "hsl(0,100%,40%,0.3)", background: "hsl(0,100%,97%)" }
+                : { borderColor: "hsl(120,100%,40%,0.3)", background: "hsl(120,100%,97%)" }
+            }
+          >
+            <span className="text-base leading-none">📦</span>
+            <span
+              className="tabular-nums font-bold"
+              style={{ color: capacity < 1 ? "hsl(0,100%,40%)" : "hsl(120,80%,30%)" }}
+            >
+              {capacity}
+            </span>
+            <span
+              className="opacity-80"
+              style={{ color: capacity < 1 ? "hsl(0,100%,40%)" : "hsl(120,80%,30%)" }}
+            >
+              Bounties Left
+            </span>
+          </motion.button>
+        ) : (
+          /* Riders: Show Commission Rate (permanent, no click action) */
+          <div
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold"
+            style={{
+              borderColor: "hsl(38,73%,40%,0.3)",
+              background: "hsl(38,73%,40%,0.06)",
+            }}
+          >
+            <Bike size={16} style={{ color: "hsl(38,73%,40%)" }} />
+            <span style={{ color: "hsl(38,73%,40%)" }} className="font-bold">
+              10%
+            </span>
+            <span style={{ color: "hsl(38,73%,40%)" }} className="opacity-80">
+              Commission per run
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Live status */}
