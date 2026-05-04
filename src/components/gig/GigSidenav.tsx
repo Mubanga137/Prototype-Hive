@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import DashboardHeader from "@/components/DashboardHeader";
+import { getCapacityStyles } from "@/hooks/useOrderCapacity";
 
 interface GigSidenavProps {
   isOnline: boolean;
@@ -37,6 +38,8 @@ const GigSidenav = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const capacity = profile?.order_capacity ?? 50;
+  const capacityStyles = getCapacityStyles(capacity);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -96,6 +99,21 @@ const GigSidenav = ({
           </span>
           <Switch checked={isOnline} onCheckedChange={onToggleOnline} />
         </div>
+      </div>
+
+      {/* Bounties Left Capacity Indicator */}
+      <div className="px-5 py-3 border-b" style={{ borderColor: "hsl(38,40%,85%)" }}>
+        <motion.button
+          onClick={() => navigate("/recharge")}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${capacityStyles.bg} ${capacityStyles.border}`}
+          title="Click to recharge your bounty capacity"
+        >
+          <span className={`text-base leading-none ${capacityStyles.icon}`}>🛵</span>
+          <span className={`tabular-nums font-bold ${capacityStyles.text}`}>{capacity}</span>
+          <span className={`opacity-80 ${capacityStyles.text}`}>Bounties Left</span>
+        </motion.button>
       </div>
 
       {/* Live status */}

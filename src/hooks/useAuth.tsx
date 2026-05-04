@@ -13,6 +13,7 @@ interface Profile {
   preferences?: string[];
   zmw_balance?: number;
   pulse_credits?: number;
+  order_capacity?: number;
 }
 
 interface AuthContextType {
@@ -87,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, phone, role, preferences, zmw_balance, pulse_credits")
+          .select("full_name, phone, role, preferences, zmw_balance, pulse_credits, order_capacity")
           .eq("user_id", userId)
           .maybeSingle();
 

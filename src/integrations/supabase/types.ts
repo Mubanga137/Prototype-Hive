@@ -281,6 +281,7 @@ export type Database = {
           full_name: string | null
           gig_role: string | null
           id: string
+          order_capacity: number | null
           phone: string | null
           preferences: string[] | null
           pulse_credits: number | null
@@ -297,6 +298,7 @@ export type Database = {
           full_name?: string | null
           gig_role?: string | null
           id?: string
+          order_capacity?: number | null
           phone?: string | null
           preferences?: string[] | null
           pulse_credits?: number | null
@@ -313,6 +315,7 @@ export type Database = {
           full_name?: string | null
           gig_role?: string | null
           id?: string
+          order_capacity?: number | null
           phone?: string | null
           preferences?: string[] | null
           pulse_credits?: number | null

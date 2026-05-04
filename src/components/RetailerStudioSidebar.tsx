@@ -9,6 +9,7 @@ import hiveLogo from "@/assets/hive-logo.jpeg";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import DashboardHeader from "@/components/DashboardHeader";
+import { getCapacityStyles } from "@/hooks/useOrderCapacity";
 
 interface RetailerStudioSidebarProps {
   children: React.ReactNode;
@@ -67,8 +68,8 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const unreadCount = useUnreadCount();
-  const ordersLeft = profile?.pulse_credits ?? 0;
-  const outOfCapacity = ordersLeft <= 0;
+  const capacity = profile?.order_capacity ?? 50;
+  const capacityStyles = getCapacityStyles(capacity);
 
   const handleLogout = async () => {
     await signOut();
@@ -105,22 +106,20 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
         )}
       </div>
 
-      {/* Capacity meter — pulse_credits surfaced as Orders Left */}
+      {/* Capacity meter — order_capacity with clickable recharge */}
       <div className={isCollapsed ? "hidden" : ""}>
         <div className="px-5 pb-0">
-          <div
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-              outOfCapacity
-                ? "bg-red-100/40 border-red-200 text-red-700"
-                : "border-[#B37C1C]/30 text-[#0F1A35]"
-            }`}
-            style={outOfCapacity ? {} : { background: "hsl(38,73%,40%,0.08)" }}
-            title={outOfCapacity ? "Top up to receive new orders" : "Orders you can still receive"}
+          <motion.button
+            onClick={() => navigate("/recharge")}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${capacityStyles.bg} ${capacityStyles.border}`}
+            title="Click to recharge your order capacity"
           >
-            <span className="text-base leading-none">📦</span>
-            <span className="tabular-nums">{ordersLeft.toLocaleString()}</span>
-            <span className="opacity-80">Orders Left</span>
-          </div>
+            <span className={`text-base leading-none ${capacityStyles.icon}`}>📦</span>
+            <span className={`tabular-nums font-bold ${capacityStyles.text}`}>{capacity}</span>
+            <span className={`opacity-80 ${capacityStyles.text}`}>Orders Left</span>
+          </motion.button>
         </div>
       </div>
 

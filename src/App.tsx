@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import RetailerStudioDashboard from "./pages/RetailerStudioDashboard.tsx";
+import RechargeStore from "./pages/RechargeStore.tsx";
 import Login from "./pages/Login.tsx";
 import Signup from "./pages/Signup.tsx";
 import Warehouse from "./pages/Warehouse.tsx";
@@ -56,6 +57,7 @@ const App = () => (
             {/* Vendor / SME — temporarily open */}
             <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />
             <Route path="/studio" element={<RetailerStudioDashboard />} />
+            <Route path="/recharge" element={<RechargeStore />} />
             <Route path="/retailer-studio/creator" element={<CreatorStudio />} />
             <Route path="/retailer-studio/products" element={<Products />} />
             <Route path="/retailer-studio/services" element={<Services />} />
