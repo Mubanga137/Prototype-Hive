@@ -79,7 +79,7 @@ const PulseReels = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-display font-bold text-foreground">Pulse Reels</h1>
+            <h1 className="text-2xl font-display font-bold text-foreground">Hive Reels</h1>
             <p className="text-sm text-muted-foreground mt-1">Create short video content to engage customers</p>
           </div>
           <button onClick={() => setFormOpen(true)} className="btn-gold flex items-center gap-2 px-5 py-2.5 text-sm">
