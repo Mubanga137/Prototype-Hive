@@ -40,7 +40,7 @@ const sidebarModules = [
     group: "Business Operations",
     items: [
       { label: "Orders", icon: ShoppingCart, path: "/retailer-studio/orders" },
-      { label: "Pulse Credits", icon: Coins, path: "/retailer-studio/credits" },
+      { label: "Hive Credits", icon: Coins, path: "/retailer-studio/credits" },
     ],
   },
   {

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 const transactions = [
   { id: 1, type: "credit", desc: "Purchased 500 credits", amount: 500, date: "2026-03-28" },
-  { id: 2, type: "debit", desc: "Pulse Reel promotion", amount: -50, date: "2026-03-29" },
+  { id: 2, type: "debit", desc: "Hive Reel promotion", amount: -50, date: "2026-03-29" },
   { id: 3, type: "debit", desc: "Featured listing boost", amount: -100, date: "2026-03-30" },
   { id: 4, type: "credit", desc: "Referral bonus", amount: 25, date: "2026-04-01" },
 ];
@@ -13,7 +13,7 @@ const PulseCredits = () => (
   <RetailerStudioSidebar>
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold text-foreground">Pulse Credits</h1>
+        <h1 className="text-2xl font-display font-bold text-foreground">Hive Credits</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage your credits for promotions and boosts</p>
       </div>
 
@@ -26,7 +26,7 @@ const PulseCredits = () => (
             </div>
           </div>
           <p className="text-3xl font-bold text-foreground">375</p>
-          <p className="text-xs text-muted-foreground mt-1">Pulse Credits available</p>
+          <p className="text-xs text-muted-foreground mt-1">Hive Credits available</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-2xl p-6">

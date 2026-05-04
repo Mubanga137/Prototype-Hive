@@ -80,7 +80,7 @@ const PulseLibrary: React.FC<PulseLibraryProps> = ({ storeId, refreshKey }) => {
     return (
       <div className="py-12 text-center text-muted-foreground text-sm">
         <Video size={32} className="mx-auto mb-2 opacity-30" />
-        No published content yet. Create your first Pulse Link above.
+        No published content yet. Create your first Hive Link above.
       </div>
     );
   }

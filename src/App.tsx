@@ -28,6 +28,7 @@ import MarketingPromos from "./pages/studio/MarketingPromos.tsx";
 import AnalyticsCustomers from "./pages/studio/AnalyticsCustomers.tsx";
 import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
+import HiveLink from "./pages/HiveLink.tsx";
 import HiveBotWidget from "./components/messaging/HiveBotWidget";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/store/:storeKey" element={<StorePage />} />
             <Route path="/category/:name" element={<CategoryPage />} />
             <Route path="/p/:pulseId" element={<PulsePublic />} />
+            <Route path="/h/:itemId" element={<HiveLink />} />
 
             {/* Customer — temporarily open */}
             <Route path="/customer-dash" element={<CustomerDashboard />} />

@@ -160,11 +160,12 @@ const CreatorStudio = () => {
     const { data, error } = await supabase.from("hive_catalogue").insert(payload as any).select("id").single();
     if (error) { toast.error(error.message); setPublishing(false); return; }
 
-    const pulseId = data?.id ? `p${data.id}` : `p${Date.now().toString(36)}`;
-    const link = `thehive.zm/p/${pulseId}`;
+    const hiveId = data?.id;
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/h/${hiveId}`;
     setGeneratedLink(link);
-    navigator.clipboard.writeText(`https://${link}`);
-    toast.success("🚀 Pulse Link published & copied!");
+    navigator.clipboard.writeText(link);
+    toast.success("🚀 Hive Link published & copied!");
     setPublishing(false);
     setRefreshKey((k) => k + 1);
   };
@@ -381,7 +382,7 @@ const CreatorStudio = () => {
               {publishing ? (
                 <><Loader2 size={18} className="animate-spin" /> Publishing...</>
               ) : (
-                "🚀 PUBLISH PULSE LINK"
+                "✨ PUBLISH HIVE REEL"
               )}
             </button>
 
@@ -398,7 +399,7 @@ const CreatorStudio = () => {
                 </span>
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`https://${generatedLink}`);
+                    navigator.clipboard.writeText(generatedLink);
                     toast.success("Link copied!");
                   }}
                   className={btnGoldSmall}
@@ -411,7 +412,7 @@ const CreatorStudio = () => {
 
             {generatedLink && (
               <button onClick={resetEditor} className="text-xs font-bold underline opacity-60 hover:opacity-100">
-                ✨ Create another Pulse
+                ✨ Create another Hive Reel
               </button>
             )}
           </div>
@@ -450,7 +451,7 @@ const CreatorStudio = () => {
             style={{ borderColor: NAVY }}
           >
             <h2 className="font-black text-lg" style={{ color: NAVY }}>
-              Pulse Links Dashboard
+              Hive Links Dashboard
             </h2>
             <span
               className="text-[10px] font-black px-3 py-1 rounded-full border-2"
@@ -467,7 +468,7 @@ const CreatorStudio = () => {
           ) : libraryItems.length === 0 ? (
             <div className="py-12 text-center text-sm font-semibold opacity-40">
               <Video size={32} className="mx-auto mb-2 opacity-30" />
-              No published content yet. Create your first Pulse Link above.
+              No published content yet. Create your first Hive Link above.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -532,13 +533,13 @@ const CreatorStudio = () => {
                         —
                       </td>
                       <td className="px-5 py-3 text-xs font-mono font-bold hidden sm:table-cell truncate max-w-[140px]" style={{ color: GOLD }}>
-                        thehive.zm/p/{item.id}
+                        thehive.zm/h/{item.id}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1.5 justify-end">
                           <button
                             onClick={() => {
-                              const link = `https://thehive.zm/p/${item.id}`;
+                              const link = `https://thehive.zm/h/${item.id}`;
                               navigator.clipboard.writeText(link);
                               toast.success("Link generated & copied!");
                             }}
