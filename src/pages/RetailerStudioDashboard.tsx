@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, ShoppingCart, Users, Coins, TrendingUp, Plus, ClipboardList, TriangleAlert as AlertTriangle, Package, Wallet } from "lucide-react";
+import { DollarSign, ShoppingCart, Users, Coins, TrendingUp, Plus, ClipboardList, TriangleAlert as AlertTriangle, Package, Wallet, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
@@ -29,10 +30,12 @@ const statusColors: Record<string, string> = {
 
 const RetailerStudioDashboard = () => {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
   useOrderNotifications();
   const { totalRevenue, totalOrders, activeCustomers, recentOrders, inventoryAlerts, loading: dataLoading } = useDashboardData();
   const [walletData, setWalletData] = useState({ zmw_balance: 0, pulse_credits: 0 });
   const [loadingWallet, setLoadingWallet] = useState(true);
+  const capacity = profile?.order_capacity ?? 50;
 
   useEffect(() => {
     if (user) {
@@ -67,6 +70,31 @@ const RetailerStudioDashboard = () => {
   return (
     <RetailerStudioSidebar>
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Zero Capacity Warning Banner */}
+        {capacity === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="sticky top-4 z-40 bg-[#FFFBF2] border-2 border-red-500 rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => navigate("/recharge")}
+          >
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 animate-pulse" />
+            <div className="flex-1">
+              <p className="font-semibold text-red-700">⚠️ Operational Capacity Exhausted</p>
+              <p className="text-sm text-red-600">Your public storefront is paused. Click here to recharge and unlock your queue.</p>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("/recharge");
+              }}
+              className="shrink-0 px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Recharge Now
+            </button>
+          </motion.div>
+        )}
+
         <div>
           <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
             Welcome back, <span className="text-primary">{profile?.full_name?.split(" ")[0] || "Vendor"}</span>

@@ -18,6 +18,7 @@ export interface FeaturedItem {
   free_shipping?: boolean;
   item_type?: "product" | "service";
   sme_id?: number;
+  vendor_capacity?: number;
 }
 
 interface ThemeClasses {
@@ -38,6 +39,7 @@ interface FeaturedItemCardProps {
 const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "default", themeClasses }: FeaturedItemCardProps) => {
   const savings = item.old_price ? Math.round(((item.old_price - item.price) / item.old_price) * 100) : 0;
   const isService = item.item_type === "service";
+  const isVendorAtCapacity = item.vendor_capacity === 0;
 
   // All variants use the same gold color scheme
   const borderClass = "border-primary/30 hover:border-primary/60";
@@ -103,14 +105,17 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
           {item.free_shipping && <span className="flex items-center gap-0.5"><Package size={10} />Free Ship</span>}
         </div>
         <button
-          onClick={() => onBuyNow?.(item)}
+          onClick={() => !isVendorAtCapacity && onBuyNow?.(item)}
+          disabled={isVendorAtCapacity}
           className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-colors ${
-            themeClasses
+            isVendorAtCapacity
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed opacity-60"
+              : themeClasses
               ? `${themeClasses.btnBg} ${themeClasses.btnHover} ${themeClasses.btnText}`
               : "btn-gold"
           }`}
         >
-          {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
+          {isVendorAtCapacity ? "🔒 Merchant at Capacity" : isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
         </button>
         <div className="grid grid-cols-2 gap-2 mt-2">
           <button onClick={() => onVisitStore?.(item)} className="flex items-center justify-center gap-1 text-[11px] font-semibold text-primary border border-primary/30 rounded-lg py-1.5 hover:bg-primary/5 transition-colors">
