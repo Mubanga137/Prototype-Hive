@@ -42,31 +42,7 @@ const GigRadar = () => {
     isOnline
   );
 
-  // Update worker position in local state when location changes
-  useEffect(() => {
-    if (location) {
-      setWorkerPosition([location.latitude, location.longitude]);
-    }
-  }, [location]);
-
-  // Get initial position even when offline
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setWorkerPosition([pos.coords.latitude, pos.coords.longitude]),
-        () => {}
-      );
-    }
-  }, []);
-
-  useEffect(() => { fetchOrders(); }, [user]);
-
-  // Derive live status
-  useEffect(() => {
-    if (myActiveOrders.length > 0) setLiveStatus("on_delivery");
-    else setLiveStatus("idle");
-  }, [myActiveOrders]);
-
+  // Fetch orders from Supabase
   const fetchOrders = async () => {
     setLoading(true);
     const { data: available } = await supabase
@@ -174,6 +150,34 @@ const GigRadar = () => {
     window.open(url, "_blank");
     setLiveStatus("navigating");
   };
+
+  // Update worker position in local state when GPS location changes
+  useEffect(() => {
+    if (location) {
+      setWorkerPosition([location.latitude, location.longitude]);
+    }
+  }, [location]);
+
+  // Get initial position even when offline
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setWorkerPosition([pos.coords.latitude, pos.coords.longitude]),
+        () => {}
+      );
+    }
+  }, []);
+
+  // Fetch available orders when user loads
+  useEffect(() => {
+    fetchOrders();
+  }, [user]);
+
+  // Derive live status based on active orders
+  useEffect(() => {
+    if (myActiveOrders.length > 0) setLiveStatus("on_delivery");
+    else setLiveStatus("idle");
+  }, [myActiveOrders]);
 
   // Scroll to selected card
   useEffect(() => {
