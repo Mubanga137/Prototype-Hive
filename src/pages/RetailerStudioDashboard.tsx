@@ -25,33 +25,67 @@ const RetailerStudioDashboard = () => {
   useOrderNotifications();
   const { totalRevenue, totalOrders, activeCustomers, recentOrders, inventoryAlerts, loading: dataLoading } = useDashboardData();
   const [walletData, setWalletData] = useState({ zmw_balance: 0, pulse_credits: 0 });
+  const [salesData, setSalesData] = useState<Array<{ month: string; revenue: number }>>([]);
   const [loadingWallet, setLoadingWallet] = useState(true);
   const capacity = profile?.order_capacity ?? 50;
 
   useEffect(() => {
     if (user) {
       fetchWalletData();
+      fetchSalesData();
     }
   }, [user]);
 
   const fetchWalletData = async () => {
     if (!user) return;
     setLoadingWallet(true);
-    // Only fetch zmw_balance for now (pulse_credits column doesn't exist yet)
     const { data, error } = await supabase
       .from("profiles")
-      .select("zmw_balance")
+      .select("zmw_balance, pulse_credits")
       .eq("user_id", user.id)
       .single();
 
     if (!error && data) {
       setWalletData({
         zmw_balance: Number(data.zmw_balance) || 0,
-        pulse_credits: 0, // Default until column is added
+        pulse_credits: Number(data.pulse_credits) || 0,
       });
     }
     setLoadingWallet(false);
   };
+
+  const fetchSalesData = async () => {
+    if (!profile?.id) return;
+    const { data: ordersData } = await supabase
+      .from("orders")
+      .select("total_price, created_at")
+      .eq("sme_id", profile.id)
+      .order("created_at", { ascending: true });
+
+    if (ordersData && ordersData.length > 0) {
+      // Group by month
+      const monthMap: Record<string, number> = {};
+      ordersData.forEach((order: any) => {
+        const date = new Date(order.created_at);
+        const month = date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+        monthMap[month] = (monthMap[month] || 0) + Number(order.total_price || 0);
+      });
+
+      const data = Object.entries(monthMap).map(([month, revenue]) => ({ month, revenue }));
+      setSalesData(data.length > 0 ? data : getDefaultSalesData());
+    } else {
+      setSalesData(getDefaultSalesData());
+    }
+  };
+
+  const getDefaultSalesData = () => [
+    { month: "Jan", revenue: 0 },
+    { month: "Feb", revenue: 0 },
+    { month: "Mar", revenue: 0 },
+    { month: "Apr", revenue: 0 },
+    { month: "May", revenue: 0 },
+    { month: "Jun", revenue: 0 },
+  ];
 
   const metrics = [
     { label: "Total Revenue", value: `ZMW ${totalRevenue.toLocaleString()}`, icon: DollarSign, bg: "bg-emerald-50", iconColor: "text-emerald-600" },
