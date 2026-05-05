@@ -102,22 +102,35 @@ const Signup = () => {
         return;
       }
 
-      if (role === "vendor") {
-        await supabase.from("profiles").update({
-          business_type: businessType,
-          service_fulfillment: serviceFulfillment,
-        }).eq("user_id", authData.user.id);
-      } else if (role === "gig_worker" && gigRole) {
-        await supabase.from("profiles").update({ gig_role: gigRole }).eq("user_id", authData.user.id);
-      } else if (role === "wholesaler") {
-        await supabase.from("profiles").update({
-          wholesale_category: wholesaleCategory,
-          wholesale_category_other: wholesaleCategory === "Other" ? wholesaleCategoryOther : "",
-        }).eq("user_id", authData.user.id);
-      }
+      // CRITICAL: Ensure profile exists with correct role
+      let profilePayload: any = {
+        user_id: authData.user.id,
+        full_name: fullName,
+        phone: phone,
+        role: role, // Explicitly set role
+      };
 
       if (role === "vendor") {
-        await supabase.from("profiles").update({ pulse_credits: 2400, zmw_balance: 0 }).eq("user_id", authData.user.id);
+        profilePayload.business_type = businessType;
+        profilePayload.service_fulfillment = serviceFulfillment;
+        profilePayload.pulse_credits = 2400;
+        profilePayload.zmw_balance = 0;
+      } else if (role === "gig_worker" && gigRole) {
+        profilePayload.gig_role = gigRole;
+        profilePayload.pulse_credits = 50; // Default bounty capacity
+      } else if (role === "wholesaler") {
+        profilePayload.wholesale_category = wholesaleCategory;
+        profilePayload.wholesale_category_other = wholesaleCategory === "Other" ? wholesaleCategoryOther : "";
+      }
+
+      // Try to upsert profile to ensure it exists with all correct fields
+      const { error: profileErr } = await supabase.from("profiles").upsert(profilePayload, {
+        onConflict: "user_id",
+      });
+
+      if (profileErr) {
+        console.warn("Profile creation warning:", profileErr.message);
+        // Don't block on profile error — user is authenticated
       }
 
       setLoading(false);

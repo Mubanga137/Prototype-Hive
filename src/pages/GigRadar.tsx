@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import BountyMap, { type BountyOrder } from "@/components/BountyMap";
 import GigSidenav from "@/components/gig/GigSidenav";
 import OtpVerifyDrawer from "@/components/gig/OtpVerifyDrawer";
+import { useMixedFleetRole, canAcceptJob, calculatePayout } from "@/hooks/useMixedFleetRole";
 
 interface OrderItem {
   id: number;
@@ -21,7 +22,8 @@ interface OrderItem {
 }
 
 const GigRadar = () => {
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const { role, isRider, isRunner, isNode } = useMixedFleetRole();
   const [availableOrders, setAvailableOrders] = useState<OrderItem[]>([]);
   const [myActiveOrders, setMyActiveOrders] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,12 +130,42 @@ const GigRadar = () => {
   };
 
   const handleAcceptOrder = async (orderId: number) => {
-    if (!user) { toast.error("Please log in first."); return; }
+    if (!user || !profile) {
+      toast.error("Please log in first.");
+      return;
+    }
+
+    // Check if worker can accept job based on role & capacity
+    // pulse_credits not yet in DB schema, use default 50 for now
+    const pulseCredits = (profile as any)?.pulse_credits ?? 50;
+    const { canAccept, reason } = canAcceptJob(role, pulseCredits);
+
+    if (!canAccept) {
+      toast.error(reason || "Cannot accept this job.");
+      return;
+    }
+
     const { error } = await supabase
       .from("orders")
       .update({ status: "in_transit", runner_id: parseInt(user.id.slice(0, 8), 16) % 100000 } as any)
       .eq("id", orderId);
-    if (error) { toast.error(error.message); return; }
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    // If runner/node: deduct -1 from pulse_credits (once column is added to DB)
+    if (!isRider) {
+      const newCapacity = Math.max(0, pulseCredits - 1);
+      // TODO: Uncomment when pulse_credits column is added to profiles table
+      // await supabase
+      //   .from("profiles")
+      //   .update({ pulse_credits: newCapacity } as any)
+      //   .eq("user_id", user.id);
+      // await refreshProfile();
+    }
+
     toast.success("Order accepted! You're on it 🚴");
     fetchOrders();
   };
@@ -177,6 +209,7 @@ const GigRadar = () => {
         onToggleOnline={handleToggleOnline}
         activeOrderCount={myActiveOrders.length}
         liveStatus={liveStatus}
+        workerRole={role === "rider" ? "rider" : role === "node_operator" ? "hub_owner" : "runner"}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative z-10">

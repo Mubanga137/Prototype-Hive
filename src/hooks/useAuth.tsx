@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, phone, role, preferences, zmw_balance, pulse_credits, order_capacity")
+          .select("full_name, phone, role, preferences, zmw_balance, order_capacity")
           .eq("user_id", userId)
           .maybeSingle();
 
@@ -132,7 +132,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Fetch profile with error handling
       try {
-        const prof = await fetchProfile(sess.user.id);
+        let prof = await fetchProfile(sess.user.id);
+
+        // CRITICAL FIX: If profile doesn't exist, try to create it from auth metadata
+        if (!prof && sess.user) {
+          const meta = (sess.user as any).user_metadata || {};
+          const fallbackRole = meta.role || "customer";
+
+          // Attempt to create profile from auth metadata
+          const { data: created } = await supabase.from("profiles").upsert({
+            user_id: sess.user.id,
+            full_name: meta.full_name || meta.name || "User",
+            phone: meta.phone || "",
+            role: fallbackRole,
+          }, {
+            onConflict: "user_id",
+          }).select().maybeSingle();
+
+          if (created) {
+            prof = created as Profile;
+          }
+        }
+
         setProfile(prof);
 
         // Only vendors get a store row. Other roles never block on store resolution.

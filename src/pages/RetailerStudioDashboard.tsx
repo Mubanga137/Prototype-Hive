@@ -46,16 +46,17 @@ const RetailerStudioDashboard = () => {
   const fetchWalletData = async () => {
     if (!user) return;
     setLoadingWallet(true);
+    // Only fetch zmw_balance for now (pulse_credits column doesn't exist yet)
     const { data, error } = await supabase
       .from("profiles")
-      .select("zmw_balance, pulse_credits")
+      .select("zmw_balance")
       .eq("user_id", user.id)
       .single();
 
     if (!error && data) {
       setWalletData({
         zmw_balance: Number(data.zmw_balance) || 0,
-        pulse_credits: Number(data.pulse_credits) || 0,
+        pulse_credits: 0, // Default until column is added
       });
     }
     setLoadingWallet(false);

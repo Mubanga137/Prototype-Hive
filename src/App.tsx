@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import RoleVerificationWrapper from "@/components/RoleVerificationWrapper";
 import Index from "./pages/Index.tsx";
 import RetailerStudioDashboard from "./pages/RetailerStudioDashboard.tsx";
 import RechargeStore from "./pages/RechargeStore.tsx";
@@ -39,6 +40,7 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
+          <RoleVerificationWrapper />
           <Toaster />
           <Sonner />
           <Routes>
