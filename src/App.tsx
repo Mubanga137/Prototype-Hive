@@ -31,6 +31,7 @@ import AnalyticsCustomers from "./pages/studio/AnalyticsCustomers.tsx";
 import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
+import OrderTracking from "./pages/OrderTracking.tsx";
 import HiveBotWidget from "./components/messaging/HiveBotWidget";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,9 @@ const App = () => (
 
             {/* Messaging — accessible to all roles */}
             <Route path="/messages" element={<Messages />} />
+
+            {/* Order Tracking */}
+            <Route path="/track/:order_id" element={<OrderTracking />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
