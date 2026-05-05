@@ -38,7 +38,7 @@ const ProductLinks = () => {
           product_name: item.product_name || "Unnamed Product",
           link_slug: `${item.product_name?.toLowerCase().replace(/\s+/g, "-")}-${item.id}`.slice(0, 50),
           clicks: 0,
-          created_at: new Date().toISOString(),
+          created_at: "",
         }));
         setLinks(links);
       }
@@ -72,14 +72,13 @@ const ProductLinks = () => {
               <tr className="border-b border-border/50">
                 <th className="text-left px-5 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">Product Name</th>
                 <th className="text-left px-5 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Link</th>
-                <th className="text-center px-5 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">Clicks</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="py-10 text-center">
+                  <td colSpan={3} className="py-10 text-center">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
                     </div>
@@ -96,7 +95,6 @@ const ProductLinks = () => {
                   >
                     <td className="px-5 py-4 text-sm font-medium text-foreground max-w-xs truncate">{link.product_name}</td>
                     <td className="px-5 py-4 text-sm text-muted-foreground hidden sm:table-cell max-w-xs truncate">{link.link_slug}</td>
-                    <td className="px-5 py-4 text-sm text-center font-semibold text-foreground">{link.clicks}</td>
                     <td className="px-5 py-4">
                       <div className="flex gap-1">
                         <button
@@ -112,7 +110,7 @@ const ProductLinks = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-10 text-center text-muted-foreground text-sm">
+                  <td colSpan={3} className="py-10 text-center text-muted-foreground text-sm">
                     No products yet. Add products to your store to create links.
                   </td>
                 </tr>

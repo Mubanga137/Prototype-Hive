@@ -334,8 +334,6 @@ const StorePage = () => {
                         stock_count={10}
                         item_type={variant.baseItemType}
                         description={variant.description}
-                        rating={variant.tag === "Most Popular" ? 4.8 : variant.tag === "Premium" ? 4.9 : 4.5}
-                        review_count={Math.floor(Math.random() * 100) + 10}
                         isService={variant.baseItemType === "service"}
                         variant={variant as any}
                         allVariants={variant.baseProductVariants as any}
@@ -427,8 +425,6 @@ const StorePage = () => {
                       stock_count={10}
                       item_type={variant.baseItemType}
                       description={variant.description}
-                      rating={variant.tag === "Most Popular" ? 4.8 : variant.tag === "Premium" ? 4.9 : 4.5}
-                      review_count={Math.floor(Math.random() * 100) + 10}
                       isService={variant.baseItemType === "service"}
                       variant={variant as any}
                       allVariants={variant.baseProductVariants as any}
