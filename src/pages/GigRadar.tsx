@@ -136,7 +136,8 @@ const GigRadar = () => {
     }
 
     // Check if worker can accept job based on role & capacity
-    const pulseCredits = profile.pulse_credits ?? 0;
+    // pulse_credits not yet in DB schema, use default 50 for now
+    const pulseCredits = (profile as any)?.pulse_credits ?? 50;
     const { canAccept, reason } = canAcceptJob(role, pulseCredits);
 
     if (!canAccept) {
@@ -154,14 +155,15 @@ const GigRadar = () => {
       return;
     }
 
-    // If runner/node: deduct -1 from pulse_credits
+    // If runner/node: deduct -1 from pulse_credits (once column is added to DB)
     if (!isRider) {
       const newCapacity = Math.max(0, pulseCredits - 1);
-      await supabase
-        .from("profiles")
-        .update({ pulse_credits: newCapacity } as any)
-        .eq("user_id", user.id);
-      await refreshProfile();
+      // TODO: Uncomment when pulse_credits column is added to profiles table
+      // await supabase
+      //   .from("profiles")
+      //   .update({ pulse_credits: newCapacity } as any)
+      //   .eq("user_id", user.id);
+      // await refreshProfile();
     }
 
     toast.success("Order accepted! You're on it 🚴");

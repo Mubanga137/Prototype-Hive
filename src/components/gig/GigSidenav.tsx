@@ -41,7 +41,8 @@ const GigSidenav = ({
   const { profile, signOut } = useAuth();
   const { isRider, isRunner, isNode, commissionLabel } = useMixedFleetRole();
 
-  const capacity = profile?.pulse_credits ?? 0;
+  // pulse_credits not yet in DB schema, default to 50 for now
+  const capacity = (profile as any)?.pulse_credits ?? 50;
   const capacityStyles = getCapacityStyles(capacity);
 
   const isActive = (path: string) => location.pathname === path;

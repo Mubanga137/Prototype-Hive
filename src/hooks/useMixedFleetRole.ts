@@ -26,7 +26,8 @@ export const useMixedFleetRole = (): FleetRoleConfig => {
   const { profile } = useAuth();
 
   // Derive worker type from profile.gig_role or profile.role
-  const gigRole = profile?.gig_role?.toLowerCase() || "unknown";
+  // Note: gig_role is stored in profiles.role via "vendor" | "customer" | "wholesaler" | "gig_worker"
+  const gigRole = (profile as any)?.gig_role?.toLowerCase() || "unknown";
   const appRole = profile?.role?.toLowerCase() || "";
 
   let role: WorkerRole = "unknown";

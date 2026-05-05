@@ -39,7 +39,7 @@ const HiveEscrowWallet = () => {
     } else if (isRunner || isNode) {
       taxRate = 0.0; // No commission for runners/nodes
       taxLabel = "0% (Capacity-based)";
-      commissionInfo = "-1 Pulse Credit deduction per completed bounty";
+      commissionInfo = "-1 Pulse Credit deduction per completed bounty (when pulse_credits column is added)";
     }
   } else {
     taxRate = 0.02;
