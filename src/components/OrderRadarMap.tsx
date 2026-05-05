@@ -28,8 +28,12 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
       scrollWheelZoom: false,
       dragging: true,
       touchZoom: true,
+      tap: true,
     }).setView(center, 14);
     mapInstanceRef.current = map;
+
+    // Fix touch-action for mobile scrolling/zooming
+    mapRef.current.style.touchAction = "auto";
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -59,13 +63,18 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
       (async () => {
         const { data } = await supabase
           .from(tableName as any)
-          .select("latitude, longitude")
+          .select("latitude, longitude, current_lat, current_long")
           .eq("id", workerId)
           .maybeSingle();
-        if (data && (data as any).latitude && (data as any).longitude) {
-          const pos: [number, number] = [(data as any).latitude, (data as any).longitude];
-          riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
-          map.panTo(pos, { animate: true });
+        if (data) {
+          // Support both old (latitude/longitude) and new (current_lat/current_long) column names
+          const lat = (data as any).current_lat ?? (data as any).latitude;
+          const lng = (data as any).current_long ?? (data as any).longitude;
+          if (lat && lng) {
+            const pos: [number, number] = [lat, lng];
+            riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
+            map.panTo(pos, { animate: true });
+          }
         }
       })();
 
@@ -75,15 +84,19 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
           "postgres_changes" as any,
           { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${workerId}` },
           (payload: any) => {
-            const { latitude, longitude } = payload.new;
-            if (latitude && longitude) {
-              const pos: [number, number] = [latitude, longitude];
+            const { latitude, longitude, current_lat, current_long } = payload.new;
+            // Support both old and new column names
+            const lat = current_lat ?? latitude;
+            const lng = current_long ?? longitude;
+            if (lat && lng) {
+              const pos: [number, number] = [lat, lng];
               if (riderMarkerRef.current) {
+                // Animate to new position smoothly
                 riderMarkerRef.current.setLatLng(pos);
               } else {
                 riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
               }
-              map.panTo(pos, { animate: true, duration: 1 });
+              map.panTo(pos, { animate: true, duration: 0.5 });
             }
           }
         )
@@ -108,7 +121,7 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
         border: "2px solid hsl(38,73%,40%,0.2)",
         position: "relative",
         zIndex: 1,
-        touchAction: "none",
+        touchAction: "auto",
       }}
     />
   );

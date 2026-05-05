@@ -65,6 +65,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   const [serviceNotes, setServiceNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [state, setState] = useState<SubmitState>("idle");
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+  const [locationSecured, setLocationSecured] = useState(false);
 
   const isService = item?.item_type === "service";
 
@@ -78,6 +81,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       setServiceNotes("");
       setQuantity(1);
       setState("idle");
+      setDeliveryLat(null);
+      setDeliveryLng(null);
+      setLocationSecured(false);
     }
   }, [open, item?.id]);
 
@@ -130,6 +136,25 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
   if (!item) return null;
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setDeliveryLat(position.coords.latitude);
+        setDeliveryLng(position.coords.longitude);
+        setLocationSecured(true);
+        toast.success("Location Secured ✅", { duration: 2500 });
+      },
+      (error) => {
+        toast.error("Unable to access your location. Please check browser permissions.");
+      }
+    );
+  };
+
   const validate = (): string | null => {
     if (!name.trim()) return "Please enter your name.";
     if (name.trim().length > 80) return "Name is too long.";
@@ -176,6 +201,8 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       customer_name: name.trim(),
       customer_phone: cleanedPhone,
       delivery_address: isService ? null : address.trim(),
+      delivery_lat: isService || !deliveryLat ? null : deliveryLat,
+      delivery_long: isService || !deliveryLng ? null : deliveryLng,
       scheduled_date: isService ? scheduledDate : null,
       service_notes: isService ? (serviceNotes.trim() || null) : null,
       status: "pending",
@@ -359,6 +386,22 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
                           placeholder="Plot, street, suburb, city"
                           className="w-full resize-none rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
                         />
+                        <div className="mt-2 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleUseCurrentLocation}
+                            disabled={submitting || success}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                            style={{ background: "hsl(38,73%,40%)", color: "hsl(39,100%,97%)" }}
+                          >
+                            📍 Use Current Location
+                          </button>
+                          {locationSecured && (
+                            <span className="text-xs font-semibold" style={{ color: "hsl(120,80%,30%)" }}>
+                              ✅ Location Secured
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-3 py-2.5">

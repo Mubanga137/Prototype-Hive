@@ -68,10 +68,19 @@ const GigRadar = () => {
 
     intervalRef.current = setInterval(async () => {
       if (!latestCoords || !user) return;
+      // Update both runners table and profiles table for redundancy
       await supabase
         .from("runners" as any)
-        .update({ latitude: latestCoords.lat, longitude: latestCoords.lng } as any)
-        .eq("user_id", user.id);
+        .update({ latitude: latestCoords.lat, longitude: latestCoords.lng, current_lat: latestCoords.lat, current_long: latestCoords.lng } as any)
+        .eq("user_id", user.id)
+        .catch(() => {}); // Soft fail if column doesn't exist
+
+      // Also update profiles table
+      await supabase
+        .from("profiles")
+        .update({ current_lat: latestCoords.lat, current_long: latestCoords.lng } as any)
+        .eq("id", user.id)
+        .catch(() => {}); // Soft fail if column doesn't exist
     }, 15000);
 
     return () => {
@@ -170,9 +179,38 @@ const GigRadar = () => {
     fetchOrders();
   };
 
-  const handleToggleOnline = (val: boolean) => {
-    setIsOnline(val);
-    toast.success(val ? "🟢 You are now ONLINE — GPS tracking active." : "⚫ You are now OFFLINE.");
+  const handleToggleOnline = async (val: boolean) => {
+    if (val) {
+      // Request geolocation permission when toggling ONLINE
+      if (!navigator.geolocation) {
+        toast.error("⚠️ Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          // Success: permission granted, enable online mode
+          setIsOnline(true);
+          toast.success("🟢 You are now ONLINE — GPS tracking active.");
+        },
+        (error) => {
+          // Error: permission denied, show Navy/Red toast
+          toast.error(
+            "⚠️ Location Access Required: Please enable GPS in your browser settings to receive bounties.",
+            {
+              style: { background: "hsl(0,75%,35%)", color: "#fff" },
+              duration: 5000,
+            }
+          );
+          // Ensure toggle stays OFF
+          setIsOnline(false);
+        }
+      );
+    } else {
+      // Toggling OFFLINE: just disable tracking
+      setIsOnline(false);
+      toast.success("⚫ You are now OFFLINE.");
+    }
   };
 
   const openNavigation = (order: OrderItem) => {
