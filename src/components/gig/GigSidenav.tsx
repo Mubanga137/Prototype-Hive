@@ -23,6 +23,8 @@ interface GigSidenavProps {
   unreadMessages?: number;
   unreadNotifications?: number;
   customerPhone?: string;
+  isTransmitting?: boolean;
+  hasPermission?: boolean | null;
 }
 
 const GigSidenav = ({
@@ -34,6 +36,8 @@ const GigSidenav = ({
   unreadMessages = 0,
   unreadNotifications = 0,
   customerPhone,
+  isTransmitting = false,
+  hasPermission = null,
 }: GigSidenavProps) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -98,11 +102,25 @@ const GigSidenav = ({
         </div>
         {/* Online toggle */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold" style={{ color: isOnline ? "#16a34a" : "hsl(220,20%,46%)" }}>
-            {isOnline ? "🟢 ONLINE" : "⚫ OFFLINE"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold" style={{ color: isOnline ? "#16a34a" : "hsl(220,20%,46%)" }}>
+              {isOnline ? "🟢 ONLINE" : "⚫ OFFLINE"}
+            </span>
+            {isOnline && isTransmitting && (
+              <div
+                className="relative w-2 h-2 rounded-full animate-pulse"
+                style={{ background: "hsl(38,73%,40%)" }}
+                title="Transmitting GPS"
+              />
+            )}
+          </div>
           <Switch checked={isOnline} onCheckedChange={onToggleOnline} />
         </div>
+        {isOnline && hasPermission === false && (
+          <p className="text-[10px] text-red-600 font-semibold mt-2">
+            ⚠️ Location access required
+          </p>
+        )}
       </div>
 
       {/* Capacity or Commission Badge (based on worker type) */}

@@ -3,10 +3,12 @@ import { motion } from "framer-motion";
 import { Package, Bike, Zap, CheckCircle, MapPin, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useRunnerLocation } from "@/hooks/useRunnerLocation";
 import { toast } from "sonner";
 import BountyMap, { type BountyOrder } from "@/components/BountyMap";
 import GigSidenav from "@/components/gig/GigSidenav";
 import OtpVerifyDrawer from "@/components/gig/OtpVerifyDrawer";
+import { GPSTransmitterStatus } from "@/components/gig/GPSTransmitterStatus";
 import { useMixedFleetRole, canAcceptJob, calculatePayout } from "@/hooks/useMixedFleetRole";
 
 interface OrderItem {
@@ -32,59 +34,20 @@ const GigRadar = () => {
   const [workerPosition, setWorkerPosition] = useState<[number, number] | null>(null);
   const [otpDrawerOrder, setOtpDrawerOrder] = useState<number | null>(null);
   const [liveStatus, setLiveStatus] = useState<"idle" | "on_delivery" | "navigating">("idle");
-  const watchIdRef = useRef<number | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const selectedRef = useRef<HTMLDivElement | null>(null);
 
-  // ── GPS Tracking: push lat/lng every 15s when ONLINE ──
+  // ── GPS Heartbeat Hook: Manages location tracking & Supabase updates ──
+  const { location, isTransmitting, hasPermission, permissionError } = useRunnerLocation(
+    user,
+    isOnline
+  );
+
+  // Update worker position in local state when location changes
   useEffect(() => {
-    if (!user || !isOnline) {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
+    if (location) {
+      setWorkerPosition([location.latitude, location.longitude]);
     }
-
-    if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    let latestCoords: { lat: number; lng: number } | null = null;
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        latestCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
-        setWorkerPosition([position.coords.latitude, position.coords.longitude]);
-      },
-      (err) => console.error("Geolocation error:", err.message),
-      { enableHighAccuracy: true, maximumAge: 10000 }
-    );
-
-    intervalRef.current = setInterval(async () => {
-      if (!latestCoords || !user) return;
-      await supabase
-        .from("runners" as any)
-        .update({ latitude: latestCoords.lat, longitude: latestCoords.lng } as any)
-        .eq("user_id", user.id);
-    }, 15000);
-
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [user, isOnline]);
+  }, [location]);
 
   // Get initial position even when offline
   useEffect(() => {
@@ -170,9 +133,34 @@ const GigRadar = () => {
     fetchOrders();
   };
 
-  const handleToggleOnline = (val: boolean) => {
-    setIsOnline(val);
-    toast.success(val ? "🟢 You are now ONLINE — GPS tracking active." : "⚫ You are now OFFLINE.");
+  const handleToggleOnline = async (val: boolean) => {
+    if (!user) {
+      toast.error("Please log in first.");
+      return;
+    }
+
+    try {
+      // Update is_online boolean in profiles table
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_online: val })
+        .eq("user_id", user.id);
+
+      if (error) {
+        toast.error(`Failed to update status: ${error.message}`);
+        return;
+      }
+
+      setIsOnline(val);
+      if (val) {
+        toast.success("🟢 You are now online");
+      } else {
+        toast.success("🔴 You are offline");
+      }
+    } catch (err) {
+      console.error("[GigRadar] Toggle online error:", err);
+      toast.error("Could not update online status");
+    }
   };
 
   const openNavigation = (order: OrderItem) => {
@@ -210,11 +198,21 @@ const GigRadar = () => {
         activeOrderCount={myActiveOrders.length}
         liveStatus={liveStatus}
         workerRole={role === "rider" ? "rider" : role === "node_operator" ? "hub_owner" : "runner"}
+        isTransmitting={isTransmitting}
+        hasPermission={hasPermission}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative z-10">
         {/* Map — top half */}
         <div className="p-3 md:p-4 pt-14 lg:pt-4">
+          {/* GPS Transmitter Status */}
+          <GPSTransmitterStatus
+            isTransmitting={isTransmitting}
+            hasPermission={hasPermission}
+            permissionError={permissionError}
+            isOnline={isOnline}
+          />
+
           <div className="rounded-2xl overflow-hidden border-2" style={{ borderColor: "hsl(38,73%,40%,0.2)" }}>
             <div className="h-[40vh] md:h-[45vh] relative">
               <BountyMap
