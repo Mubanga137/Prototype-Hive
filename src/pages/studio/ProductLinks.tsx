@@ -2,12 +2,6 @@ import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Plus, Copy } from "lucide-react";
 import { motion } from "framer-motion";
 
-const mockLinks = [
-  { id: 1, name: "Summer Sale Collection", url: "hive.zm/s/summer24", clicks: 342, revenue: 12500 },
-  { id: 2, name: "New Arrivals Page", url: "hive.zm/s/newarrivals", clicks: 189, revenue: 7800 },
-  { id: 3, name: "Flash Deal - Shoes", url: "hive.zm/s/flashshoes", clicks: 567, revenue: 23400 },
-];
-
 const ProductLinks = () => (
   <RetailerStudioSidebar>
     <div className="space-y-6">
@@ -33,7 +27,7 @@ const ProductLinks = () => (
             </tr>
           </thead>
           <tbody>
-            {mockLinks.map((link, i) => (
+            {[].map((link: any, i: number) => (
               <motion.tr
                 key={link.id}
                 initial={{ opacity: 0 }}

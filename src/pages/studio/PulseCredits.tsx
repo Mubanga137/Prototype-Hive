@@ -2,13 +2,6 @@ import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import { Coins, ArrowUpRight, ArrowDownRight, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 
-const transactions = [
-  { id: 1, type: "credit", desc: "Purchased 500 credits", amount: 500, date: "2026-03-28" },
-  { id: 2, type: "debit", desc: "Hive Reel promotion", amount: -50, date: "2026-03-29" },
-  { id: 3, type: "debit", desc: "Featured listing boost", amount: -100, date: "2026-03-30" },
-  { id: 4, type: "credit", desc: "Referral bonus", amount: 25, date: "2026-04-01" },
-];
-
 const PulseCredits = () => (
   <RetailerStudioSidebar>
     <div className="space-y-6">
@@ -25,7 +18,7 @@ const PulseCredits = () => (
               <Coins size={18} className="text-primary" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-foreground">375</p>
+          <p className="text-3xl font-bold text-foreground">—</p>
           <p className="text-xs text-muted-foreground mt-1">Hive Credits available</p>
         </motion.div>
 
@@ -36,7 +29,7 @@ const PulseCredits = () => (
               <ArrowDownRight size={18} className="text-red-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-foreground">150</p>
+          <p className="text-3xl font-bold text-foreground">—</p>
           <p className="text-xs text-muted-foreground mt-1">Credits used</p>
         </motion.div>
 
@@ -52,7 +45,7 @@ const PulseCredits = () => (
           <h2 className="font-display font-bold text-foreground">Transaction History</h2>
         </div>
         <div className="divide-y divide-border/30">
-          {transactions.map((tx, i) => (
+          {[].map((tx: any, i: number) => (
             <motion.div
               key={tx.id}
               initial={{ opacity: 0 }}

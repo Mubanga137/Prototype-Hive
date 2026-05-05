@@ -14,92 +14,6 @@ import { categoryThemes } from "@/lib/categoryThemes";
 import { subcategoryDefinitions } from "@/lib/categorySubcategories";
 import { supabase } from "@/integrations/supabase/client";
 
-// Sample featured vendors for each category
-const featuredVendors: Record<string, any[]> = {
-  tech: [
-    { id: 1, store_name: "TechZone Zambia", description: "Premium gadgets and smart devices", rating: 4.8, review_count: 342, verified: true, featured: true, location: "Lusaka", initials: "TZ" },
-    { id: 2, store_name: "Audio Pro Zambia", description: "High-quality audio and accessories", rating: 4.7, review_count: 218, verified: true, featured: false, location: "Ndola", initials: "AP" },
-    { id: 3, store_name: "Mobile Tech Zambia", description: "Latest smartphones and protection gear", rating: 4.6, review_count: 195, verified: true, featured: true, location: "Kitwe", initials: "MT" },
-    { id: 4, store_name: "Electronics Hub", description: "Complete tech solutions for home and office", rating: 4.5, review_count: 156, verified: false, featured: false, location: "Livingstone", initials: "EH" },
-  ],
-  fashion: [
-    { id: 1, store_name: "Lusaka Threads", description: "Contemporary and traditional fashion", rating: 4.9, review_count: 287, verified: true, featured: true, location: "Lusaka", initials: "LT" },
-    { id: 2, store_name: "Zambian Heritage Fashion", description: "Authentic African print collections", rating: 4.8, review_count: 234, verified: true, featured: true, location: "Lusaka", initials: "ZH" },
-    { id: 3, store_name: "Urban Kicks", description: "Street style and premium footwear", rating: 4.6, review_count: 201, verified: true, featured: false, location: "Ndola", initials: "UK" },
-    { id: 4, store_name: "Craft & Culture", description: "Handmade jewelry and accessories", rating: 4.7, review_count: 142, verified: false, featured: false, location: "Livingstone", initials: "CC" },
-  ],
-  food: [
-    { id: 1, store_name: "Harvest Hub", description: "Fresh organic produce and gourmet foods", rating: 4.8, review_count: 456, verified: true, featured: true, location: "Lusaka", initials: "HH" },
-    { id: 2, store_name: "Artisan Market", description: "Local specialty foods and spices", rating: 4.7, review_count: 298, verified: true, featured: true, location: "Livingstone", initials: "AM" },
-    { id: 3, store_name: "Farm Fresh Zambia", description: "Direct from local farmers", rating: 4.6, review_count: 214, verified: true, featured: false, location: "Kitwe", initials: "FF" },
-    { id: 4, store_name: "Gourmet Delights", description: "Premium international and local cuisine", rating: 4.5, review_count: 167, verified: false, featured: false, location: "Ndola", initials: "GD" },
-  ],
-  entertainment: [
-    { id: 1, store_name: "Lusaka Events", description: "Professional event planning and services", rating: 4.9, review_count: 367, verified: true, featured: true, location: "Lusaka", initials: "LE" },
-    { id: 2, store_name: "Entertainment Plus", description: "Tickets, experiences, and exclusive events", rating: 4.7, review_count: 245, verified: true, featured: true, location: "Livingstone", initials: "EP" },
-    { id: 3, store_name: "Audio Pro Zambia", description: "Sound systems and entertainment gear", rating: 4.6, review_count: 189, verified: true, featured: false, location: "Ndola", initials: "AP" },
-    { id: 4, store_name: "Electronics Hub", description: "Cinema and home theater solutions", rating: 4.5, review_count: 134, verified: false, featured: false, location: "Kitwe", initials: "EH" },
-  ],
-  beauty: [
-    { id: 1, store_name: "Glow Africa", description: "Natural beauty and skincare products", rating: 4.9, review_count: 512, verified: true, featured: true, location: "Lusaka", initials: "GA" },
-    { id: 2, store_name: "Radiant Beauty", description: "Premium cosmetics and wellness", rating: 4.8, review_count: 378, verified: true, featured: true, location: "Ndola", initials: "RB" },
-    { id: 3, store_name: "Zambian Natural", description: "Organic skincare and haircare", rating: 4.7, review_count: 291, verified: true, featured: false, location: "Livingstone", initials: "ZN" },
-    { id: 4, store_name: "Beauty Boutique", description: "Luxury beauty treatments and products", rating: 4.6, review_count: 223, verified: false, featured: false, location: "Kitwe", initials: "BB" },
-  ],
-};
-
-const fallbackItems: Record<string, FeaturedItem[]> = {
-  tech: [
-    { id: 201, item_name: "Wireless Bluetooth Speaker", price: 149.99, old_price: 199.99, store_name: "Audio Pro Zambia", category: "Tech", is_featured: true, rating: 4.6, review_count: 145, in_stock: true, fast_delivery: true, free_shipping: true, item_type: "product" },
-    { id: 202, item_name: "Gaming Headset RGB", price: 199.99, old_price: 259.99, store_name: "TechZone Zambia", category: "Tech", rating: 4.3, review_count: 178, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 203, item_name: "iPhone 15 Pro Case", price: 399.99, old_price: 469.99, store_name: "Mobile Tech Zambia", category: "Tech", rating: 4.8, review_count: 312, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 204, item_name: "USB-C Hub 7-in-1", price: 89.99, store_name: "TechZone Zambia", category: "Tech", rating: 4.5, review_count: 67, in_stock: true, item_type: "product" },
-    { id: 205, item_name: "Smart Watch Pro", price: 299.99, old_price: 399.99, store_name: "Mobile Tech Zambia", category: "Tech", rating: 4.7, review_count: 98, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 206, item_name: "Wireless Charger Pad", price: 45.99, store_name: "TechZone Zambia", category: "Tech", rating: 4.4, review_count: 52, in_stock: true, item_type: "product" },
-    { id: 207, item_name: "4K Webcam", price: 159.99, store_name: "Audio Pro Zambia", category: "Tech", rating: 4.5, review_count: 73, in_stock: true, item_type: "product" },
-    { id: 208, item_name: "Portable SSD 1TB", price: 89.99, store_name: "TechZone Zambia", category: "Tech", rating: 4.6, review_count: 134, in_stock: true, item_type: "product" },
-  ],
-  fashion: [
-    { id: 301, item_name: "Traditional Chitenge Dress", price: 45.99, store_name: "Zambian Heritage Fashion", category: "Fashion", rating: 4.9, review_count: 87, in_stock: true, free_shipping: true, item_type: "product" },
-    { id: 302, item_name: "African Print Blazer", price: 320.00, old_price: 400.00, store_name: "Lusaka Threads", category: "Fashion", is_featured: true, rating: 4.8, review_count: 156, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 303, item_name: "Handwoven Tote Bag", price: 75.00, store_name: "Craft & Culture", category: "Fashion", rating: 4.7, review_count: 42, in_stock: true, item_type: "product" },
-    { id: 304, item_name: "Urban Sneakers Classic", price: 250.00, old_price: 310.00, store_name: "Urban Kicks", category: "Fashion", rating: 4.6, review_count: 201, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 305, item_name: "Elegant Evening Gown", price: 450.00, old_price: 600.00, store_name: "Lusaka Threads", category: "Fashion", rating: 4.9, review_count: 34, in_stock: true, item_type: "product" },
-    { id: 306, item_name: "Casual Hoodie Premium", price: 89.99, store_name: "Urban Kicks", category: "Fashion", rating: 4.5, review_count: 67, in_stock: true, item_type: "product" },
-    { id: 307, item_name: "Gold Statement Jewelry", price: 150.00, store_name: "Craft & Culture", category: "Fashion", rating: 4.8, review_count: 45, in_stock: true, item_type: "product" },
-    { id: 308, item_name: "Designer Sunglasses", price: 120.00, store_name: "Lusaka Threads", category: "Fashion", rating: 4.4, review_count: 78, in_stock: true, item_type: "product" },
-  ],
-  food: [
-    { id: 401, item_name: "Organic Honey Collection", price: 89.99, old_price: 120.00, store_name: "Harvest Hub", category: "Food", rating: 4.4, review_count: 56, in_stock: true, free_shipping: true, item_type: "product" },
-    { id: 402, item_name: "Zambian Spice Mix Set", price: 35.00, store_name: "Harvest Hub", category: "Food", rating: 4.6, review_count: 34, in_stock: true, item_type: "product" },
-    { id: 403, item_name: "Farm-Fresh Produce Box", price: 65.00, store_name: "Harvest Hub", category: "Food", rating: 4.3, review_count: 89, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 404, item_name: "Artisan Coffee Beans 1kg", price: 120.00, old_price: 150.00, store_name: "Harvest Hub", category: "Food", is_featured: true, rating: 4.8, review_count: 112, in_stock: true, item_type: "product" },
-    { id: 405, item_name: "Fresh Juice Box", price: 28.99, store_name: "Harvest Hub", category: "Food", rating: 4.5, review_count: 41, in_stock: true, item_type: "product" },
-    { id: 406, item_name: "Lunch Box Special", price: 45.00, store_name: "Harvest Hub", category: "Food", rating: 4.6, review_count: 128, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 407, item_name: "Premium Tea Collection", price: 55.00, store_name: "Harvest Hub", category: "Food", rating: 4.7, review_count: 67, in_stock: true, item_type: "product" },
-    { id: 408, item_name: "Artisan Pastry Bundle", price: 38.00, store_name: "Harvest Hub", category: "Food", rating: 4.4, review_count: 93, in_stock: true, item_type: "product" },
-  ],
-  entertainment: [
-    { id: 501, item_name: "Smart TV 55\" 4K UHD", price: 599.99, old_price: 749.99, store_name: "Electronics Hub", category: "Entertainment", is_featured: true, rating: 4.7, review_count: 234, in_stock: true, fast_delivery: true, item_type: "product" },
-    { id: 502, item_name: "Bluetooth Karaoke Mic", price: 79.99, store_name: "Audio Pro Zambia", category: "Entertainment", rating: 4.2, review_count: 67, in_stock: true, item_type: "product" },
-    { id: 503, item_name: "Portable Projector Mini", price: 450.00, old_price: 550.00, store_name: "TechZone Zambia", category: "Entertainment", rating: 4.5, review_count: 45, in_stock: true, item_type: "product" },
-    { id: 504, item_name: "DJ Booking Service", price: 500.00, store_name: "Lusaka Events", category: "Entertainment", rating: 4.9, review_count: 78, in_stock: true, item_type: "service" },
-    { id: 505, item_name: "Event Planning Service", price: 800.00, store_name: "Lusaka Events", category: "Entertainment", rating: 4.8, review_count: 56, in_stock: true, item_type: "service" },
-    { id: 506, item_name: "Photography Session", price: 350.00, store_name: "Lusaka Events", category: "Entertainment", rating: 4.9, review_count: 102, in_stock: true, item_type: "service" },
-    { id: 507, item_name: "Concert Tickets Pack", price: 250.00, store_name: "Electronics Hub", category: "Entertainment", rating: 4.6, review_count: 89, in_stock: true, item_type: "product" },
-    { id: 508, item_name: "Home Theater Speaker Set", price: 1200.00, old_price: 1500.00, store_name: "Audio Pro Zambia", category: "Entertainment", rating: 4.8, review_count: 45, in_stock: true, item_type: "product" },
-  ],
-  beauty: [
-    { id: 601, item_name: "Natural Shea Butter Set", price: 65.00, old_price: 85.00, store_name: "Glow Africa", category: "Beauty", is_featured: true, rating: 4.5, review_count: 98, in_stock: true, fast_delivery: true, free_shipping: true, item_type: "product" },
-    { id: 602, item_name: "Hair Braiding Service", price: 150.00, store_name: "Glow Africa", category: "Beauty", rating: 4.8, review_count: 45, in_stock: true, item_type: "service" },
-    { id: 603, item_name: "Organic Hair Oil Collection", price: 55.00, store_name: "Glow Africa", category: "Beauty", rating: 4.6, review_count: 67, in_stock: true, item_type: "product" },
-    { id: 604, item_name: "Facial Treatment Package", price: 200.00, old_price: 280.00, store_name: "Glow Africa", category: "Beauty", rating: 4.7, review_count: 34, in_stock: true, item_type: "service" },
-    { id: 605, item_name: "Premium Makeup Kit", price: 189.99, old_price: 249.99, store_name: "Glow Africa", category: "Beauty", rating: 4.9, review_count: 123, in_stock: true, item_type: "product" },
-    { id: 606, item_name: "Skincare Routine Bundle", price: 95.00, store_name: "Glow Africa", category: "Beauty", rating: 4.7, review_count: 89, in_stock: true, item_type: "product" },
-    { id: 607, item_name: "Facial Cleanser Set", price: 45.00, store_name: "Glow Africa", category: "Beauty", rating: 4.6, review_count: 156, in_stock: true, item_type: "product" },
-    { id: 608, item_name: "Spa Treatment Service", price: 350.00, store_name: "Glow Africa", category: "Beauty", rating: 4.9, review_count: 78, in_stock: true, item_type: "service" },
-  ],
-};
 
 const CategoryPage = () => {
   const { name } = useParams<{ name: string }>();
@@ -149,7 +63,7 @@ const CategoryPage = () => {
           }))
         );
       } else {
-        setItems(fallbackItems[key] || []);
+        setItems([]);
       }
       setLoading(false);
     };
