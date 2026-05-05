@@ -27,8 +27,6 @@ const mapItem = (item: any): FeaturedItem => ({
   store_name: item.sme_stores?.brand_name || "The Hive Store",
   category: item.category || "General",
   is_featured: (item.stock_count ?? 0) > 10,
-  rating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
-  review_count: Math.floor(Math.random() * 300) + 10,
   in_stock: (item.stock_count ?? 0) > 0,
   fast_delivery: item.fulfillment_type === "express",
   free_shipping: (item.price ?? 0) > 100,

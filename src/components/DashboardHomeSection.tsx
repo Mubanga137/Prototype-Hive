@@ -123,7 +123,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
     const fetchVendors = async () => {
       const { data: storesData } = await supabase
         .from("sme_stores")
-        .select("id, brand_name, description, owner_user_id")
+        .select("id, brand_name, description, owner_user_id, is_verified")
         .limit(6);
 
       if (storesData && storesData.length > 0) {
@@ -140,12 +140,10 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           id: store.id,
           store_name: store.brand_name || "Unknown Store",
           description: store.description || "Quality products and services",
-          verified: true,
-          is_featured: true,
+          verified: store.is_verified || false,
           product_count: productCounts[store.id] || 0,
           location: "Zambia",
           category: "Multi-category",
-          rating: 4.5,
         }));
         setVendors(vendorsList);
       }
@@ -211,7 +209,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setActiveSection("Wallet")}>
           <Heart size={20} className="text-emerald-500 mb-2" />
           <p className="text-xs text-muted-foreground">Saved Items</p>
-          <p className="text-xl font-bold text-foreground">18</p>
+          <p className="text-xl font-bold text-foreground">{items.filter(i => i.is_featured).length}</p>
         </motion.div>
       </div>
 

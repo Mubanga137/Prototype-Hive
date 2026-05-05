@@ -14,7 +14,7 @@ const FeaturedVendors = () => {
       setLoading(true);
       const { data: storesData } = await supabase
         .from("sme_stores")
-        .select("id, brand_name, description")
+        .select("id, brand_name, description, is_verified")
         .limit(6);
 
       if (storesData && storesData.length > 0) {
@@ -31,11 +31,9 @@ const FeaturedVendors = () => {
           id: store.id,
           store_name: store.brand_name || "Unknown Store",
           description: store.description || "Quality products and services",
-          verified: true,
-          is_featured: true,
+          verified: store.is_verified || false,
           product_count: productCounts[store.id] || 0,
           location: "Zambia",
-          rating: 4.5,
         }));
         setStores(mappedStores);
       }
@@ -85,9 +83,6 @@ const FeaturedVendors = () => {
           >
             <div className="relative h-28 bg-gradient-to-br from-primary/10 via-secondary to-muted flex items-end p-4">
               <div className="absolute top-3 right-3 flex gap-1.5">
-                {store.is_featured && (
-                  <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md">Featured</span>
-                )}
                 {store.verified && (
                   <span className="bg-emerald-600 text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-0.5">
                     <BadgeCheck size={10} /> Verified
@@ -110,10 +105,6 @@ const FeaturedVendors = () => {
               <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{store.description}</p>
 
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground mb-3">
-                <span className="flex items-center gap-0.5">
-                  <Star size={11} className="fill-yellow-400 text-yellow-400" />
-                  {store.rating}
-                </span>
                 <span className="flex items-center gap-0.5">
                   <Package size={11} />
                   {store.product_count} products

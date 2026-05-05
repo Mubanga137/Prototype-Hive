@@ -132,7 +132,6 @@ const StorePage_v2 = () => {
     total: items.length,
     products: items.filter((i) => i.item_type !== "service").length,
     services: items.filter((i) => i.item_type === "service").length,
-    avgRating: 4.8,
   };
 
   const handleBuyNow = (item: OfferItem) => {
@@ -265,10 +264,6 @@ const StorePage_v2 = () => {
                       <div className="flex items-center gap-1">
                         <Zap size={14} className="text-yellow-400" />
                         <span>{stats.total} items</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Star size={14} className="text-yellow-400 fill-yellow-400" />
-                        <span>{stats.avgRating} rating</span>
                       </div>
                     </div>
                   </div>
