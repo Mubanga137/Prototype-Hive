@@ -31,6 +31,7 @@ import AnalyticsCustomers from "./pages/studio/AnalyticsCustomers.tsx";
 import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
+import OrderTrackingRadar from "./pages/OrderTrackingRadar.tsx";
 import HiveBotWidget from "./components/messaging/HiveBotWidget";
 
 const queryClient = new QueryClient();
