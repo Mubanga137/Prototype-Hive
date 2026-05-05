@@ -39,7 +39,7 @@ export const useDashboardData = (): DashboardData => {
       // Fetch recent orders
       const { data: ordersData } = await supabase
         .from("orders")
-        .select("*")
+        .select("id, total_price, customer_phone, status, created_at")
         .order("created_at", { ascending: false })
         .limit(5);
 
@@ -67,10 +67,10 @@ export const useDashboardData = (): DashboardData => {
       setData({
         totalRevenue,
         totalOrders: allOrders.length,
-        activeCustomers: 0,
-        recentOrders: orders.map((o: any, idx: number) => ({
-          id: `HV-${String(idx + 1001).padStart(4, '0')}`,
-          customer_name: o["customer_phone number"] || "Customer",
+        activeCustomers: orders.length > 0 ? orders.filter((o: any) => o.customer_phone).length : 0,
+        recentOrders: orders.map((o: any) => ({
+          id: o.id || "N/A",
+          customer_name: o.customer_phone || "Customer",
           total: Number(o.total_price || 0),
           status: o.status || "Pending",
           created_at: o.created_at,

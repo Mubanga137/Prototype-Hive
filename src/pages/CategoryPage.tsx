@@ -23,10 +23,29 @@ const CategoryPage = () => {
   const subcategories = subcategoryDefinitions[key] || [];
 
   const [items, setItems] = useState<FeaturedItem[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchVendors = async () => {
+      const { data: storesData } = await supabase
+        .from("sme_stores")
+        .select("id, brand_name, description")
+        .limit(6);
+
+      if (storesData && storesData.length > 0) {
+        setVendors(storesData.map((store: any) => ({
+          id: store.id,
+          store_name: store.brand_name || "Unknown Store",
+          description: store.description || "Quality products and services",
+        })));
+      }
+    };
+    fetchVendors();
+  }, []);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -48,8 +67,6 @@ const CategoryPage = () => {
             store_name: item.sme_stores?.brand_name || "The Hive Store",
             category: item.category || theme?.title || "General",
             is_featured: (item.stock_count ?? 0) > 10,
-            rating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
-            review_count: Math.floor(Math.random() * 300) + 10,
             in_stock: (item.stock_count ?? 0) > 0,
             fast_delivery: item.fulfillment_type === "express",
             free_shipping: (item.price ?? 0) > 100,
@@ -223,9 +240,9 @@ const CategoryPage = () => {
           )}
 
           {/* 8. FEATURED VENDORS CAROUSEL */}
-          {!searchQuery && (
+          {!searchQuery && vendors.length > 0 && (
             <VendorCarousel
-              vendors={featuredVendors[key] || []}
+              vendors={vendors}
               theme={theme}
             />
           )}

@@ -85,6 +85,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [items, setItems] = useState<FeaturedItem[]>([]);
+  const [vendors, setVendors] = useState<VendorData[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -105,8 +106,6 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           store_name: item.sme_stores?.brand_name || "The Hive Store",
           category: item.category || "General",
           is_featured: (item.stock_count ?? 0) > 10,
-          rating: Math.round((3.5 + Math.random() * 1.5) * 10) / 10,
-          review_count: Math.floor(Math.random() * 300) + 10,
           in_stock: (item.stock_count ?? 0) > 0,
           fast_delivery: item.fulfillment_type === "express",
           free_shipping: (item.price ?? 0) > 100,
@@ -118,6 +117,40 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
       }
     };
     fetchItems();
+  }, []);
+
+  useEffect(() => {
+    const fetchVendors = async () => {
+      const { data: storesData } = await supabase
+        .from("sme_stores")
+        .select("id, brand_name, description, owner_user_id")
+        .limit(6);
+
+      if (storesData && storesData.length > 0) {
+        const { data: productsData } = await supabase
+          .from("hive_catalogue")
+          .select("sme_id");
+
+        const productCounts: Record<string, number> = {};
+        productsData?.forEach((p: any) => {
+          productCounts[p.sme_id] = (productCounts[p.sme_id] || 0) + 1;
+        });
+
+        const vendorsList: VendorData[] = storesData.map((store: any) => ({
+          id: store.id,
+          store_name: store.brand_name || "Unknown Store",
+          description: store.description || "Quality products and services",
+          verified: true,
+          is_featured: true,
+          product_count: productCounts[store.id] || 0,
+          location: "Zambia",
+          category: "Multi-category",
+          rating: 4.5,
+        }));
+        setVendors(vendorsList);
+      }
+    };
+    fetchVendors();
   }, []);
 
   const handleBuyNow = (item: FeaturedItem) => {
@@ -233,9 +266,13 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           </div>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pt-3">
-          {demoVendors.map((vendor, i) => (
-            <VendorCard key={vendor.id} vendor={vendor} index={i} onVisitStore={(v) => navigate(`/store/${v.id}`)} />
-          ))}
+          {vendors.length > 0 ? (
+            vendors.map((vendor, i) => (
+              <VendorCard key={vendor.id} vendor={vendor} index={i} onVisitStore={(v) => navigate(`/store/${v.id}`)} />
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No vendors available yet</p>
+          )}
         </div>
       </div>
 

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FolderOpen, Smartphone, Shirt, Music, UtensilsCrossed, Sparkles, ArrowRight } from "lucide-react";
 import FeaturedItemCard, { type FeaturedItem } from "@/components/FeaturedItemCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
+import { supabase } from "@/integrations/supabase/client";
 
 const categoryCards = [
   { label: "Tech", emoji: "📱", icon: Smartphone, color: "from-primary/30 to-primary/10", gradient: "bg-gradient-to-br from-primary/20 via-primary/10 to-background", description: "Latest gadgets & devices" },
@@ -12,22 +13,47 @@ const categoryCards = [
   { label: "Beauty", emoji: "💄", icon: Sparkles, color: "from-primary/30 to-primary/10", gradient: "bg-gradient-to-br from-primary/20 via-primary/10 to-background", description: "Beauty & skincare" },
 ];
 
-const demoItems: FeaturedItem[] = [
-  { id: 1, item_name: "African Print Blazer", price: 450, old_price: 600, store_name: "Lusaka Threads", category: "Fashion", item_type: "product", rating: 4.6, review_count: 145, in_stock: true, fast_delivery: true, free_shipping: true, is_featured: true },
-  { id: 2, item_name: "Wireless Earbuds Pro", price: 280, old_price: 350, store_name: "TechZone Zambia", category: "Tech", item_type: "product", rating: 4.8, review_count: 312, in_stock: true, fast_delivery: true },
-  { id: 3, item_name: "Shea Butter Collection", price: 120, old_price: 180, store_name: "Glow Africa", category: "Beauty", item_type: "product", rating: 4.3, review_count: 89, in_stock: true, free_shipping: true, is_featured: true, discount_percent: 30 },
-  { id: 5, item_name: "Organic Honey Set", price: 95, old_price: 130, store_name: "Harvest Hub", category: "Food", item_type: "product", rating: 4.5, review_count: 203, in_stock: true, fast_delivery: true, free_shipping: true, is_featured: true },
-  { id: 8, item_name: "Ankara Sneakers", price: 380, old_price: 500, store_name: "Lusaka Threads", category: "Fashion", item_type: "product", rating: 4.7, review_count: 98, in_stock: true, fast_delivery: true, free_shipping: true, is_featured: true },
-  { id: 9, item_name: "DJ Session Booking", price: 500, store_name: "Beats Zambia", category: "Entertainment", item_type: "service", rating: 4.4, review_count: 22, in_stock: true },
-  { id: 10, item_name: "Natural Hair Oil", price: 75, old_price: 100, store_name: "Glow Africa", category: "Beauty", item_type: "product", rating: 4.4, review_count: 178, in_stock: true, fast_delivery: true },
-];
-
 const Categories = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [allItems, setAllItems] = useState<FeaturedItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = selected ? demoItems.filter(i => i.category === selected) : [];
+  useEffect(() => {
+    const fetchItems = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("hive_catalogue")
+        .select("*, sme_stores(brand_name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (data && data.length > 0) {
+        const mapped: FeaturedItem[] = data.map((item: any) => ({
+          id: item.id,
+          item_name: item.product_name || "Unnamed",
+          price: item.price || 0,
+          old_price: item.old_price,
+          image_url: item.image_url,
+          store_name: item.sme_stores?.brand_name || "The Hive Store",
+          category: item.category || "General",
+          is_featured: (item.stock_count ?? 0) > 10,
+          in_stock: (item.stock_count ?? 0) > 0,
+          fast_delivery: item.fulfillment_type === "express",
+          free_shipping: (item.price ?? 0) > 100,
+          item_type: item.item_type === "service" ? "service" : "product",
+          discount_percent: item.old_price ? Math.round(((item.old_price - (item.price || 0)) / item.old_price) * 100) : undefined,
+          sme_id: item.sme_id,
+        }));
+        setAllItems(mapped);
+      }
+      setLoading(false);
+    };
+    fetchItems();
+  }, []);
+
+  const filtered = selected ? allItems.filter(i => i.category?.toLowerCase().includes(selected.toLowerCase())) : [];
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -78,7 +104,11 @@ const Categories = () => {
         ))}
       </div>
 
-      {selected && (
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
+      ) : selected && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <h3 className="text-lg font-display font-bold text-foreground mb-4">{selected} ({filtered.length} items)</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
