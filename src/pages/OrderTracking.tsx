@@ -8,6 +8,9 @@ import { Phone, Clock, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
+import { useLocationPermission } from "@/hooks/useLocationPermission";
+import GPSOffModal from "@/components/modals/GPSOffModal";
+import { createGoldenPulseMarker, updateGoldenPulseMarker, injectGoldenPingAnimation } from "@/utils/createGoldenPulseMarker";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"];
 type Runner = Database["public"]["Tables"]["runners"]["Row"];
@@ -25,11 +28,16 @@ const OrderTracking = () => {
   const [loading, setLoading] = useState(true);
   const [eta, setEta] = useState<string | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
+  const [showGPSModal, setShowGPSModal] = useState(false);
 
   const mapInstanceRef = useRef<L.Map | null>(null);
   const routingControlRef = useRef<any>(null);
   const riderMarkerRef = useRef<L.Marker | null>(null);
+  const selfMarkerRef = useRef<L.Marker | null>(null);
   const channelRef = useRef<any>(null);
+
+  // Location permission hook for customer's current location
+  const { coordinates, isLoading: locationLoading, isPermissionDenied, requestLocation } = useLocationPermission();
 
   // Fetch order details on mount
   useEffect(() => {
