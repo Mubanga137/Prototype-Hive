@@ -19,15 +19,16 @@ export const GPSTransmitterStatus = ({
   permissionError,
   isOnline,
 }: GPSTransmitterStatusProps) => {
-  // Show warning banner if permissions are denied
+  // Don't show anything if offline
   if (!isOnline) {
     return null;
   }
 
+  // Show warning banner if permissions are denied
   if (hasPermission === false && permissionError) {
     return (
       <div
-        className="flex items-center gap-3 px-4 py-3 rounded-lg border mb-4"
+        className="flex items-start gap-3 px-4 py-3 rounded-lg border mb-4 animate-in fade-in"
         style={{
           background: "hsl(0, 100%, 97%)",
           borderColor: "hsl(0, 100%, 40%)",
@@ -35,20 +36,26 @@ export const GPSTransmitterStatus = ({
       >
         <AlertCircle
           size={18}
-          style={{ color: "hsl(0, 100%, 40%)", flexShrink: 0 }}
+          style={{ color: "hsl(0, 100%, 40%)", flexShrink: 0, marginTop: "2px" }}
         />
         <div className="flex-1 min-w-0">
           <p
-            className="text-xs font-bold"
+            className="text-xs font-bold leading-snug"
             style={{ color: "hsl(0, 100%, 40%)" }}
           >
             Location Access Required
           </p>
           <p
-            className="text-[11px] leading-snug"
+            className="text-[11px] leading-snug mt-1"
             style={{ color: "hsl(0, 100%, 30%)" }}
           >
             {permissionError}
+          </p>
+          <p
+            className="text-[10px] leading-snug mt-2"
+            style={{ color: "hsl(0, 100%, 35%)" }}
+          >
+            💡 Toggle OFFLINE then ONLINE again to re-request permission, or check your browser settings.
           </p>
         </div>
       </div>

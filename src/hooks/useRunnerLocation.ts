@@ -33,6 +33,17 @@ export const useRunnerLocation = (
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
 
+  // Debug: log permission state changes in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[useRunnerLocation] Permission state:", {
+        hasPermission,
+        permissionError,
+        isOnline,
+      });
+    }
+  }, [hasPermission, permissionError, isOnline]);
+
   const watchIdRef = useRef<number | null>(null);
   const lastUpdateRef = useRef<number>(0);
   const latestCoordsRef = useRef<LocationState | null>(null);
@@ -88,6 +99,7 @@ export const useRunnerLocation = (
     }
 
     setPermissionError(null);
+    let permissionDenied = false;
 
     // Request one-time position to check permissions
     navigator.geolocation.getCurrentPosition(
@@ -95,6 +107,7 @@ export const useRunnerLocation = (
         setHasPermission(true);
       },
       (err) => {
+        permissionDenied = true;
         setHasPermission(false);
         // Map geolocation error codes to user-friendly messages
         switch (err.code) {
@@ -107,7 +120,7 @@ export const useRunnerLocation = (
             setPermissionError("Location information is unavailable.");
             break;
           case err.TIMEOUT:
-            setPermissionError("Location request timed out.");
+            setPermissionError("Location request timed out. Please try again.");
             break;
           default:
             setPermissionError("Could not retrieve location.");
@@ -115,43 +128,64 @@ export const useRunnerLocation = (
       }
     );
 
-    // Set up continuous watch with high accuracy
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-
-        latestCoordsRef.current = coords;
-
-        if (isMountedRef.current) {
-          setLocation(coords);
-          setHasPermission(true);
-          setPermissionError(null);
-        }
-      },
-      (err) => {
-        console.error("[useRunnerLocation] Watch error:", err.message);
-        if (isMountedRef.current) {
-          setHasPermission(false);
-          switch (err.code) {
-            case err.PERMISSION_DENIED:
-              setPermissionError(
-                "Location access denied. Please enable location permissions."
-              );
-              break;
-            default:
-              setPermissionError(err.message);
-          }
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0,
+    // Only set up watch if permission wasn't denied
+    // Use a small timeout to let the permission check complete
+    const watchSetupTimer = setTimeout(() => {
+      if (!isMountedRef.current || permissionDenied) {
+        return;
       }
-    );
+
+      // Set up continuous watch with high accuracy
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+
+          latestCoordsRef.current = coords;
+
+          if (isMountedRef.current) {
+            setLocation(coords);
+            setHasPermission(true);
+            setPermissionError(null);
+          }
+        },
+        (err) => {
+          if (isMountedRef.current) {
+            // Only log as error if it's not a permission denied (expected behavior)
+            if (err.code !== 1) {
+              console.error("[useRunnerLocation] Watch error:", err.message);
+            }
+            setHasPermission(false);
+            switch (err.code) {
+              case err.PERMISSION_DENIED:
+                setPermissionError(
+                  "Location access denied. Please enable location permissions in your browser settings."
+                );
+                break;
+              case err.POSITION_UNAVAILABLE:
+                setPermissionError(
+                  "Location is not available. Check that location services are enabled."
+                );
+                break;
+              case err.TIMEOUT:
+                setPermissionError("Location request timed out. Retrying...");
+                break;
+              default:
+                setPermissionError("Could not retrieve location: " + err.message);
+            }
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+    }, 100);
+
+    return () => clearTimeout(watchSetupTimer);
   }, []);
 
   /**
@@ -187,7 +221,7 @@ export const useRunnerLocation = (
       return;
     }
 
-    startTracking();
+    const watchSetupCleanup = startTracking();
 
     // Set up throttled update interval (check every 1 second if we need to update)
     throttleIntervalRef.current = setInterval(() => {
@@ -195,6 +229,9 @@ export const useRunnerLocation = (
     }, 1000);
 
     return () => {
+      if (watchSetupCleanup) {
+        watchSetupCleanup();
+      }
       stopTracking();
     };
   }, [user, isOnline, startTracking, stopTracking, throttledLocationUpdate]);
