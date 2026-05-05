@@ -2,15 +2,6 @@ import { motion } from "framer-motion";
 import { BadgeCheck, Star, MapPin, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const demoStores = [
-  { id: 1, store_name: "Lusaka Threads", owner_name: "Jane M.", verified: true, logo_url: null, is_featured: true, description: "Authentic African print fashion, blazers, sneakers & accessories.", category: "Fashion", rating: 4.8, product_count: 42, location: "Lusaka" },
-  { id: 2, store_name: "TechZone Zambia", owner_name: "David K.", verified: true, logo_url: null, is_featured: true, description: "Latest gadgets, power banks, earbuds & smart devices.", category: "Tech", rating: 4.6, product_count: 67, location: "Kitwe" },
-  { id: 3, store_name: "Glow Africa", owner_name: "Chanda N.", verified: true, logo_url: null, is_featured: false, description: "Natural beauty products, shea butter collections & hair oils.", category: "Beauty", rating: 4.5, product_count: 31, location: "Lusaka" },
-  { id: 4, store_name: "Craft & Culture", owner_name: "Moses B.", verified: true, logo_url: null, is_featured: true, description: "Handwoven bags, baskets & artisan home décor.", category: "Lifestyle", rating: 4.9, product_count: 23, location: "Livingstone" },
-  { id: 5, store_name: "Harvest Hub", owner_name: "Mary T.", verified: false, logo_url: null, is_featured: true, description: "Organic honey, spices & farm-fresh produce delivered.", category: "Food", rating: 4.3, product_count: 18, location: "Chipata" },
-  { id: 6, store_name: "Urban Kicks", owner_name: "Brian S.", verified: true, logo_url: null, is_featured: true, description: "Street style sneakers, caps & urban fashion essentials.", category: "Fashion", rating: 4.7, product_count: 55, location: "Ndola" },
-];
-
 const FeaturedVendors = () => {
   const navigate = useNavigate();
 
@@ -21,7 +12,7 @@ const FeaturedVendors = () => {
       </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {demoStores.map((store, i) => (
+        {[].map((store: any, i: number) => (
           <motion.div
             key={store.id}
             initial={{ opacity: 0, y: 20 }}

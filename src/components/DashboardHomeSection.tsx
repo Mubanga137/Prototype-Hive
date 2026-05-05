@@ -11,15 +11,6 @@ import CheckoutDrawer from "@/components/CheckoutDrawer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const demoVendors: VendorData[] = [
-  { id: 1, store_name: "Lusaka Threads", owner_name: "Jane M.", verified: true, is_featured: true, description: "Authentic African print fashion, blazers & accessories.", category: "Fashion", rating: 4.8, product_count: 42, location: "Lusaka" },
-  { id: 2, store_name: "TechZone Zambia", owner_name: "David K.", verified: true, is_featured: true, description: "Latest gadgets, power banks, earbuds & smart devices.", category: "Tech", rating: 4.6, product_count: 67, location: "Kitwe" },
-  { id: 3, store_name: "Glow Africa", owner_name: "Chanda N.", verified: true, is_featured: false, description: "Natural beauty products, shea butter & hair oils.", category: "Beauty", rating: 4.5, product_count: 31, location: "Lusaka" },
-  { id: 4, store_name: "Craft & Culture", owner_name: "Moses B.", verified: true, is_featured: true, description: "Handwoven bags, baskets & artisan home décor.", category: "Lifestyle", rating: 4.9, product_count: 23, location: "Livingstone" },
-  { id: 5, store_name: "Harvest Hub", owner_name: "Mary T.", verified: false, is_featured: true, description: "Organic honey, spices & farm-fresh produce delivered.", category: "Food", rating: 4.3, product_count: 18, location: "Chipata" },
-  { id: 6, store_name: "Urban Kicks", owner_name: "Brian S.", verified: true, is_featured: true, description: "Street style sneakers, caps & urban fashion.", category: "Fashion", rating: 4.7, product_count: 55, location: "Ndola" },
-];
-
 const categoryCards = [
   {
     label: "Fashion",
@@ -58,18 +49,6 @@ const categoryCards = [
   },
 ];
 
-// Fallback demo items when Supabase has no data
-const fallbackItems: FeaturedItem[] = [
-  { id: 101, item_name: "Wireless Bluetooth Speaker", price: 149.99, old_price: 199.99, store_name: "Audio Pro Zambia", category: "Tech", is_featured: true, rating: 4.6, review_count: 145, in_stock: true, fast_delivery: true, free_shipping: true, item_type: "product" },
-  { id: 102, item_name: "Smart TV 55\" 4K UHD", price: 599.99, old_price: 749.99, store_name: "Electronics Hub", category: "Entertainment", is_featured: true, rating: 4.7, review_count: 234, in_stock: true, fast_delivery: true, item_type: "product" },
-  { id: 103, item_name: "Traditional Chitenge Dress", price: 45.99, store_name: "Zambian Heritage Fashion", category: "Fashion", rating: 4.9, review_count: 87, in_stock: true, free_shipping: true, item_type: "product" },
-  { id: 104, item_name: "iPhone 15 Pro Max Case", price: 399.99, old_price: 469.99, store_name: "Mobile Tech Zambia", category: "Tech", is_featured: false, rating: 4.8, review_count: 312, in_stock: true, fast_delivery: true, item_type: "product" },
-  { id: 105, item_name: "Organic Honey Collection", price: 89.99, old_price: 120.00, store_name: "Harvest Hub", category: "Food", rating: 4.4, review_count: 56, in_stock: true, free_shipping: true, item_type: "product" },
-  { id: 106, item_name: "Natural Shea Butter Set", price: 65.00, old_price: 85.00, store_name: "Glow Africa", category: "Beauty", is_featured: true, rating: 4.5, review_count: 98, in_stock: true, fast_delivery: true, free_shipping: true, item_type: "product" },
-  { id: 107, item_name: "Gaming Headset RGB", price: 199.99, old_price: 259.99, store_name: "TechZone Zambia", category: "Tech", rating: 4.3, review_count: 178, in_stock: true, fast_delivery: true, item_type: "product" },
-  { id: 108, item_name: "Hair Braiding Service", price: 150.00, store_name: "Glow Africa", category: "Beauty", rating: 4.8, review_count: 45, in_stock: true, item_type: "service" },
-];
-
 interface Props {
   firstName: string;
   greeting: string;
@@ -105,7 +84,7 @@ const HorizontalScrollRow = ({
 const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [items, setItems] = useState<FeaturedItem[]>(fallbackItems);
+  const [items, setItems] = useState<FeaturedItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 

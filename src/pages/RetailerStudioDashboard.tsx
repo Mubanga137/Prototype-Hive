@@ -11,15 +11,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 
-const salesData = [
-  { month: "Jan", revenue: 4200 },
-  { month: "Feb", revenue: 5800 },
-  { month: "Mar", revenue: 7100 },
-  { month: "Apr", revenue: 6400 },
-  { month: "May", revenue: 8900 },
-  { month: "Jun", revenue: 11200 },
-  { month: "Jul", revenue: 9800 },
-];
 
 const statusColors: Record<string, string> = {
   Delivered: "bg-emerald-100 text-emerald-700",
