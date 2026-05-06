@@ -15,3 +15,76 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+/**
+ * Setup error handling for auth failures.
+ * This runs once on app initialization.
+ */
+export const setupAuthErrorHandling = () => {
+  // Listen for auth state changes and handle errors
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === "SIGNED_OUT" && session === null) {
+      // Session was cleared - this is expected
+      console.debug("[Auth] Session cleared");
+    }
+  });
+
+  // Also set up a listener for refresh errors
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "TOKEN_REFRESHED") {
+      console.debug("[Auth] Token refreshed successfully");
+    }
+  });
+
+  return subscription;
+};
+
+/**
+ * Clear stale or invalid tokens from localStorage.
+ * Useful for fixing "Refresh Token Not Found" errors.
+ */
+export const clearInvalidTokens = async () => {
+  try {
+    // Check if we have a valid session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      // No valid session - clear all auth tokens
+      localStorage.removeItem(`sb-${SUPABASE_URL.split('//')[1].split('.')[0]}-auth-token`);
+
+      // Also clear generic keys
+      Object.keys(localStorage).forEach((key) => {
+        if (key.includes('supabase') || key.includes('auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      console.warn("[Auth] Cleared invalid tokens");
+    }
+  } catch (error) {
+    console.error("[Auth] Error clearing tokens:", error);
+  }
+};
+
+/**
+ * Force sign out and clear all session data.
+ * Used when refresh token is truly invalid.
+ */
+export const forceSignOut = async () => {
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch (error) {
+    console.warn("[Auth] Error during signout:", error);
+  }
+
+  // Always clear tokens regardless of signout result
+  try {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.includes('supabase') || key.includes('auth') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (error) {
+    console.warn("[Auth] Error clearing localStorage:", error);
+  }
+};

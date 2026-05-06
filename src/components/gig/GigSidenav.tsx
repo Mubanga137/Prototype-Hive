@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Radar, ClipboardList, MessageSquare, Phone,
   Wallet, Route, Bell, Package, Send, Settings, LogOut, X,
-  User, Bike
+  User, Bike, MapPin
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import DashboardHeader from "@/components/DashboardHeader";
 import { getCapacityStyles } from "@/hooks/useOrderCapacity";
 import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
+import { useLocationPermission } from "@/hooks/useLocationPermission";
+import GPSOffModal from "@/components/modals/GPSOffModal";
 
 interface GigSidenavProps {
   isOnline: boolean;
@@ -40,10 +42,12 @@ const GigSidenav = ({
   hasPermission = null,
 }: GigSidenavProps) => {
   const [open, setOpen] = useState(false);
+  const [showGPSModal, setShowGPSModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const { isRider, isRunner, isNode, commissionLabel } = useMixedFleetRole();
+  const { isLoading: locationLoading, isPermissionDenied: gpsOff, clearError: clearGPSError } = useLocationPermission();
 
   // pulse_credits not yet in DB schema, default to 50 for now
   const capacity = (profile as any)?.pulse_credits ?? 50;
@@ -100,23 +104,42 @@ const GigSidenav = ({
             </span>
           </div>
         </div>
-        {/* Online toggle */}
+        {/* Online toggle with location permission */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold" style={{ color: isOnline ? "#16a34a" : "hsl(220,20%,46%)" }}>
-              {isOnline ? "🟢 ONLINE" : "⚫ OFFLINE"}
+              {locationLoading ? "⏳ Loading..." : isOnline ? "🟢 ONLINE" : "⚫ OFFLINE"}
             </span>
-            {isOnline && isTransmitting && (
-              <div
-                className="relative w-2 h-2 rounded-full animate-pulse"
+            {isOnline && isTransmitting && !locationLoading && (
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="relative w-2 h-2 rounded-full"
                 style={{ background: "hsl(38,73%,40%)" }}
                 title="Transmitting GPS"
               />
             )}
           </div>
-          <Switch checked={isOnline} onCheckedChange={onToggleOnline} />
+          <Switch
+            checked={isOnline}
+            onCheckedChange={(val) => {
+              if (val && !locationLoading) {
+                // When turning on, request location
+                onToggleOnline(val);
+              } else if (!val) {
+                // Can always turn off
+                onToggleOnline(val);
+              }
+            }}
+            disabled={locationLoading}
+          />
         </div>
-        {isOnline && hasPermission === false && (
+        {gpsOff && (
+          <p className="text-[10px] text-red-600 font-semibold mt-2">
+            ⚠️ GPS disabled. Click toggle to enable location.
+          </p>
+        )}
+        {isOnline && hasPermission === false && !locationLoading && (
           <p className="text-[10px] text-red-600 font-semibold mt-2">
             ⚠️ Location access required
           </p>
@@ -275,6 +298,15 @@ const GigSidenav = ({
 
   return (
     <>
+      {/* GPS Off Modal */}
+      <GPSOffModal
+        isOpen={showGPSModal}
+        onClose={() => {
+          setShowGPSModal(false);
+          clearGPSError();
+        }}
+      />
+
       {/* Mobile Header */}
       <div className="lg:hidden sticky top-0 z-30">
         <DashboardHeader title="Gig Radar" onMenuToggle={() => setOpen(true)} />
