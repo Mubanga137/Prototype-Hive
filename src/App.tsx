@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleVerificationWrapper from "@/components/RoleVerificationWrapper";
+import { setupGlobalErrorHandlers } from "@/lib/globalErrorHandler";
 import Index from "./pages/Index.tsx";
 import RetailerStudioDashboard from "./pages/RetailerStudioDashboard.tsx";
 import RechargeStore from "./pages/RechargeStore.tsx";
@@ -36,62 +38,69 @@ import HiveBotWidget from "./components/messaging/HiveBotWidget";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <RoleVerificationWrapper />
-          <Toaster />
-          <Sonner />
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/store/:storeKey" element={<StorePage />} />
-            <Route path="/category/:name" element={<CategoryPage />} />
-            <Route path="/p/:pulseId" element={<PulsePublic />} />
-            <Route path="/h/:itemId" element={<HiveLink />} />
+const App = () => {
+  // Initialize global error handlers once on mount
+  useEffect(() => {
+    setupGlobalErrorHandlers();
+  }, []);
 
-            {/* Customer — temporarily open */}
-            <Route path="/customer-dash" element={<CustomerDashboard />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <RoleVerificationWrapper />
+            <Toaster />
+            <Sonner />
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/store/:storeKey" element={<StorePage />} />
+              <Route path="/category/:name" element={<CategoryPage />} />
+              <Route path="/p/:pulseId" element={<PulsePublic />} />
+              <Route path="/h/:itemId" element={<HiveLink />} />
 
-            {/* Vendor / SME — temporarily open */}
-            <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />
-            <Route path="/studio" element={<RetailerStudioDashboard />} />
-            <Route path="/recharge" element={<RechargeStore />} />
-            <Route path="/retailer-studio/creator" element={<CreatorStudio />} />
-            <Route path="/retailer-studio/products" element={<Products />} />
-            <Route path="/retailer-studio/services" element={<Services />} />
-            <Route path="/retailer-studio/orders" element={<Orders />} />
-            <Route path="/retailer-studio/credits" element={<PulseCredits />} />
-            <Route path="/retailer-studio/wholesale" element={<WholesaleBountyHub />} />
-            <Route path="/retailer-studio/storefront" element={<StorefrontBuilder />} />
-            <Route path="/retailer-studio/kantemba" element={<KantembaLedger />} />
-            <Route path="/retailer-studio/marketing" element={<MarketingPromos />} />
-            <Route path="/retailer-studio/analytics" element={<AnalyticsCustomers />} />
-            <Route path="/retailer-studio/escrow" element={<HiveEscrowWallet />} />
+              {/* Customer — temporarily open */}
+              <Route path="/customer-dash" element={<CustomerDashboard />} />
 
-            {/* Wholesaler — temporarily open */}
-            <Route path="/warehouse" element={<Warehouse />} />
+              {/* Vendor / SME — temporarily open */}
+              <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />
+              <Route path="/studio" element={<RetailerStudioDashboard />} />
+              <Route path="/recharge" element={<RechargeStore />} />
+              <Route path="/retailer-studio/creator" element={<CreatorStudio />} />
+              <Route path="/retailer-studio/products" element={<Products />} />
+              <Route path="/retailer-studio/services" element={<Services />} />
+              <Route path="/retailer-studio/orders" element={<Orders />} />
+              <Route path="/retailer-studio/credits" element={<PulseCredits />} />
+              <Route path="/retailer-studio/wholesale" element={<WholesaleBountyHub />} />
+              <Route path="/retailer-studio/storefront" element={<StorefrontBuilder />} />
+              <Route path="/retailer-studio/kantemba" element={<KantembaLedger />} />
+              <Route path="/retailer-studio/marketing" element={<MarketingPromos />} />
+              <Route path="/retailer-studio/analytics" element={<AnalyticsCustomers />} />
+              <Route path="/retailer-studio/escrow" element={<HiveEscrowWallet />} />
 
-            {/* Gig Worker — temporarily open */}
-            <Route path="/gig-radar" element={<GigRadar />} />
+              {/* Wholesaler — temporarily open */}
+              <Route path="/warehouse" element={<Warehouse />} />
 
-            {/* Messaging — accessible to all roles */}
-            <Route path="/messages" element={<Messages />} />
+              {/* Gig Worker — temporarily open */}
+              <Route path="/gig-radar" element={<GigRadar />} />
 
-            {/* Order Tracking */}
-            <Route path="/track/:order_id" element={<OrderTracking />} />
+              {/* Messaging — accessible to all roles */}
+              <Route path="/messages" element={<Messages />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <HiveBotWidget />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+              {/* Order Tracking */}
+              <Route path="/track/:order_id" element={<OrderTracking />} />
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <HiveBotWidget />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

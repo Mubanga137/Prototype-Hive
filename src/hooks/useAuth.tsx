@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, setupAuthErrorHandling, clearInvalidTokens } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { ensureStore, type StoreRow } from "@/lib/ensureStore";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -183,6 +183,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    // Setup global auth error handling once
+    setupAuthErrorHandling();
+
+    // Clear any stale tokens on app startup
+    void clearInvalidTokens();
+
     // Listener first (per Supabase guidance), then initial getSession.
     const {
       data: { subscription },
@@ -196,8 +202,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .then(({ data: { session: sess } }) => {
         void resolveSession(sess);
       })
-      .catch((error) => {
-        console.warn("[useAuth] Error getting initial session:", error);
+      .catch((error: any) => {
+        console.warn("[useAuth] Error getting initial session:", error?.message);
+
+        // If it's a refresh token error, clear tokens and reload
+        if (error?.message?.includes("Refresh Token") || error?.message?.includes("Invalid token")) {
+          console.warn("[useAuth] Invalid refresh token detected, clearing session...");
+          void clearInvalidTokens();
+        }
+
         // Still allow the app to load even if session fetch fails
         setLoading(false);
       });
