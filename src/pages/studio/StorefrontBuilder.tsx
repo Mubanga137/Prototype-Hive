@@ -229,92 +229,98 @@ const StorefrontBuilder = () => {
     );
   }
 
-  const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
 
   const StorefrontContent = () => (
-    <div className="h-screen w-full flex flex-col bg-background md:flex-row">
-      {/* TAB SWITCHER - Mobile Only */}
-      <div className="md:hidden sticky top-0 z-20 flex border-b border-border bg-card">
-        <button
-          onClick={() => setMobileTab("edit")}
-          className={`flex-1 py-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center justify-center gap-2 ${
-            mobileTab === "edit"
-              ? "border-primary text-primary bg-primary/5"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <span>🛠️</span> Edit Store
-        </button>
-        <button
-          onClick={() => setMobileTab("preview")}
-          className={`flex-1 py-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center justify-center gap-2 ${
-            mobileTab === "preview"
-              ? "border-primary text-primary bg-primary/5"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <span>👁️</span> Live Preview
-        </button>
+    <div className="h-screen w-full flex flex-col bg-background">
+      {/* STICKY TAB SWITCHER - Glassmorphic (Mobile + Desktop) */}
+      <div className="sticky top-0 z-40 backdrop-blur-md bg-card/75 border-b border-border/50">
+        <div className="flex max-w-full">
+          <button
+            onClick={() => setActiveTab("edit")}
+            className={`flex-1 lg:flex-none lg:px-6 py-3 font-semibold text-sm transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "edit"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span>🛠️</span> <span className="hidden sm:inline">Edit Store</span><span className="sm:hidden">Editor</span>
+          </button>
+          <div className="w-px bg-border/30" />
+          <button
+            onClick={() => setActiveTab("preview")}
+            className={`flex-1 lg:flex-none lg:px-6 py-3 font-semibold text-sm transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "preview"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span>👁️</span> <span className="hidden sm:inline">Live Preview</span><span className="sm:hidden">Preview</span>
+          </button>
+        </div>
       </div>
 
-      {/* LEFT PANEL: Editor (100% on mobile when edit tab, 40% on desktop) */}
-      <div className={`flex-col bg-card border-r border-border md:flex ${
-        mobileTab === "edit" ? "flex" : "hidden"
-      } md:w-2/5 w-full overflow-y-auto`}>
-        <StorefrontEditorPanel
-          store={currentStore}
-          brandName={brandName}
-          onBrandNameChange={setBrandName}
-          description={description}
-          onDescriptionChange={setDescription}
-          logoUrl={logoUrl}
-          onLogoChange={setLogoUrl}
-          heroImageUrl={heroImageUrl}
-          onHeroImageChange={setHeroImageUrl}
-          heroTitle={heroTitle}
-          onHeroTitleChange={setHeroTitle}
-          heroSubtitle={heroSubtitle}
-          onHeroSubtitleChange={setHeroSubtitle}
-          whatsappNumber={whatsappNumber}
-          onWhatsappChange={setWhatsappNumber}
-          storeSlug={storeSlug}
-          onSlugChange={(val) => {
-            setSlugTouched(true);
-            setStoreSlug(slugify(val));
-          }}
-          storeUrl={storeUrl}
-          onAddProduct={openAddOffer}
-          onEditProduct={handleEditOffer}
-          onDeleteProduct={handleDeleteOffer}
-          products={offers}
-          saveStatus={saveStatus}
-          onLaunch={handleLaunch}
-          launching={launching}
-          onUploadFile={uploadFile}
-          businessType={businessType}
-          onBusinessTypeChange={setBusinessType}
-          isVerified={isVerified}
-          onVerifiedChange={setIsVerified}
-        />
-      </div>
+      {/* MAIN CONTENT - State-Dependent Full-Width */}
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+        {/* EDITOR PANEL - Full width when active, hidden on mobile, side-by-side on desktop */}
+        <div className={`w-full lg:w-2/5 flex-col bg-card border-r border-border overflow-y-auto ${
+          activeTab === "edit" ? "flex" : "hidden lg:flex"
+        }`}>
+          <StorefrontEditorPanel
+            store={currentStore}
+            brandName={brandName}
+            onBrandNameChange={setBrandName}
+            description={description}
+            onDescriptionChange={setDescription}
+            logoUrl={logoUrl}
+            onLogoChange={setLogoUrl}
+            heroImageUrl={heroImageUrl}
+            onHeroImageChange={setHeroImageUrl}
+            heroTitle={heroTitle}
+            onHeroTitleChange={setHeroTitle}
+            heroSubtitle={heroSubtitle}
+            onHeroSubtitleChange={setHeroSubtitle}
+            whatsappNumber={whatsappNumber}
+            onWhatsappChange={setWhatsappNumber}
+            storeSlug={storeSlug}
+            onSlugChange={(val) => {
+              setSlugTouched(true);
+              setStoreSlug(slugify(val));
+            }}
+            storeUrl={storeUrl}
+            onAddProduct={openAddOffer}
+            onEditProduct={handleEditOffer}
+            onDeleteProduct={handleDeleteOffer}
+            products={offers}
+            saveStatus={saveStatus}
+            onLaunch={handleLaunch}
+            launching={launching}
+            onUploadFile={uploadFile}
+            businessType={businessType}
+            onBusinessTypeChange={setBusinessType}
+            isVerified={isVerified}
+            onVerifiedChange={setIsVerified}
+          />
+        </div>
 
-      {/* RIGHT PANEL: Live Preview (100% on mobile when preview tab, 60% on desktop) */}
-      <div className={`overflow-hidden bg-[#FFFBF2] md:w-3/5 w-full ${
-        mobileTab === "preview" ? "flex" : "hidden"
-      } md:flex`}>
-        <StorefrontPreviewLiveEditorial
-          storeId={currentStore.id}
-          storeName={brandName}
-          heroTitle={heroTitle}
-          heroSubtitle={heroSubtitle}
-          heroImageUrl={heroImageUrl}
-          logoUrl={logoUrl}
-          description={description}
-          whatsappNumber={whatsappNumber}
-          businessType={businessType}
-          offers={offers}
-          isVerified={isVerified}
-        />
+        {/* PREVIEW PANEL - Full width when active, hidden on mobile, side-by-side on desktop */}
+        <div className={`w-full lg:w-3/5 overflow-hidden flex ${
+          activeTab === "preview" ? "flex" : "hidden lg:flex"
+        }`} style={{ background: "#FFFBF2" }}>
+          <StorefrontPreviewLiveEditorial
+            storeId={currentStore.id}
+            storeName={brandName}
+            heroTitle={heroTitle}
+            heroSubtitle={heroSubtitle}
+            heroImageUrl={heroImageUrl}
+            logoUrl={logoUrl}
+            description={description}
+            whatsappNumber={whatsappNumber}
+            businessType={businessType}
+            offers={offers}
+            isVerified={isVerified}
+          />
+        </div>
       </div>
 
       {/* Modal for offer form */}
