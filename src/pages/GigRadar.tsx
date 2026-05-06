@@ -196,24 +196,20 @@ const GigRadar = () => {
   }));
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "hsl(39,100%,97%)" }}>
-      {/* Desktop Header — edge-to-edge */}
-      <header className="hidden lg:flex w-full h-16 sticky top-0 z-50 items-center px-8 border-b" style={{ background: "hsl(39,100%,97%)", borderColor: "hsl(38,40%,85%)" }}>
-        <h1 className="text-xl font-bold" style={{ color: "hsl(220,55%,13%)" }}>GIG RADAR</h1>
-      </header>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row" style={{ background: "hsl(39,100%,97%)" }}>
+      {/* GigSidenav: renders mobile header + desktop sidebar + mobile drawer */}
+      <GigSidenav
+        isOnline={isOnline}
+        onToggleOnline={handleToggleOnline}
+        activeOrderCount={myActiveOrders.length}
+        liveStatus={liveStatus}
+        workerRole={role === "rider" ? "rider" : role === "node_operator" ? "hub_owner" : "runner"}
+        isTransmitting={isTransmitting}
+        hasPermission={hasPermission}
+      />
 
-      <div className="flex flex-1">
-        <GigSidenav
-          isOnline={isOnline}
-          onToggleOnline={handleToggleOnline}
-          activeOrderCount={myActiveOrders.length}
-          liveStatus={liveStatus}
-          workerRole={role === "rider" ? "rider" : role === "node_operator" ? "hub_owner" : "runner"}
-          isTransmitting={isTransmitting}
-          hasPermission={hasPermission}
-        />
-
-        <main className="w-full flex-1 flex flex-col min-w-0 relative z-10">
+      {/* Main content area */}
+      <main className="w-full flex-1 flex flex-col min-w-0 relative z-10">
         {/* Map — top section */}
         <div className="w-full max-w-5xl mx-auto px-4 pt-14 lg:pt-4 pb-3 md:pb-4 flex flex-col">
           {/* GPS Transmitter Status */}
@@ -332,7 +328,6 @@ const GigRadar = () => {
           </div>
         </div>
       </main>
-      </div>
 
       {/* OTP Verification Drawer */}
       <OtpVerifyDrawer
