@@ -128,7 +128,7 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
                   : "text-primary border border-primary/30 hover:bg-primary/5"
               }`}
             >
-              <Package size={12} /> Message
+              <Package size={12} /> View Store
             </button>
             <button className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 px-2 transition-colors ${
               isVendorAtCapacity
