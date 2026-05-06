@@ -45,7 +45,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
       <div className="px-5 py-5 border-b shrink-0 flex items-center justify-between" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-[#B37C1C]/30 shrink-0" />
-          <div className={`${isCollapsed && !isMobile ? "hidden" : ""}`}>
+          <div>
             <p className="font-display font-bold text-[#0F1A35] text-sm tracking-tight">THE HIVE</p>
             <p className="text-[10px] text-[#0F1A35]/70">Customer Mall</p>
           </div>
@@ -117,7 +117,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
               }}
               className="shrink-0"
             />
-            <span className={`flex-1 text-left ${isCollapsed && !isMobile ? "hidden" : ""}`}>{item.label}</span>
+            <span className="flex-1 text-left">{item.label}</span>
             {!(isCollapsed && !isMobile) && item.label === "Messages" && unreadCount > 0 && (
               <span
                 className="ml-auto min-w-[20px] h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-[#FFFBF2]"
@@ -150,7 +150,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
           title={isCollapsed && !isMobile ? "Settings" : undefined}
         >
           <Settings size={18} style={{ color: activeSection === "Settings" ? "#B37C1C" : "#0F1A35" }} className="shrink-0" />
-          <div className={`flex-1 text-left ${isCollapsed && !isMobile ? "hidden" : ""}`}>
+          <div className="flex-1 text-left">
             <p className="text-sm font-semibold text-[#0F1A35] truncate">{profile?.full_name || "Customer"}</p>
             <p className="text-[10px] text-[#0F1A35]/60">Settings</p>
           </div>
@@ -167,7 +167,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
           title={isCollapsed && !isMobile ? "Sign Out" : undefined}
         >
           <LogOut size={14} />
-          <span className={`${isCollapsed && !isMobile ? "hidden" : ""}`}>Sign Out</span>
+          <span>Sign Out</span>
         </motion.button>
       </div>
     </div>

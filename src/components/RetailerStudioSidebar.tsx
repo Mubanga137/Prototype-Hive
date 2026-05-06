@@ -84,7 +84,7 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
       <div className="px-5 py-5 border-b shrink-0 flex items-center justify-between" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-[#B37C1C]/30 shrink-0" />
-          <div className={`${isCollapsed && !isMobile ? "hidden" : ""}`}>
+          <div>
             <p className="font-display font-bold text-[#0F1A35] text-sm tracking-tight">THE HIVE</p>
             <p className="text-[10px] text-[#0F1A35]/70">Retailer Studio</p>
           </div>
@@ -107,7 +107,7 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
       </div>
 
       {/* Capacity meter — order_capacity with clickable recharge */}
-      <div className={isCollapsed ? "hidden" : ""}>
+      <div>
         <div className="px-5 pb-0">
           <motion.button
             onClick={() => navigate("/recharge")}
@@ -163,7 +163,7 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
                     }}
                     className="shrink-0"
                   />
-                  <span className={`flex-1 text-left ${isCollapsed ? "hidden" : ""}`}>{item.label}</span>
+                  <span className="flex-1 text-left">{item.label}</span>
                   {item.label === "Messages" && unreadCount > 0 && (
                     <span
                       className="ml-auto min-w-[20px] h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-[#FFFBF2]"

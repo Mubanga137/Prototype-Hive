@@ -39,7 +39,7 @@ const WarehouseSidebar = ({ children, activeSection, onSectionChange }: Warehous
       <div className="px-5 py-5 border-b shrink-0 flex items-center justify-between" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <img src={hiveLogo} alt="The Hive" className="w-9 h-9 rounded-full object-cover border border-[#B37C1C]/30 shrink-0" />
-          <div className={isCollapsed ? "hidden" : ""}>
+          <div>
             <p className="font-display font-bold text-[#0F1A35] text-sm tracking-tight">THE HIVE</p>
             <p className="text-[10px] text-[#0F1A35]/70">Warehouse</p>
           </div>
@@ -92,14 +92,14 @@ const WarehouseSidebar = ({ children, activeSection, onSectionChange }: Warehous
               }}
               className="shrink-0"
             />
-            <span className={`flex-1 text-left hidden lg:inline ${isCollapsed ? "lg:hidden" : ""}`}>{item.label}</span>
+            <span className="flex-1 text-left">{item.label}</span>
           </button>
         ))}
       </nav>
 
       {/* Bottom Area: User Profile & Logout (Pinned) */}
       <div
-        className={`border-t px-4 py-4 shrink-0 ${isCollapsed ? "hidden" : ""}`}
+        className="border-t px-4 py-4 shrink-0"
         style={{ borderColor: "hsl(38,40%,85%)" }}
       >
         <button
@@ -120,7 +120,7 @@ const WarehouseSidebar = ({ children, activeSection, onSectionChange }: Warehous
           >
             {profile?.full_name?.[0]?.toUpperCase() || "W"}
           </div>
-          <div className="flex-1 min-w-0 text-left hidden lg:block">
+          <div className="flex-1 min-w-0 text-left">
             <p className="text-sm font-semibold text-[#0F1A35] truncate">
               {profile?.full_name || "Wholesaler"}
             </p>
@@ -137,7 +137,7 @@ const WarehouseSidebar = ({ children, activeSection, onSectionChange }: Warehous
           title="Sign Out"
         >
           <LogOut size={14} />
-          <span className="hidden lg:inline">Sign Out</span>
+          <span>Sign Out</span>
         </button>
       </div>
     </div>
