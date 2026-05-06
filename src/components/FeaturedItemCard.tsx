@@ -53,7 +53,7 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
       transition={{ duration: 0.4, delay: 0.04 * index }}
       className={`bg-card rounded-xl overflow-hidden flex flex-col border ${borderClass} transition-colors shadow-sm w-full`}
     >
-      <div className="relative h-44 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-square bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden w-full">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
           <span className="text-3xl">{isService ? "💼" : "🛍️"}</span>
         </div>
@@ -104,38 +104,40 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
           {item.fast_delivery && <span className="flex items-center gap-0.5"><Truck size={10} />Fast</span>}
           {item.free_shipping && <span className="flex items-center gap-0.5"><Package size={10} />Free Ship</span>}
         </div>
-        <button
-          onClick={() => !isVendorAtCapacity && onBuyNow?.(item)}
-          disabled={isVendorAtCapacity}
-          className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-all ${
-            isVendorAtCapacity
-              ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-              : themeClasses
-              ? `${themeClasses.btnBg} ${themeClasses.btnHover} ${themeClasses.btnText}`
-              : "btn-gold"
-          }`}
-        >
-          {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
-        </button>
-        <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="flex flex-col gap-2">
           <button
-            onClick={() => !isVendorAtCapacity && onVisitStore?.(item)}
+            onClick={() => !isVendorAtCapacity && onBuyNow?.(item)}
             disabled={isVendorAtCapacity}
-            className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 transition-colors ${
+            className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-all ${
               isVendorAtCapacity
-                ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
-                : "text-primary border border-primary/30 hover:bg-primary/5"
+                ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                : themeClasses
+                ? `${themeClasses.btnBg} ${themeClasses.btnHover} ${themeClasses.btnText}`
+                : "btn-gold"
             }`}
           >
-            <Package size={12} /> Store
+            {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
           </button>
-          <button className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 transition-colors ${
-            isVendorAtCapacity
-              ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
-              : "text-muted-foreground border border-border hover:bg-secondary"
-          }`}>
-            Details
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => !isVendorAtCapacity && onVisitStore?.(item)}
+              disabled={isVendorAtCapacity}
+              className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 px-2 transition-colors ${
+                isVendorAtCapacity
+                  ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
+                  : "text-primary border border-primary/30 hover:bg-primary/5"
+              }`}
+            >
+              <Package size={12} /> Message
+            </button>
+            <button className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 px-2 transition-colors ${
+              isVendorAtCapacity
+                ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
+                : "text-muted-foreground border border-border hover:bg-secondary"
+            }`}>
+              Details
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
