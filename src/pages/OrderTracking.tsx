@@ -4,7 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import { motion } from "framer-motion";
-import { Phone, Clock, MapPin } from "lucide-react";
+import { Phone, Clock, MapPin, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -13,12 +13,18 @@ import GPSOffModal from "@/components/modals/GPSOffModal";
 import { createGoldenPulseMarker, updateGoldenPulseMarker, injectGoldenPingAnimation } from "@/utils/createGoldenPulseMarker";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"];
-type Runner = Database["public"]["Tables"]["runners"]["Row"];
-type HiveNode = Database["public"]["Tables"]["hive_nodes"]["Row"];
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface OrderWithDetails extends Order {
-  node?: HiveNode | null;
-  runner?: Runner | null;
+  runner_profile?: Profile | null;
+  otp_code?: string | null;
+}
+
+interface TimelineEvent {
+  stage: "placed" | "picked_up" | "en_route" | "delivered";
+  label: string;
+  completed: boolean;
+  timestamp?: string;
 }
 
 const OrderTracking = () => {
@@ -29,10 +35,13 @@ const OrderTracking = () => {
   const [eta, setEta] = useState<string | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
   const [showGPSModal, setShowGPSModal] = useState(false);
+  const [isPinVisible, setIsPinVisible] = useState(false);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
 
   const mapInstanceRef = useRef<L.Map | null>(null);
   const routingControlRef = useRef<any>(null);
   const riderMarkerRef = useRef<L.Marker | null>(null);
+  const deliveryMarkerRef = useRef<L.Marker | null>(null);
   const selfMarkerRef = useRef<L.Marker | null>(null);
   const channelRef = useRef<any>(null);
 
@@ -48,15 +57,7 @@ const OrderTracking = () => {
       try {
         const { data, error } = await supabase
           .from("orders")
-          .select(
-            `
-            id,
-            runner_id,
-            node_id,
-            status,
-            created_at
-          `
-          )
+          .select("*")
           .eq("id", parseInt(order_id))
           .single();
 
@@ -67,39 +68,34 @@ const OrderTracking = () => {
           return;
         }
 
-        // Fetch node (delivery location)
-        const { data: nodeData } = await supabase
-          .from("hive_nodes")
-          .select("*")
-          .eq("id", data.node_id)
-          .single();
-
-        // Fetch runner details
-        let runnerData = null;
+        // Fetch runner profile if assigned
+        let runnerProfile = null;
         if (data.runner_id) {
-          const { data: rData } = await supabase
-            .from("runners")
+          const { data: pData } = await supabase
+            .from("profiles")
             .select("*")
-            .eq("id", data.runner_id)
+            .eq("user_id", data.runner_id)
             .single();
-          runnerData = rData;
+          runnerProfile = pData;
         }
 
         const orderWithDetails: OrderWithDetails = {
           ...data,
-          node: nodeData,
-          runner: runnerData,
+          runner_profile: runnerProfile,
         };
 
         setOrder(orderWithDetails);
 
-        // Set initial rider location
-        if (runnerData?.current_lat && runnerData?.current_long) {
+        // Set initial rider location from runner profile
+        if (runnerProfile?.current_lat && runnerProfile?.current_long) {
           setRiderLocation({
-            lat: runnerData.current_lat,
-            long: runnerData.current_long,
+            lat: runnerProfile.current_lat,
+            long: runnerProfile.current_long,
           });
         }
+
+        // Build timeline based on order status
+        buildTimeline(data.status || "pending");
 
         setLoading(false);
       } catch (err) {
@@ -112,19 +108,30 @@ const OrderTracking = () => {
     fetchOrder();
   }, [order_id]);
 
-  // Subscribe to runner location updates
+  // Build timeline based on order status
+  const buildTimeline = (status: string) => {
+    const events: TimelineEvent[] = [
+      { stage: "placed", label: "Order Placed", completed: true, timestamp: new Date().toLocaleTimeString() },
+      { stage: "picked_up", label: "Picked Up", completed: ["picked_up", "in_transit", "out_for_delivery", "delivered"].includes(status), timestamp: new Date().toLocaleTimeString() },
+      { stage: "en_route", label: "En Route", completed: ["in_transit", "out_for_delivery", "delivered"].includes(status), timestamp: new Date().toLocaleTimeString() },
+      { stage: "delivered", label: "Delivered", completed: status === "delivered", timestamp: status === "delivered" ? new Date().toLocaleTimeString() : undefined },
+    ];
+    setTimelineEvents(events);
+  };
+
+  // Subscribe to runner profile location updates
   useEffect(() => {
     if (!order?.runner_id) return;
 
     const channel = supabase
       .channel(`runner-tracking-${order.runner_id}`)
       .on(
-        "postgres_changes" as any,
+        "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
-          table: "runners",
-          filter: `id=eq.${order.runner_id}`,
+          table: "profiles",
+          filter: `user_id=eq.${order.runner_id}`,
         },
         (payload: any) => {
           const { current_lat, current_long } = payload.new;
@@ -159,8 +166,7 @@ const OrderTracking = () => {
 
     if (!selfMarkerRef.current) {
       selfMarkerRef.current = createGoldenPulseMarker(coordinates.latitude, coordinates.longitude, map);
-      // Fly to self location
-      map.flyTo([coordinates.latitude, coordinates.longitude], 16, { duration: 1 });
+      map.flyTo([coordinates.latitude, coordinates.longitude], 14, { duration: 0.5 });
     } else {
       selfMarkerRef.current = updateGoldenPulseMarker(selfMarkerRef.current, coordinates.latitude, coordinates.longitude, map);
     }
@@ -175,12 +181,11 @@ const OrderTracking = () => {
 
   // Initialize and manage map
   useEffect(() => {
-    if (!order?.node || !riderLocation) return;
+    if (!order || !riderLocation) return;
 
-    const deliveryLat = order.node.lat;
-    const deliveryLong = order.node.long;
-
-    if (!deliveryLat || !deliveryLong) return;
+    // Extract delivery lat/long from order (stored as dropoff_lat/dropoff_lng or default)
+    const deliveryLat = order.dropoff_lat || -15.4167;
+    const deliveryLng = order.dropoff_lng || 28.2833;
 
     // Create map if it doesn't exist
     if (!mapInstanceRef.current) {
@@ -192,6 +197,7 @@ const OrderTracking = () => {
         dragging: true,
         touchZoom: true,
         zoomControl: true,
+        touchAction: "auto",
       });
 
       mapInstanceRef.current = map;
@@ -202,34 +208,34 @@ const OrderTracking = () => {
         maxZoom: 19,
       }).addTo(map);
 
-      // Create delivery marker (Gold)
+      // Fix: invalidate size after mount to prevent grey tiles
+      setTimeout(() => map.invalidateSize(), 200);
+
+      // Create delivery marker (Navy)
       const deliveryIcon = L.divIcon({
         className: "",
-        html: `<div style="width:40px;height:40px;border-radius:50%;background:#B37C1C;border:3px solid #FFFBF2;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(179,124,28,0.5);"><span style="font-size:18px;">🏠</span></div>`,
+        html: `<div style="width:40px;height:40px;border-radius:50%;background:#0F1A35;border:3px solid #FFFBF2;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(15,26,53,0.6);"><span style="font-size:18px;">🏠</span></div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
       });
 
-      L.marker([deliveryLat, deliveryLong], { icon: deliveryIcon })
+      deliveryMarkerRef.current = L.marker([deliveryLat, deliveryLng], { icon: deliveryIcon })
         .addTo(map)
-        .bindPopup("Delivery Location");
+        .bindPopup("Delivery Destination");
     }
 
     const map = mapInstanceRef.current;
 
-    // Update/create rider marker (Navy/Blue vehicle)
+    // Update/create rider marker (Glowing Gold pulse dot)
     const riderIcon = L.divIcon({
       className: "",
-      html: `<div style="width:40px;height:40px;border-radius:50%;background:#1a1a2e;border:3px solid #FFFBF2;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(26,26,46,0.5);"><span style="font-size:18px;">🛵</span></div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+      html: `<div style="width:36px;height:36px;border-radius:50%;background:#B37C1C;border:3px solid #FFFBF2;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(179,124,28,0.6);"><span style="font-size:16px;">🛵</span></div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
     });
 
     if (!riderMarkerRef.current) {
-      riderMarkerRef.current = L.marker(
-        [riderLocation.lat, riderLocation.long],
-        { icon: riderIcon }
-      )
+      riderMarkerRef.current = L.marker([riderLocation.lat, riderLocation.long], { icon: riderIcon })
         .addTo(map)
         .bindPopup("Rider Location");
     } else {
@@ -246,7 +252,7 @@ const OrderTracking = () => {
     const routingControl = (L as any).Routing.control({
       waypoints: [
         L.latLng(riderLocation.lat, riderLocation.long),
-        L.latLng(deliveryLat, deliveryLong),
+        L.latLng(deliveryLat, deliveryLng),
       ],
       router: (L as any).Routing.osrmv1({
         serviceUrl: "https://router.project-osrm.org/route/v1",
@@ -254,18 +260,18 @@ const OrderTracking = () => {
       lineOptions: {
         styles: [
           {
-            color: "#B37C1C", // Gold
+            color: "#0F1A35", // Navy
             weight: 4,
             opacity: 0.8,
           },
         ],
       },
-      createMarker: () => null, // Don't create default markers
+      createMarker: () => null,
       addWaypoints: false,
       routeWhileDragging: true,
       showAlternatives: false,
       waypointMode: "snap",
-      containerClassName: "hidden", // Hide the turn-by-turn box
+      containerClassName: "hidden",
     }).addTo(map);
 
     routingControlRef.current = routingControl;
@@ -277,136 +283,188 @@ const OrderTracking = () => {
         const totalTime = route.summary.totalTime;
         const totalDistance = route.summary.totalDistance;
 
-        // Convert time to minutes
         const minutes = Math.ceil(totalTime / 60);
-        setEta(`⏱️ Arriving in ${minutes} min${minutes !== 1 ? "s" : ""}`);
+        setEta(`${minutes} min${minutes !== 1 ? "s" : ""}`);
 
-        // Convert distance to km
         const km = (totalDistance / 1000).toFixed(1);
-        setDistance(`Distance: ${km} km`);
+        setDistance(`${km} km`);
       }
     });
 
     // Fit bounds to show both points
     const group = new L.FeatureGroup([
       L.latLng(riderLocation.lat, riderLocation.long),
-      L.latLng(deliveryLat, deliveryLong),
+      L.latLng(deliveryLat, deliveryLng),
     ]);
     map.fitBounds(group.getBounds(), { padding: [100, 100] });
 
     return () => {
-      // Cleanup on unmount or dependency changes
       if (routingControlRef.current && map) {
         map.removeControl(routingControlRef.current);
         routingControlRef.current = null;
       }
     };
-  }, [order?.node, riderLocation]);
+  }, [order, riderLocation]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(39,100%,97%)" }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent" style={{ borderColor: "hsl(38,73%,40%)", borderTopColor: "transparent" }} />
       </div>
     );
   }
 
-  if (!order || !order.node) {
+  if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(39,100%,97%)" }}>
         <div className="text-center">
-          <p className="text-lg text-foreground font-semibold mb-2">Order not found</p>
-          <p className="text-muted-foreground">Unable to load tracking information</p>
+          <p className="text-lg font-semibold mb-2" style={{ color: "hsl(220,55%,13%)" }}>Order not found</p>
+          <p className="text-sm" style={{ color: "hsl(220,20%,46%)" }}>Unable to load tracking information</p>
         </div>
       </div>
     );
   }
 
-  const runnerPhone = order.runner?.id ? `+26${order.runner.id}` : null; // Placeholder format
+  const runnerPhone = order.runner_profile?.phone || "+260";
+  const otpCode = order.otp_code || "****";
 
   return (
-    <div className="min-h-screen relative bg-background overflow-hidden">
+    <div className="min-h-screen flex flex-col overflow-hidden" style={{ background: "hsl(39,100%,97%)" }}>
       {/* GPS Off Modal */}
-      <GPSOffModal
-        isOpen={showGPSModal}
-        onClose={() => setShowGPSModal(false)}
-      />
+      <GPSOffModal isOpen={showGPSModal} onClose={() => setShowGPSModal(false)} />
 
-      {/* Full-screen map */}
-      <div
-        id="map-container"
-        className="w-full h-screen"
-        style={{ position: "relative", zIndex: 1 }}
-      />
+      {/* Map Container — 60% height */}
+      <div className="relative flex-shrink-0 h-[60vh] w-full">
+        <div id="map-container" className="w-full h-full" style={{ zIndex: 1 }} />
 
-      {/* Floating HUD Card at bottom */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="fixed bottom-0 left-0 right-0 z-50 p-4 sm:p-6"
-      >
-        <div className="max-w-md mx-auto backdrop-blur-md rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl">
-          {/* Header */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Live Tracking
-            </p>
-            <p className="text-sm font-bold text-foreground mt-1">
-              Order #{String(order.id).padStart(6, "0")}
-            </p>
+        {/* ETA HUD Overlay — positioned at bottom of map */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="absolute bottom-0 left-0 right-0 z-20 px-4 py-4"
+        >
+          <div className="max-w-md mx-auto rounded-2xl border backdrop-blur-md p-5 shadow-2xl" style={{ background: "rgba(255, 250, 242, 0.85)", borderColor: "rgba(255, 250, 242, 0.3)" }}>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {eta && (
+                <div className="flex flex-col items-center justify-center p-3 rounded-lg" style={{ background: "rgba(179, 124, 28, 0.08)", borderColor: "rgba(179, 124, 28, 0.2)", border: "1px solid" }}>
+                  <Clock size={16} style={{ color: "#B37C1C" }} className="mb-1" />
+                  <span className="text-xs font-bold" style={{ color: "#B37C1C" }}>⏱️ {eta}</span>
+                </div>
+              )}
+              {distance && (
+                <div className="flex flex-col items-center justify-center p-3 rounded-lg" style={{ background: "rgba(179, 124, 28, 0.08)", borderColor: "rgba(179, 124, 28, 0.2)", border: "1px solid" }}>
+                  <MapPin size={16} style={{ color: "#B37C1C" }} className="mb-1" />
+                  <span className="text-xs font-bold" style={{ color: "#B37C1C" }}>{distance}</span>
+                </div>
+              )}
+              <a
+                href={`tel:${runnerPhone}`}
+                className="flex items-center justify-center p-3 rounded-lg font-semibold text-xs transition-all hover:scale-105"
+                style={{ background: "#B37C1C", color: "#FFFBF2", boxShadow: "0 4px 12px rgba(179, 124, 28, 0.3)" }}
+              >
+                <Phone size={14} className="mr-1" />
+                📞 Call
+              </a>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Timeline & OTP Vault — 40% height */}
+      <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Timeline */}
+          <div>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "hsl(220,55%,13%)" }}>Order Status</h3>
+            <div className="space-y-4">
+              {timelineEvents.map((event, idx) => (
+                <motion.div
+                  key={event.stage}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="flex gap-4"
+                >
+                  {/* Timeline dot */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center"
+                      style={{
+                        background: event.completed ? "#B37C1C" : "#FFFBF2",
+                        borderColor: "#B37C1C",
+                      }}
+                    >
+                      {event.completed && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                    </div>
+                    {idx < timelineEvents.length - 1 && (
+                      <div
+                        className="w-0.5 h-12 mt-2"
+                        style={{ background: event.completed ? "#B37C1C" : "hsl(38,40%,85%)" }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Timeline content */}
+                  <div className="pb-2">
+                    <p className="text-sm font-semibold" style={{ color: event.completed ? "hsl(220,55%,13%)" : "hsl(220,20%,46%)" }}>
+                      {event.stage === "placed" && "✅"}
+                      {event.stage === "picked_up" && (event.completed ? "✅" : "⏳")}
+                      {event.stage === "en_route" && (event.completed ? "✅" : "⏳")}
+                      {event.stage === "delivered" && (event.completed ? "✅" : "⏳")}
+                      {" "}
+                      {event.label}
+                    </p>
+                    {event.timestamp && <p className="text-xs mt-1" style={{ color: "hsl(220,20%,46%)" }}>{event.timestamp}</p>}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
 
-          {/* ETA and Distance Row */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {eta && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-gold/10 border border-gold/20">
-                <Clock size={14} className="text-gold flex-shrink-0" />
-                <span className="text-xs font-semibold text-foreground">{eta}</span>
+          {/* OTP Security Vault */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="rounded-2xl p-5 border-2"
+            style={{
+              background: "rgba(179, 124, 28, 0.08)",
+              borderColor: "#B37C1C",
+            }}
+          >
+            <h3 className="text-sm font-bold mb-3" style={{ color: "hsl(220,55%,13%)" }}>🔐 Secure Handoff PIN</h3>
+            <p className="text-xs mb-4" style={{ color: "hsl(220,20%,46%)" }}>
+              Present this PIN to the courier to verify delivery
+            </p>
+
+            {/* PIN Display */}
+            <div className="flex items-center gap-3 mb-4 p-4 rounded-xl" style={{ background: "rgba(255, 250, 242, 0.6)", border: "1px solid hsl(38,40%,85%)" }}>
+              <div
+                className={`flex-1 text-center font-mono text-2xl font-bold tracking-widest transition-all ${
+                  isPinVisible ? "" : "blur-md"
+                }`}
+                style={{ color: "#B37C1C" }}
+              >
+                {isPinVisible ? otpCode : "••••"}
               </div>
-            )}
-            {distance && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-gold/10 border border-gold/20">
-                <MapPin size={14} className="text-gold flex-shrink-0" />
-                <span className="text-xs font-semibold text-foreground">{distance}</span>
-              </div>
-            )}
-          </div>
+              <button
+                onClick={() => setIsPinVisible(!isPinVisible)}
+                className="p-2 rounded-lg transition-all hover:scale-110"
+                style={{ background: "rgba(179, 124, 28, 0.15)", color: "#B37C1C" }}
+              >
+                {isPinVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-          {/* Call Runner Button */}
-          {runnerPhone && (
-            <a
-              href={`tel:${runnerPhone}`}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105"
-              style={{
-                background: "#B37C1C",
-                color: "#FFFBF2",
-                boxShadow: "0 4px 12px rgba(179, 124, 28, 0.3)",
-              }}
-            >
-              <Phone size={16} />
-              💬 Call Runner
-            </a>
-          )}
-
-          {/* Delivery Location */}
-          <div className="mt-4 pt-4 border-t border-white/20">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              Delivering To
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "hsl(220,20%,46%)" }}>
+              Keep this code private
             </p>
-            <p className="text-sm font-semibold text-foreground">
-              {order.node.node_name || "Delivery Node"}
-            </p>
-            {order.node.location_description && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {order.node.location_description}
-              </p>
-            )}
-          </div>
+          </motion.div>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Hide the routing machine's default itinerary box */}
+      {/* Hide routing machine styles */}
       <style>{`
         .leaflet-routing-container {
           display: none !important;
