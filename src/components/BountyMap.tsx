@@ -39,11 +39,13 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
       dragging: true,
       touchZoom: true,
       zoomControl: true,
-    }).setView(center, 13);
+      touchAction: "none",
+    }).setView(center, 16);
     mapInstanceRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
     }).addTo(map);
 
     // Fix: invalidate size after mount to prevent grey tiles
@@ -70,7 +72,7 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
       selfMarkerRef.current = updateGoldenPulseMarker(selfMarkerRef.current, workerPosition[0], workerPosition[1], map);
     }
 
-    map.flyTo(workerPosition, map.getZoom(), { animate: true, duration: 0.5 });
+    map.flyTo(workerPosition, 17, { animate: true, duration: 0.5 });
   }, [workerPosition]);
 
   // Update bounty markers
