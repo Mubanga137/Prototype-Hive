@@ -39,6 +39,8 @@ export const setupGlobalErrorHandlers = () => {
   // Handle global fetch errors (for API calls)
   const originalFetch = window.fetch;
   window.fetch = async (...args: any[]) => {
+    const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
+
     try {
       const response = await originalFetch(...args);
 
@@ -62,7 +64,7 @@ export const setupGlobalErrorHandlers = () => {
         }
 
         if (isTokenError) {
-          console.warn("[Global Error Handler] 401 Token error detected in fetch");
+          console.warn("[Global Error Handler] 401 Token error detected in fetch", { url });
           await forceSignOut();
 
           import("sonner").then(({ toast }) => {
@@ -77,6 +79,15 @@ export const setupGlobalErrorHandlers = () => {
 
       return response;
     } catch (error: any) {
+      // Log detailed network error information
+      if (error?.message?.includes("fetch") || error?.message?.includes("Failed")) {
+        console.warn("[Global Error Handler] Network connectivity issue detected", {
+          url,
+          error: error?.message,
+          type: error?.name,
+        });
+      }
+
       if (
         error?.message?.includes("Refresh Token") ||
         error?.message?.includes("Invalid token")
