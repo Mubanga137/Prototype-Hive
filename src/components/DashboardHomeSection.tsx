@@ -89,6 +89,10 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const handleCategoryNavigate = (categoryPath: string) => {
+    navigate(categoryPath);
+  };
+
   useEffect(() => {
     const fetchItems = async () => {
       const { data } = await supabase

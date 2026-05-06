@@ -240,46 +240,44 @@ const ProductCard = ({
             )}
           </div>
 
-          {disabled && (
-            <p className="text-[11px] text-destructive font-medium mb-2">{disabledReason}</p>
-          )}
-
-          <button
-            onClick={handleBuyNow}
-            disabled={disabled}
-            className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-all ${
-              disabled
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-[linear-gradient(135deg,#B37C1C_0%,#000000_100%)] text-white shadow-lg hover:shadow-xl hover:scale-[1.02]"
-            }`}
-          >
-            <ShoppingCart size={14} />
-            {isService ? "BOOK ORDER" : "BUY NOW"}
-          </button>
-
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="flex flex-col gap-2">
             <button
-              onClick={handleWhatsAppClick}
-              disabled={disabled || !storeWhatsapp}
-              className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 border transition-colors ${
-                disabled || !storeWhatsapp
-                  ? "border-primary/15 text-muted-foreground bg-muted/30 cursor-not-allowed"
-                  : "text-primary border-primary/30 hover:bg-primary/5"
-              }`}
-            >
-              <MessageCircle size={12} /> Message
-            </button>
-            <button
-              onClick={handleDetailsClick}
+              onClick={handleBuyNow}
               disabled={disabled}
-              className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 border transition-colors ${
+              className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-all ${
                 disabled
-                  ? "border-border text-muted-foreground bg-muted/30 cursor-not-allowed"
-                  : "text-muted-foreground border-border hover:bg-secondary"
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-[linear-gradient(135deg,#B37C1C_0%,#000000_100%)] text-white shadow-lg hover:shadow-xl hover:scale-[1.02]"
               }`}
             >
-              Details
+              <ShoppingCart size={14} />
+              {isService ? "BOOK ORDER" : "BUY NOW"}
             </button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleWhatsAppClick}
+                disabled={disabled || !storeWhatsapp}
+                className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 border transition-colors px-2 ${
+                  disabled || !storeWhatsapp
+                    ? "border-primary/15 text-muted-foreground bg-muted/30 cursor-not-allowed"
+                    : "text-primary border-primary/30 hover:bg-primary/5"
+                }`}
+              >
+                <MessageCircle size={12} /> Message
+              </button>
+              <button
+                onClick={handleDetailsClick}
+                disabled={disabled}
+                className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 border transition-colors px-2 ${
+                  disabled
+                    ? "border-border text-muted-foreground bg-muted/30 cursor-not-allowed"
+                    : "text-muted-foreground border-border hover:bg-secondary"
+                }`}
+              >
+                Details
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
