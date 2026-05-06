@@ -125,7 +125,8 @@ export const useRunnerLocation = (
           default:
             setPermissionError("Could not retrieve location.");
         }
-      }
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
     // Only set up watch if permission wasn't denied

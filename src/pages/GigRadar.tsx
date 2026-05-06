@@ -163,7 +163,8 @@ const GigRadar = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setWorkerPosition([pos.coords.latitude, pos.coords.longitude]),
-        () => {}
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
     }
   }, []);
@@ -206,9 +207,9 @@ const GigRadar = () => {
         hasPermission={hasPermission}
       />
 
-      <main className="flex-1 flex flex-col min-w-0 relative z-10">
-        {/* Map — top half */}
-        <div className="p-3 md:p-4 pt-14 lg:pt-4">
+      <main className="w-full flex-1 flex flex-col min-w-0 relative z-10">
+        {/* Map — top section */}
+        <div className="w-full max-w-5xl mx-auto px-4 pt-14 lg:pt-4 pb-3 md:pb-4 flex flex-col">
           {/* GPS Transmitter Status */}
           <GPSTransmitterStatus
             isTransmitting={isTransmitting}
@@ -217,8 +218,8 @@ const GigRadar = () => {
             isOnline={isOnline}
           />
 
-          <div className="rounded-2xl overflow-hidden border-2" style={{ borderColor: "hsl(38,73%,40%,0.2)" }}>
-            <div className="h-[40vh] md:h-[45vh] relative">
+          <div className="w-full rounded-2xl overflow-hidden border-2" style={{ borderColor: "hsl(38,73%,40%,0.2)" }}>
+            <div className="w-full h-[40vh] md:h-[45vh] relative">
               <BountyMap
                 workerPosition={workerPosition}
                 bounties={bounties}
@@ -231,11 +232,11 @@ const GigRadar = () => {
 
         {/* Active orders — my deliveries */}
         {myActiveOrders.length > 0 && (
-          <div className="px-3 md:px-4 mb-3">
+          <div className="w-full max-w-5xl mx-auto px-4 mb-3">
             <h3 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: "hsl(220,55%,13%)" }}>
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> My Active Deliveries
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-2 w-full">
               {myActiveOrders.map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-3 rounded-xl border" style={{ background: "white", borderColor: "hsl(38,40%,85%)" }}>
                   <div className="flex items-center gap-3">
@@ -269,9 +270,9 @@ const GigRadar = () => {
           </div>
         )}
 
-        {/* Bottom half — available gigs list */}
-        <div className="flex-1 px-3 md:px-4 pb-4 overflow-y-auto">
-          <div className="rounded-xl border p-4" style={{ background: "white", borderColor: "hsl(38,40%,85%)" }}>
+        {/* Bottom section — available gigs list */}
+        <div className="w-full flex-1 max-w-5xl mx-auto px-4 pb-4 overflow-y-auto min-h-0">
+          <div className="w-full rounded-xl border p-4" style={{ background: "white", borderColor: "hsl(38,40%,85%)" }}>
             <h3 className="text-base font-bold mb-1" style={{ color: "hsl(220,55%,13%)" }}>Available Gigs</h3>
             <p className="text-xs mb-4" style={{ color: "hsl(220,20%,46%)" }}>Tap a marker above or claim below</p>
 
