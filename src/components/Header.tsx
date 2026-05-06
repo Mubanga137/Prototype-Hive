@@ -141,7 +141,7 @@ const Header = () => {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="absolute top-14 right-8 w-80 z-[70] bg-card/95 backdrop-blur-xl rounded-2xl shadow-xl border border-border/20 flex flex-col overflow-hidden"
+          className="absolute top-14 right-8 w-80 z-[70] bg-card/95 backdrop-blur-xl rounded-2xl shadow-xl border border-border/20 flex flex-col overflow-hidden hidden md:flex"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border/20">
