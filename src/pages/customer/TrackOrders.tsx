@@ -20,7 +20,8 @@ const TrackOrders = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setCustomerCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
     }
   }, []);

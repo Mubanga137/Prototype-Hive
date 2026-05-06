@@ -8,7 +8,7 @@ interface DashboardHeaderProps {
 
 export const DashboardHeader = ({ title, onMenuToggle }: DashboardHeaderProps) => {
   return (
-    <header className="glass-header sticky top-0 z-30 px-4 py-3 flex items-center justify-between lg:hidden">
+    <header className="w-full max-w-[100vw] left-0 right-0 glass-header sticky top-0 z-30 px-4 py-3 flex items-center justify-between lg:hidden border-b shadow-sm" style={{ background: "#FFFBF2" }}>
       <div className="flex items-center gap-3">
         <button 
           onClick={onMenuToggle} 

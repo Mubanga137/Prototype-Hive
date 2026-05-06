@@ -79,7 +79,8 @@ export const useLocationPermission = (): UseLocationPermissionReturn => {
                 setError("Unable to retrieve your location. Please try again.");
                 resolve(null);
             }
-          }
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
       }),
     []
