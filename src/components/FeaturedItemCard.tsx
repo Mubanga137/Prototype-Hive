@@ -107,21 +107,33 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
         <button
           onClick={() => !isVendorAtCapacity && onBuyNow?.(item)}
           disabled={isVendorAtCapacity}
-          className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-colors ${
+          className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-all ${
             isVendorAtCapacity
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed opacity-60"
+              ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
               : themeClasses
               ? `${themeClasses.btnBg} ${themeClasses.btnHover} ${themeClasses.btnText}`
               : "btn-gold"
           }`}
         >
-          {isVendorAtCapacity ? "🔒 Merchant at Capacity" : isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
+          {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
         </button>
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <button onClick={() => onVisitStore?.(item)} className="flex items-center justify-center gap-1 text-[11px] font-semibold text-primary border border-primary/30 rounded-lg py-1.5 hover:bg-primary/5 transition-colors">
+          <button
+            onClick={() => !isVendorAtCapacity && onVisitStore?.(item)}
+            disabled={isVendorAtCapacity}
+            className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 transition-colors ${
+              isVendorAtCapacity
+                ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
+                : "text-primary border border-primary/30 hover:bg-primary/5"
+            }`}
+          >
             <Package size={12} /> Store
           </button>
-          <button className="flex items-center justify-center gap-1 text-[11px] font-semibold text-muted-foreground border border-border rounded-lg py-1.5 hover:bg-secondary transition-colors">
+          <button className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 transition-colors ${
+            isVendorAtCapacity
+              ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
+              : "text-muted-foreground border border-border hover:bg-secondary"
+          }`}>
             Details
           </button>
         </div>

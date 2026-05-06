@@ -229,10 +229,38 @@ const StorefrontBuilder = () => {
     );
   }
 
+  const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+
   const StorefrontContent = () => (
-    <div className="h-screen w-full flex bg-background">
-      {/* LEFT PANEL: 40% Accordion Editor */}
-      <div className="w-2/5 border-r border-border bg-card flex flex-col">
+    <div className="h-screen w-full flex flex-col bg-background md:flex-row">
+      {/* TAB SWITCHER - Mobile Only */}
+      <div className="md:hidden sticky top-0 z-20 flex border-b border-border bg-card">
+        <button
+          onClick={() => setMobileTab("edit")}
+          className={`flex-1 py-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center justify-center gap-2 ${
+            mobileTab === "edit"
+              ? "border-primary text-primary bg-primary/5"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span>🛠️</span> Edit Store
+        </button>
+        <button
+          onClick={() => setMobileTab("preview")}
+          className={`flex-1 py-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center justify-center gap-2 ${
+            mobileTab === "preview"
+              ? "border-primary text-primary bg-primary/5"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <span>👁️</span> Live Preview
+        </button>
+      </div>
+
+      {/* LEFT PANEL: Editor (100% on mobile when edit tab, 40% on desktop) */}
+      <div className={`flex-col bg-card border-r border-border md:flex ${
+        mobileTab === "edit" ? "flex" : "hidden"
+      } md:w-2/5 w-full overflow-y-auto`}>
         <StorefrontEditorPanel
           store={currentStore}
           brandName={brandName}
@@ -270,8 +298,10 @@ const StorefrontBuilder = () => {
         />
       </div>
 
-      {/* RIGHT PANEL: 60% Live Preview */}
-      <div className="w-3/5 overflow-hidden bg-[#FFFBF2]">
+      {/* RIGHT PANEL: Live Preview (100% on mobile when preview tab, 60% on desktop) */}
+      <div className={`overflow-hidden bg-[#FFFBF2] md:w-3/5 w-full ${
+        mobileTab === "preview" ? "flex" : "hidden"
+      } md:flex`}>
         <StorefrontPreviewLiveEditorial
           storeId={currentStore.id}
           storeName={brandName}
