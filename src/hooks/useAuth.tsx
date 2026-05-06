@@ -95,25 +95,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           lastError = error as Error;
           // Retry on network errors, but not on auth/permission errors
-          if (attempt < maxRetries - 1 && error.message.includes("Failed")) {
-            await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+          if (attempt < maxRetries - 1 && (error.message.includes("Failed") || error.message.includes("fetch"))) {
+            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+            await new Promise((resolve) => setTimeout(resolve, delay));
             continue;
           }
+          console.warn(`[fetchProfile] Supabase error (attempt ${attempt + 1}/${maxRetries}):`, error.message);
           return null;
         }
 
         return (data as Profile | null) ?? null;
       } catch (err) {
         lastError = err as Error;
+        console.warn(`[fetchProfile] Exception (attempt ${attempt + 1}/${maxRetries}):`, (err as Error).message);
         // Retry on network errors
         if (attempt < maxRetries - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
       }
     }
 
-    console.warn("[fetchProfile] Failed after retries:", lastError?.message);
+    console.warn("[fetchProfile] Failed after retries. Check Supabase connectivity:", lastError?.message);
     return null; // Gracefully return null instead of crashing
   };
 
@@ -197,16 +201,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => { void resolveSession(sess); }, 0);
     });
 
-    // Get initial session with error handling
-    supabase.auth.getSession()
-      .then(({ data: { session: sess } }) => {
+    // Get initial session with error handling and timeout
+    const sessionPromise = Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Session fetch timeout")), 8000)
+      ),
+    ]);
+
+    sessionPromise
+      .then((result: any) => {
+        const sess = result?.data?.session ?? null;
         void resolveSession(sess);
       })
       .catch((error: any) => {
-        console.warn("[useAuth] Error getting initial session:", error?.message);
+        const errorMsg = error?.message || String(error);
+        console.warn("[useAuth] Error getting initial session:", errorMsg);
+
+        // Check for network connectivity issues
+        if (errorMsg.includes("fetch") || errorMsg.includes("Failed") || errorMsg.includes("timeout")) {
+          console.error("[useAuth] Network connectivity issue: Supabase may be unreachable. Check CORS settings in Supabase dashboard.");
+          console.error("[useAuth] Dev domain:", window.location.hostname);
+        }
 
         // If it's a refresh token error, clear tokens and reload
-        if (error?.message?.includes("Refresh Token") || error?.message?.includes("Invalid token")) {
+        if (errorMsg.includes("Refresh Token") || errorMsg.includes("Invalid token")) {
           console.warn("[useAuth] Invalid refresh token detected, clearing session...");
           void clearInvalidTokens();
         }

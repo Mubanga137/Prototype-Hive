@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleVerificationWrapper from "@/components/RoleVerificationWrapper";
 import { setupGlobalErrorHandlers } from "@/lib/globalErrorHandler";
+import { logSupabaseHealth } from "@/lib/supabaseHealthCheck";
 import Index from "./pages/Index.tsx";
 import RetailerStudioDashboard from "./pages/RetailerStudioDashboard.tsx";
 import RechargeStore from "./pages/RechargeStore.tsx";
@@ -34,14 +35,18 @@ import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
 import OrderTracking from "./pages/OrderTracking.tsx";
-import HiveBotWidget from "./components/messaging/HiveBotWidget";
+import HiveBotWidget from "@/components/messaging/HiveBotWidget";
+import SupabaseHealthModal from "@/components/SupabaseHealthModal";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Initialize global error handlers once on mount
+  // Initialize global error handlers and health checks once on mount
   useEffect(() => {
     setupGlobalErrorHandlers();
+    logSupabaseHealth().catch((err) =>
+      console.warn("[App] Failed to log Supabase health:", err)
+    );
   }, []);
 
   return (
@@ -96,6 +101,7 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
             <HiveBotWidget />
+            <SupabaseHealthModal />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

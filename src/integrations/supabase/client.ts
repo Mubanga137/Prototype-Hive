@@ -13,7 +13,28 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: {
+    fetch: async (url: string, options?: RequestInit) => {
+      try {
+        const response = await fetch(url, {
+          ...options,
+          // Add timeout to fail faster on unreachable endpoints
+          signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined,
+        });
+        return response;
+      } catch (error: any) {
+        // Log detailed error info for debugging
+        console.error("[Supabase Fetch Error]", {
+          url,
+          error: error?.message,
+          type: error?.name,
+          timestamp: new Date().toISOString(),
+        });
+        throw error;
+      }
+    },
+  },
 });
 
 /**
