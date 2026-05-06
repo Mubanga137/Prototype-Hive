@@ -40,7 +40,7 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
       touchZoom: true,
       zoomControl: true,
       touchAction: "none",
-    }).setView(center, 14);
+    }).setView(center, 14, { animate: false });
     mapInstanceRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -72,7 +72,7 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
       selfMarkerRef.current = updateGoldenPulseMarker(selfMarkerRef.current, workerPosition[0], workerPosition[1], map);
     }
 
-    map.flyTo(workerPosition, 15, { animate: true, duration: 0.5 });
+    map.flyTo(workerPosition, 14, { animate: true, duration: 0.3 });
   }, [workerPosition]);
 
   // Update bounty markers

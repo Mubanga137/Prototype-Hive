@@ -196,7 +196,8 @@ const GigRadar = () => {
   }));
 
   return (
-    <div className="min-h-screen flex" style={{ background: "hsl(39,100%,97%)" }}>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row" style={{ background: "hsl(39,100%,97%)" }}>
+      {/* GigSidenav: renders mobile header + desktop sidebar + mobile drawer */}
       <GigSidenav
         isOnline={isOnline}
         onToggleOnline={handleToggleOnline}
@@ -207,9 +208,10 @@ const GigRadar = () => {
         hasPermission={hasPermission}
       />
 
+      {/* Main content area */}
       <main className="w-full flex-1 flex flex-col min-w-0 relative z-10">
         {/* Map — top section */}
-        <div className="w-full max-w-5xl mx-auto px-4 pt-14 lg:pt-4 pb-3 md:pb-4 flex flex-col">
+        <div className="w-full max-w-5xl mx-auto px-4 pt-4 pb-3 md:pb-4 flex flex-col">
           {/* GPS Transmitter Status */}
           <GPSTransmitterStatus
             isTransmitting={isTransmitting}
@@ -218,8 +220,8 @@ const GigRadar = () => {
             isOnline={isOnline}
           />
 
-          <div className="w-full rounded-2xl overflow-hidden border-2" style={{ borderColor: "hsl(38,73%,40%,0.2)" }}>
-            <div className="w-full h-[40vh] md:h-[45vh] relative">
+          <div className="w-full rounded-2xl overflow-hidden border-2 mt-3" style={{ borderColor: "hsl(38,73%,40%,0.2)" }}>
+            <div className="w-full h-[60vh] md:h-[65vh] lg:h-[70vh] relative">
               <BountyMap
                 workerPosition={workerPosition}
                 bounties={bounties}
