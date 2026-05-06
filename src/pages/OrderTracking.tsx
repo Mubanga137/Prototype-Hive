@@ -145,6 +145,34 @@ const OrderTracking = () => {
     };
   }, [order?.runner_id]);
 
+  // Request customer location on component mount
+  useEffect(() => {
+    injectGoldenPingAnimation();
+    requestLocation();
+  }, [requestLocation]);
+
+  // Update or create self marker when coordinates change
+  useEffect(() => {
+    if (!coordinates || !mapInstanceRef.current) return;
+
+    const map = mapInstanceRef.current;
+
+    if (!selfMarkerRef.current) {
+      selfMarkerRef.current = createGoldenPulseMarker(coordinates.latitude, coordinates.longitude, map);
+      // Fly to self location
+      map.flyTo([coordinates.latitude, coordinates.longitude], 16, { duration: 1 });
+    } else {
+      selfMarkerRef.current = updateGoldenPulseMarker(selfMarkerRef.current, coordinates.latitude, coordinates.longitude, map);
+    }
+  }, [coordinates]);
+
+  // Show GPS modal if permission denied
+  useEffect(() => {
+    if (isPermissionDenied) {
+      setShowGPSModal(true);
+    }
+  }, [isPermissionDenied]);
+
   // Initialize and manage map
   useEffect(() => {
     if (!order?.node || !riderLocation) return;
@@ -298,6 +326,12 @@ const OrderTracking = () => {
 
   return (
     <div className="min-h-screen relative bg-background overflow-hidden">
+      {/* GPS Off Modal */}
+      <GPSOffModal
+        isOpen={showGPSModal}
+        onClose={() => setShowGPSModal(false)}
+      />
+
       {/* Full-screen map */}
       <div
         id="map-container"

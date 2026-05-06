@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { createGoldenPulseMarker, updateGoldenPulseMarker, injectGoldenPingAnimation } from "@/utils/createGoldenPulseMarker";
 
 export interface BountyOrder {
   id: number;
@@ -21,6 +22,7 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const workerMarkerRef = useRef<L.Marker | null>(null);
+  const selfMarkerRef = useRef<L.Marker | null>(null);
   const bountyMarkersRef = useRef<Map<number, L.Marker>>(new Map());
 
   const center: [number, number] = workerPosition || [-15.4167, 28.2833];
@@ -28,6 +30,9 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
   // Initialize map
   useEffect(() => {
     if (!mapRef.current) return;
+
+    // Inject the golden ping animation once
+    injectGoldenPingAnimation();
 
     const map = L.map(mapRef.current, {
       scrollWheelZoom: true,
@@ -48,28 +53,24 @@ const BountyMap = ({ workerPosition, bounties, selectedOrderId, onSelectOrder }:
       map.remove();
       mapInstanceRef.current = null;
       workerMarkerRef.current = null;
+      selfMarkerRef.current = null;
       bountyMarkersRef.current.clear();
     };
   }, []);
 
-  // Update worker position
+  // Update worker position with golden pulse marker
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !workerPosition) return;
 
-    const workerIcon = L.divIcon({
-      className: "",
-      html: `<div style="width:20px;height:20px;border-radius:50%;background:#1a1a2e;border:3px solid #4A90D9;box-shadow:0 0 12px rgba(74,144,217,0.6);"></div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10],
-    });
-
-    if (workerMarkerRef.current) {
-      workerMarkerRef.current.setLatLng(workerPosition);
+    // Update or create golden pulse self marker
+    if (!selfMarkerRef.current) {
+      selfMarkerRef.current = createGoldenPulseMarker(workerPosition[0], workerPosition[1], map);
     } else {
-      workerMarkerRef.current = L.marker(workerPosition, { icon: workerIcon }).addTo(map).bindPopup("You are here");
+      selfMarkerRef.current = updateGoldenPulseMarker(selfMarkerRef.current, workerPosition[0], workerPosition[1], map);
     }
-    map.setView(workerPosition, map.getZoom(), { animate: true });
+
+    map.flyTo(workerPosition, map.getZoom(), { animate: true, duration: 0.5 });
   }, [workerPosition]);
 
   // Update bounty markers
