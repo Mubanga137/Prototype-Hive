@@ -72,6 +72,9 @@ const WorkspaceSplash = () => (
   </div>
 );
 
+// Track if we're already resolving a session to prevent concurrent calls
+let isResolvingSession = false;
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -123,6 +126,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   /** Resolve the full chain user → profile → store and commit to state. */
   const resolveSession = useCallback(async (sess: Session | null) => {
+    // Skip if already resolving to prevent concurrent lock issues
+    if (isResolvingSession) {
+      console.debug("[resolveSession] Already resolving, skipping...");
+      return;
+    }
+
+    isResolvingSession = true;
     try {
       setSession(sess);
       setUser(sess?.user ?? null);
@@ -182,6 +192,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     } catch (error) {
       console.error("[resolveSession] Unexpected error:", error);
+    } finally {
+      isResolvingSession = false;
       setLoading(false);
     }
   }, []);

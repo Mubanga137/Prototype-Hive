@@ -48,12 +48,15 @@ export const setupAuthErrorHandling = () => {
       // Session was cleared - this is expected
       console.debug("[Auth] Session cleared");
     }
-  });
 
-  // Also set up a listener for refresh errors
-  supabase.auth.onAuthStateChange((event, session) => {
     if (event === "TOKEN_REFRESHED") {
       console.debug("[Auth] Token refreshed successfully");
+    }
+
+    // Handle lock/concurrency errors gracefully
+    if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      // Wait a moment after auth state changes to avoid lock conflicts
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   });
 
