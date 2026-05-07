@@ -70,24 +70,50 @@ const CustomerOnboarding = ({ userId: initialUserId, onComplete, isSignup = fals
     }
     setCreatingAccount(true);
 
-    const { data: authData, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName, phone, role: "customer" } },
-    });
+    try {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName, phone, role: "customer" } },
+      });
 
-    if (error) {
-      toast.error(error.message);
-      setCreatingAccount(false);
-      return;
-    }
+      if (error) {
+        if (error.message?.includes("already registered") || error.message?.includes("already exists")) {
+          toast.error("This email is already registered. Please log in instead.");
+        } else {
+          toast.error(error.message);
+        }
+        setCreatingAccount(false);
+        return;
+      }
 
-    if (authData.user) {
+      if (!authData.user) {
+        toast.error("Signup failed. Please try again.");
+        setCreatingAccount(false);
+        return;
+      }
+
+      // Create profile immediately with upsert to handle race conditions
+      const { error: profileErr } = await supabase.from("profiles").upsert({
+        user_id: authData.user.id,
+        full_name: fullName,
+        phone: phone,
+        role: "customer",
+      }, {
+        onConflict: "user_id",
+      });
+
+      if (profileErr) {
+        console.warn("Profile creation warning:", profileErr.message);
+        // Continue anyway - profile might exist or be created by RLS
+      }
+
       setUserId(authData.user.id);
       setCreatingAccount(false);
       setStep(3);
-    } else {
-      toast.error("Signup failed. Please try again.");
+    } catch (err) {
+      console.error("Account creation exception:", err);
+      toast.error("An unexpected error occurred. Please try again.");
       setCreatingAccount(false);
     }
   };
