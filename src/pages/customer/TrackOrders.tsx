@@ -30,12 +30,17 @@ const TrackOrders = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    
     const fetchActiveOrders = async () => {
       try {
         setLoading(true);
         setError(null);
+
+        if (!user) {
+          setOrders([]);
+          setLoading(false);
+          return;
+        }
+
         const { data, error: queryError } = await supabase
           .from("orders")
           .select("id, total_price, status, created_at, runner_id, otp_code, delivery_address, hive_catalogue!orders_item_id_fkey(product_name)")
@@ -46,21 +51,24 @@ const TrackOrders = () => {
           .limit(20);
 
         if (queryError) {
+          console.error("[TrackOrders] Supabase query error:", queryError);
           setError(queryError.message);
           setOrders([]);
+          setLoading(false);
           return;
         }
 
         setOrders(data || []);
+        setLoading(false);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to fetch orders";
+        console.error("[TrackOrders] Fetch error:", msg);
         setError(msg);
         setOrders([]);
-      } finally {
         setLoading(false);
       }
     };
-    
+
     fetchActiveOrders();
   }, [user]);
 
