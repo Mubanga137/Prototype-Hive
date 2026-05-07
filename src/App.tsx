@@ -35,6 +35,7 @@ import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
 import OrderTracking from "./pages/OrderTracking.tsx";
+import TrackOrders from "./pages/customer/TrackOrders.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
 import SupabaseHealthModal from "@/components/SupabaseHealthModal";
 
@@ -69,6 +70,7 @@ const App = () => {
 
               {/* Customer — temporarily open */}
               <Route path="/customer-dash" element={<CustomerDashboard />} />
+              <Route path="/track-orders" element={<TrackOrders />} />
 
               {/* Vendor / SME — temporarily open */}
               <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />
