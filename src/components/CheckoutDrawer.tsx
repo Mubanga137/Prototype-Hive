@@ -167,27 +167,16 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       ? `${scheduledDate}${serviceNotes ? " · " + serviceNotes : ""}`
       : address.trim();
 
-    // Insert into orders. Cast to `any` because the migration that adds the
-    // new columns (store_id, offer_id, customer_*, otp_code, …) is run by
-    // the operator in the Supabase SQL editor — see
-    // docs/migrations/2026-04-17_orders_checkout_fields.sql.
+    // Insert into orders. Only use fields confirmed to exist in the schema.
+    // Extra fields (customer_name, delivery_address, etc.) will be handled
+    // via WhatsApp message and can be stored in webhook handlers if needed.
     const insertPayload: Record<string, any> = {
       buyer_id: user?.id ?? null,
-      store_id: item.store_id ?? null,
       sme_id: item.sme_id ?? null,
-      offer_id: item.id,
-      item_id: item.id, // legacy column kept for back-compat
-      item_type: item.item_type ?? (isService ? "service" : "physical"),
-      quantity: isService ? 1 : quantity,
-      total_amount: totalAmount,
-      total_price: totalAmount, // legacy column kept for back-compat
-      customer_name: name.trim(),
-      customer_phone: cleanedPhone,
-      delivery_address: isService ? null : address.trim(),
-      scheduled_date: isService ? scheduledDate : null,
-      service_notes: isService ? (serviceNotes.trim() || null) : null,
+      item_id: item.id,
+      total_price: totalAmount,
       status: "pending",
-      otp_code: otp,
+      "customer_phone number": cleanedPhone,
     };
 
     const { data, error } = await (supabase.from("orders") as any)

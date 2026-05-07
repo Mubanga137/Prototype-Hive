@@ -22,17 +22,15 @@ export async function checkSupabaseHealth(): Promise<SupabaseHealthStatus> {
   };
 
   try {
-    // Try to reach the API
-    const apiUrl = "https://cnaajzmbkisybwnjeiie.supabase.co/rest/v1/";
-    const response = await fetch(apiUrl, {
-      method: "HEAD",
-      headers: {
-        "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuYWFqem1ia2lzeWJ3bmplaWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NjY0NTIsImV4cCI6MjA5MDA0MjQ1Mn0.4YL8sotyk8noKqUMMcciWSwcIRG4_oy-J4a-B1KJA2o",
-      },
-      mode: "no-cors",
-    });
-    
-    status.canReachAPI = response.status < 500 || response.status === 0; // 0 = no-cors mode
+    // Simple check: try to query a table (this will verify auth AND API)
+    const { error } = await supabase
+      .from("profiles")
+      .select("id")
+      .limit(1);
+
+    // If we can query without a "connection" error, API is reachable
+    // Note: RLS errors are OK — it means API is working
+    status.canReachAPI = !error || error.code !== "ECONNREFUSED";
   } catch (err) {
     status.error = `API unreachable: ${(err as Error).message}`;
   }

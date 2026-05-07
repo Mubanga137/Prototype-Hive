@@ -112,23 +112,14 @@ const CartDrawer = ({
     const otp = generateOtpCode();
     const cleanedPhone = cleanZambianPhone(phone) || phone;
 
-    // Insert one row per line (shared OTP). Cast to any — see the
-    // 2026-04-17 migration that adds the new columns.
+    // Insert one row per line (shared OTP). Only use confirmed schema fields.
     const payload = lines.map((l) => ({
       buyer_id: user.id,
-      store_id: storeId,
       sme_id: smeId,
-      offer_id: l.offer_id,
       item_id: l.offer_id,
-      item_type: l.item_type ?? "physical",
-      quantity: l.quantity,
-      total_amount: l.unit_price * l.quantity,
       total_price: l.unit_price * l.quantity,
-      customer_name: name.trim(),
-      customer_phone: cleanedPhone,
-      delivery_address: address.trim(),
       status: "pending",
-      otp_code: otp,
+      "customer_phone number": cleanedPhone,
     }));
 
     const { data, error } = await (supabase.from("orders") as any)

@@ -45,9 +45,11 @@ const App = () => {
   // Initialize global error handlers and health checks once on mount
   useEffect(() => {
     setupGlobalErrorHandlers();
-    logSupabaseHealth().catch((err) =>
-      console.warn("[App] Failed to log Supabase health:", err)
-    );
+    // Health check is optional — don't let it block the app
+    logSupabaseHealth()
+      .catch((err) => {
+        console.warn("[App] Supabase health check skipped:", err?.message || err);
+      });
   }, []);
 
   return (
