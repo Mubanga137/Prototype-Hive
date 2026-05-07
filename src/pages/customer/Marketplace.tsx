@@ -156,7 +156,7 @@ const Marketplace = () => {
               <h3 className="text-lg font-display font-bold text-foreground">{selectedCategory || "All Products & Services"}</h3>
               <span className="text-xs text-muted-foreground">({filteredItems.length} items)</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {filteredItems.map((item, i) => (
                 <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={(it) => { setSelectedItem(it); setDrawerOpen(true); }} />
               ))}
