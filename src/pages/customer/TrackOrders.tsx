@@ -4,6 +4,7 @@ import { MapPin, Package, Truck, CheckCircle2, Clock, Eye, EyeOff } from "lucide
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import OrderRadarMap from "@/components/OrderRadarMap";
+import DestinationMap from "@/components/DestinationMap";
 import { toast } from "sonner";
 
 const statusSteps = ["pending", "processing", "in_transit", "out_for_delivery", "delivered"];
@@ -36,7 +37,7 @@ const TrackOrders = () => {
         setError(null);
         const { data, error: queryError } = await supabase
           .from("orders")
-          .select("id, total_price, status, created_at, runner_id, otp_code, hive_catalogue!orders_item_id_fkey(product_name)")
+          .select("id, total_price, status, created_at, runner_id, otp_code, delivery_address, local_landmark_note, dropoff_lat, dropoff_lng, hive_catalogue!orders_item_id_fkey(product_name)")
           .eq("buyer_id", user.id)
           .neq("status", "delivered")
           .neq("status", "cancelled")
@@ -158,11 +159,16 @@ const TrackOrders = () => {
                   {isInTransit && (
                     <>
                       <div
-                        className="w-full h-[70vh] rounded-2xl overflow-hidden shadow-lg flex flex-col items-center justify-center"
+                        className="w-full h-[70vh] rounded-2xl overflow-hidden shadow-lg"
                         style={{ backgroundColor: "#f0f0f0" }}
                       >
-                        <div className="text-6xl mb-4">🗺️</div>
-                        <p className="text-base font-medium" style={{ color: "#666" }}>Live Map Initializing...</p>
+                        <DestinationMap
+                          dropoffLat={order.dropoff_lat}
+                          dropoffLng={order.dropoff_lng}
+                          deliveryAddress={order.delivery_address}
+                          landmarkNote={order.local_landmark_note}
+                          orderId={order.id}
+                        />
                       </div>
 
                       <motion.div
@@ -183,9 +189,17 @@ const TrackOrders = () => {
                             <span className="text-sm font-semibold" style={{ color: "#666" }}>Loading...</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-xs" style={{ color: "#666" }}>Status</span>
-                            <span className="text-sm font-semibold" style={{ color: "#D4A574" }}>Awaiting Dispatch</span>
+                            <span className="text-xs" style={{ color: "#666" }}>Destination</span>
+                            <span className="text-sm font-semibold" style={{ color: "#D4A574" }}>
+                              {order.delivery_address ? order.delivery_address.substring(0, 20) + "..." : "Address loading..."}
+                            </span>
                           </div>
+                          {order.local_landmark_note && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs" style={{ color: "#666" }}>Landmark</span>
+                              <span className="text-xs font-semibold" style={{ color: "#D4A574" }}>📍 {order.local_landmark_note}</span>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     </>
