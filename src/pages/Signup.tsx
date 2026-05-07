@@ -80,34 +80,41 @@ const Signup = () => {
     setLoading(true);
     setShowLoadingScreen(true);
 
-    const { data: authData, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName, phone, role } },
-    });
+    try {
+      // First, try to sign up
+      const { data: authData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName, phone, role } },
+      });
 
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-      setShowLoadingScreen(false);
-      return;
-    }
-
-    if (authData.user) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        toast.error(signInError.message);
+      if (error) {
+        // Check if it's a "user already exists" error
+        if (error.message?.includes("already registered") || error.message?.includes("already exists")) {
+          toast.error("This email is already registered. Please log in instead.");
+          setLoading(false);
+          setShowLoadingScreen(false);
+          return;
+        }
+        toast.error(error.message || "Signup failed");
         setLoading(false);
         setShowLoadingScreen(false);
         return;
       }
 
-      // CRITICAL: Ensure profile exists with correct role
+      if (!authData.user) {
+        toast.error("Failed to create account. Please try again.");
+        setLoading(false);
+        setShowLoadingScreen(false);
+        return;
+      }
+
+      // Create profile BEFORE attempting sign-in
       let profilePayload: any = {
         user_id: authData.user.id,
         full_name: fullName,
         phone: phone,
-        role: role, // Explicitly set role
+        role: role,
       };
 
       if (role === "vendor") {
@@ -117,21 +124,39 @@ const Signup = () => {
         profilePayload.zmw_balance = 0;
       } else if (role === "gig_worker" && gigRole) {
         profilePayload.gig_role = gigRole;
-        profilePayload.pulse_credits = 50; // Default bounty capacity
+        profilePayload.pulse_credits = 50;
       } else if (role === "wholesaler") {
         profilePayload.wholesale_category = wholesaleCategory;
         profilePayload.wholesale_category_other = wholesaleCategory === "Other" ? wholesaleCategoryOther : "";
       }
 
-      // Try to upsert profile to ensure it exists with all correct fields
+      // Create profile immediately using upsert to handle any race conditions
       const { error: profileErr } = await supabase.from("profiles").upsert(profilePayload, {
         onConflict: "user_id",
       });
 
       if (profileErr) {
-        console.warn("Profile creation warning:", profileErr.message);
-        // Don't block on profile error — user is authenticated
+        console.warn("Profile creation error:", profileErr.message);
+        // Don't block signup on profile error - user is created, can fix profile later
       }
+
+      // Now attempt sign-in - this may be auto, or require email confirmation
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        // If signin fails due to confirmation needed, that's ok - they can check their email
+        if (signInError.message?.includes("Email not confirmed")) {
+          toast.info("Please check your email to confirm your account before logging in.");
+          setLoading(false);
+          setShowLoadingScreen(false);
+          return;
+        }
+        console.warn("Sign-in after signup failed:", signInError.message);
+        // Don't block - user auth was created, they can go to login
+      }
+
+      // Check if we successfully authenticated
+      const { data: sessionData } = await supabase.auth.getSession();
+      const hasSession = !!sessionData.session;
 
       setLoading(false);
       toast.success("Account created successfully!");
@@ -153,6 +178,11 @@ const Signup = () => {
       setTimeout(() => {
         navigate(routes[role] || "/", { replace: true });
       }, 1000);
+    } catch (err) {
+      console.error("Signup exception:", err);
+      toast.error("An unexpected error occurred. Please try again.");
+      setLoading(false);
+      setShowLoadingScreen(false);
     }
   };
 

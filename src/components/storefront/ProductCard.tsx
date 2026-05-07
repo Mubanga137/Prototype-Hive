@@ -146,7 +146,7 @@ const ProductCard = ({
           isFeatured ? "border-primary/40 ring-2 ring-primary/20 shadow-lg" : "border-border hover:border-primary/40"
         } ${disabled ? "opacity-60" : ""}`}
       >
-        <div className="relative h-40 sm:h-44 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden">
+        <div className="relative h-36 sm:h-40 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden">
           {image_url ? (
             <img src={image_url} alt={displayTitle} className="w-full h-full object-cover" />
           ) : (

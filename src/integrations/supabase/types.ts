@@ -191,49 +191,79 @@ export type Database = {
         Row: {
           buyer_id: string | null
           created_at: string
-          "customer_phone number": string | null
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_address: string | null
           hive_skim_amount: number | null
           id: number
           is_resold_item: boolean | null
           item_id: number | null
+          item_type: string | null
           node_id: number | null
+          offer_id: number | null
+          otp_code: string | null
+          quantity: number | null
           rider_id: number | null
           runner_id: number | null
+          scheduled_date: string | null
+          service_notes: string | null
           sme_id: number | null
           status: string | null
+          store_id: number | null
           system_fee: number | null
+          total_amount: number | null
           total_price: number | null
         }
         Insert: {
           buyer_id?: string | null
           created_at?: string
-          "customer_phone number"?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_address?: string | null
           hive_skim_amount?: number | null
           id?: number
           is_resold_item?: boolean | null
           item_id?: number | null
+          item_type?: string | null
           node_id?: number | null
+          offer_id?: number | null
+          otp_code?: string | null
+          quantity?: number | null
           rider_id?: number | null
           runner_id?: number | null
+          scheduled_date?: string | null
+          service_notes?: string | null
           sme_id?: number | null
           status?: string | null
+          store_id?: number | null
           system_fee?: number | null
+          total_amount?: number | null
           total_price?: number | null
         }
         Update: {
           buyer_id?: string | null
           created_at?: string
-          "customer_phone number"?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_address?: string | null
           hive_skim_amount?: number | null
           id?: number
           is_resold_item?: boolean | null
           item_id?: number | null
+          item_type?: string | null
           node_id?: number | null
+          offer_id?: number | null
+          otp_code?: string | null
+          quantity?: number | null
           rider_id?: number | null
           runner_id?: number | null
+          scheduled_date?: string | null
+          service_notes?: string | null
           sme_id?: number | null
           status?: string | null
+          store_id?: number | null
           system_fee?: number | null
+          total_amount?: number | null
           total_price?: number | null
         }
         Relationships: [
@@ -268,6 +298,20 @@ export type Database = {
           {
             foreignKeyName: "orders_sme_id_fkey"
             columns: ["sme_id"]
+            isOneToOne: false
+            referencedRelation: "hive_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "sme_stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_offer_id_fkey"
+            columns: ["offer_id"]
             isOneToOne: false
             referencedRelation: "hive_catalogue"
             referencedColumns: ["id"]

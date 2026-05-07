@@ -53,7 +53,7 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
       transition={{ duration: 0.4, delay: 0.04 * index }}
       className={`bg-card rounded-xl overflow-hidden flex flex-col border ${borderClass} transition-colors shadow-sm w-full`}
     >
-      <div className="relative aspect-square bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden w-full">
+      <div className="relative h-40 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden w-full">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
           <span className="text-3xl">{isService ? "💼" : "🛍️"}</span>
         </div>
@@ -83,32 +83,32 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
         )}
       </div>
 
-      <div className="p-3 flex flex-col flex-1">
-        <div className="flex items-center gap-1 mb-1">
-          <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+      <div className="p-2.5 flex flex-col flex-1">
+        <div className="flex items-center gap-1 mb-0.5">
+          <span className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
             {item.store_name[0]}
           </span>
-          <span className="text-xs text-muted-foreground truncate flex-1">{item.store_name}</span>
-          <BadgeCheck size={14} className="text-blue-500 shrink-0" />
+          <span className="text-[10px] text-muted-foreground truncate flex-1">{item.store_name}</span>
+          <BadgeCheck size={12} className="text-blue-500 shrink-0" />
         </div>
-        <p className="text-sm font-semibold text-foreground line-clamp-2 mb-2 flex-1">{item.item_name}</p>
-        <div className="flex items-baseline gap-2 mb-1">
-          <span className={`${accentColor} font-bold text-base`}>ZMW {item.price}</span>
-          {item.old_price && <span className="text-xs text-muted-foreground line-through">ZMW {item.old_price}</span>}
+        <p className="text-xs font-semibold text-foreground line-clamp-2 mb-1.5 flex-1 min-h-[1.5rem]">{item.item_name}</p>
+        <div className="flex items-baseline gap-2 mb-0.5">
+          <span className={`${accentColor} font-bold text-sm`}>ZMW {item.price}</span>
+          {item.old_price && <span className="text-[9px] text-muted-foreground line-through">ZMW {item.old_price}</span>}
         </div>
-        {savings > 0 && <p className="text-emerald-600 text-[11px] font-semibold mb-2">Save {savings}%</p>}
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground mb-3">
+        {savings > 0 && <p className="text-emerald-600 text-[10px] font-semibold mb-1.5">Save {savings}%</p>}
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground mb-2.5">
           <span className={item.in_stock !== false ? "text-emerald-600" : "text-destructive"}>
             ● {item.in_stock !== false ? "In Stock" : "Out of Stock"}
           </span>
-          {item.fast_delivery && <span className="flex items-center gap-0.5"><Truck size={10} />Fast</span>}
-          {item.free_shipping && <span className="flex items-center gap-0.5"><Package size={10} />Free Ship</span>}
+          {item.fast_delivery && <span className="flex items-center gap-0.5"><Truck size={9} />Fast</span>}
+          {item.free_shipping && <span className="flex items-center gap-0.5"><Package size={9} />Free Ship</span>}
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <button
             onClick={() => !isVendorAtCapacity && onBuyNow?.(item)}
             disabled={isVendorAtCapacity}
-            className={`w-full flex items-center justify-center gap-1.5 text-xs py-2.5 px-3 rounded-lg font-bold transition-all ${
+            className={`w-full flex items-center justify-center gap-1 text-[11px] py-2 px-2.5 rounded-lg font-bold transition-all ${
               isVendorAtCapacity
                 ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
                 : themeClasses
@@ -116,21 +116,21 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
                 : "btn-gold"
             }`}
           >
-            {isService ? "📅 BOOK ORDER" : "🛒 BUY NOW"}
+            {isService ? "📅 BOOK" : "🛒 BUY"}
           </button>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => !isVendorAtCapacity && onVisitStore?.(item)}
               disabled={isVendorAtCapacity}
-              className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 px-2 transition-colors ${
+              className={`flex items-center justify-center gap-0.5 text-[10px] font-semibold rounded-lg py-1 px-1.5 transition-colors ${
                 isVendorAtCapacity
                   ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
                   : "text-primary border border-primary/30 hover:bg-primary/5"
               }`}
             >
-              <Package size={12} /> View Store
+              <Package size={10} /> Store
             </button>
-            <button className={`flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1.5 px-2 transition-colors ${
+            <button className={`flex items-center justify-center gap-0.5 text-[10px] font-semibold rounded-lg py-1 px-1.5 transition-colors ${
               isVendorAtCapacity
                 ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
                 : "text-muted-foreground border border-border hover:bg-secondary"

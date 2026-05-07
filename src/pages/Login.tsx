@@ -17,19 +17,55 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-      return;
-    }
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("user_id", data.user.id)
-        .single();
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        // Provide more specific error messages
+        if (error.message?.includes("Invalid login credentials") || error.message?.includes("Email not confirmed")) {
+          toast.error("Invalid email or password. Please check and try again.");
+        } else if (error.message?.includes("Too many requests")) {
+          toast.error("Too many login attempts. Please try again later.");
+        } else {
+          toast.error(error.message || "Login failed. Please try again.");
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Get current user after successful login
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        toast.error("Login successful but failed to retrieve user. Please refresh and try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user profile with retry
+      let profile = null;
+      let retries = 3;
+
+      while (retries > 0 && !profile) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (profileData) {
+          profile = profileData;
+          break;
+        }
+
+        retries--;
+        if (retries > 0) {
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
       const role = profile?.role || "customer";
       const routes: Record<string, string> = {
         customer: "/customer-dash",
@@ -37,9 +73,13 @@ const Login = () => {
         wholesaler: "/warehouse",
         gig_worker: "/gig-radar",
       };
-      navigate(routes[role] || "/customer-dash");
+
+      navigate(routes[role] || "/customer-dash", { replace: true });
+    } catch (err) {
+      console.error("Login exception:", err);
+      toast.error("An unexpected error occurred. Please try again.");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSocialAuth = async (provider: "google" | "apple" | "facebook") => {
