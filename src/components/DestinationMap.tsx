@@ -7,7 +7,6 @@ interface DestinationMapProps {
   dropoffLat?: number | null;
   dropoffLng?: number | null;
   deliveryAddress?: string | null;
-  landmarkNote?: string | null;
   orderId?: number | null;
 }
 
@@ -22,7 +21,6 @@ const DestinationMap = ({
   dropoffLat,
   dropoffLng,
   deliveryAddress,
-  landmarkNote,
   orderId,
 }: DestinationMapProps) => {
   const lat = dropoffLat ?? -15.3875;
@@ -66,11 +64,6 @@ const DestinationMap = ({
             <div className="text-xs max-w-xs">
               {orderId && <p className="font-semibold">Order #{orderId}</p>}
               {deliveryAddress && <p className="text-gray-700 mb-1">{deliveryAddress}</p>}
-              {landmarkNote && (
-                <p style={{ color: "#D4A574" }} className="font-semibold text-xs">
-                  📍 {landmarkNote}
-                </p>
-              )}
             </div>
           </Popup>
         </Marker>
