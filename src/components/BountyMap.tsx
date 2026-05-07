@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { createGoldenPulseMarker, updateGoldenPulseMarker, injectGoldenPingAnimation } from "@/utils/createGoldenPulseMarker";
+import { createModernUserMarker, updateModernUserMarker } from "@/utils/modernUserMarker";
 import { createAccuracyCircle, updateAccuracyCircle, removeAccuracyCircle } from "@/utils/accuracyCircle";
 
 export interface BountyOrder {
@@ -36,13 +36,11 @@ const BountyMap = ({
   const isFollowingRef = useRef(true);
   const [isMapDragging, setIsMapDragging] = useState(false);
 
-  const center: [number, number] = workerPosition || [-15.4167, 28.2833];
+  const center: [number, number] = workerPosition || [0, 0];
 
   // Initialize map
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    injectGoldenPingAnimation();
+    if (!mapRef.current || !workerPosition) return;
 
     const map = L.map(mapRef.current, {
       scrollWheelZoom: true,
@@ -50,7 +48,8 @@ const BountyMap = ({
       touchZoom: true,
       zoomControl: true,
       touchAction: "none",
-    }).setView(center, 16, { animate: false });
+      preferCanvas: false,
+    }).setView(workerPosition, 18, { animate: false });
     mapInstanceRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -82,18 +81,18 @@ const BountyMap = ({
       accuracyCircleRef.current = null;
       bountyMarkersRef.current.clear();
     };
-  }, []);
+  }, [workerPosition]);
 
-  // Update worker position with golden pulse marker and accuracy circle
+  // Update worker position with modern user marker and accuracy circle
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !workerPosition) return;
 
-    // Create or update user marker
+    // Create or update user marker with Google Maps style
     if (!selfMarkerRef.current) {
-      selfMarkerRef.current = createGoldenPulseMarker(workerPosition[0], workerPosition[1], map);
+      selfMarkerRef.current = createModernUserMarker(workerPosition[0], workerPosition[1], map);
     } else {
-      selfMarkerRef.current = updateGoldenPulseMarker(selfMarkerRef.current, workerPosition[0], workerPosition[1], map);
+      selfMarkerRef.current = updateModernUserMarker(selfMarkerRef.current, workerPosition[0], workerPosition[1], map);
     }
 
     // Update accuracy circle (only if we have valid accuracy data and are tracking)
@@ -112,7 +111,7 @@ const BountyMap = ({
 
     // Follow user position if in follow mode
     if (isFollowingRef.current) {
-      map.flyTo(workerPosition, 16, { animate: true, duration: 0.5 });
+      map.flyTo(workerPosition, 18, { animate: true, duration: 0.5 });
     }
   }, [workerPosition, workerAccuracy, locationStatus]);
 

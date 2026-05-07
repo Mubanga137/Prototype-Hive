@@ -10,6 +10,7 @@ import GigSidenav from "@/components/gig/GigSidenav";
 import OtpVerifyDrawer from "@/components/gig/OtpVerifyDrawer";
 import { GPSTransmitterStatus } from "@/components/gig/GPSTransmitterStatus";
 import { useMixedFleetRole, canAcceptJob, calculatePayout } from "@/hooks/useMixedFleetRole";
+import { logLocationData } from "@/utils/geolocationDebug";
 
 interface OrderItem {
   id: number;
@@ -129,6 +130,22 @@ const GigRadar = () => {
 
       setIsOnline(val);
       if (val) {
+        // Request fresh location when going online
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              const acc = pos.coords.accuracy;
+              logLocationData(lat, lng, acc, "Fresh on Online");
+              setWorkerPosition([lat, lng]);
+            },
+            (error) => {
+              console.error("[GigRadar] Could not get fresh location when going online:", error.message);
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          );
+        }
         toast.success("🟢 You are now online");
       } else {
         toast.success("🔴 You are offline");
@@ -151,22 +168,66 @@ const GigRadar = () => {
     setLiveStatus("navigating");
   };
 
-  // Update worker position in local state when GPS location changes
+  // Update worker position when GPS location changes (highest priority - real device location)
   useEffect(() => {
-    if (location) {
-      setWorkerPosition([location.latitude, location.longitude]);
+    if (location && location.latitude && location.longitude) {
+      // Only update if we have valid coordinates
+      if (Math.abs(location.latitude) <= 90 && Math.abs(location.longitude) <= 180) {
+        logLocationData(location.latitude, location.longitude, location.accuracy, "Continuous Update");
+        setWorkerPosition([location.latitude, location.longitude]);
+      }
     }
   }, [location]);
 
-  // Get initial position even when offline
+  // Request device location on mount - request permission and get initial position
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setWorkerPosition([pos.coords.latitude, pos.coords.longitude]),
-        () => {},
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-      );
+    if (!navigator.geolocation) {
+      console.error("[GigRadar] Geolocation not supported on this browser");
+      toast.error("Geolocation not supported");
+      return;
     }
+
+    console.log("[GigRadar] Requesting device location with high accuracy...");
+
+    // Request high-accuracy position immediately - this will trigger permission dialog if needed
+    const positionWatchId = navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = pos.coords.accuracy;
+
+        logLocationData(lat, lng, acc, "Initial Mount");
+        setWorkerPosition([lat, lng]);
+      },
+      (error) => {
+        console.error("[GigRadar] Geolocation error:", {
+          code: error.code,
+          message: error.message,
+          PERMISSION_DENIED: error.code === 1,
+          POSITION_UNAVAILABLE: error.code === 2,
+          TIMEOUT: error.code === 3,
+        });
+
+        if (error.code === 1) {
+          toast.error("Please enable location access to use this feature");
+        } else if (error.code === 2) {
+          toast.error("Location services unavailable");
+        } else if (error.code === 3) {
+          toast.error("Location request timed out");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 8000,
+      }
+    );
+
+    return () => {
+      if (positionWatchId) {
+        // getCurrentPosition doesn't have a way to cancel, but we track for cleanup
+      }
+    };
   }, []);
 
   // Fetch available orders when user loads
