@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   buildWhatsAppUrl, cleanZambianPhone, generateOtpCode,
@@ -67,6 +68,7 @@ const buildCartMessage = (
 const CartDrawer = ({
   open, onOpenChange, storeId, smeId, storeName, storeWhatsapp,
 }: CartDrawerProps) => {
+  const { user } = useAuth();
   const { lines, setQuantity, removeItem, clear, subtotal, itemCount } =
     useStoreCart(storeId);
 
@@ -96,6 +98,11 @@ const CartDrawer = ({
   };
 
   const handleCheckout = async () => {
+    if (!user?.id) {
+      toast.error("Please log in to place an order.");
+      return;
+    }
+
     const err = validate();
     if (err) { toast.error(err); return; }
     if (state !== "idle") return;
@@ -108,6 +115,7 @@ const CartDrawer = ({
     // Insert one row per line (shared OTP). Cast to any — see the
     // 2026-04-17 migration that adds the new columns.
     const payload = lines.map((l) => ({
+      buyer_id: user.id,
       store_id: storeId,
       sme_id: smeId,
       offer_id: l.offer_id,
@@ -128,8 +136,15 @@ const CartDrawer = ({
       .select("id");
 
     if (error) {
-      console.error("[cart-checkout] insert failed:", error);
-      toast.error(error.message || "Could not place your order.");
+      console.error("[cart-checkout] insert failed:", {
+        message: error.message,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        payload,
+      });
+      const msg = (error as any).details || error.message || "Could not place your order.";
+      toast.error(msg);
       setState("idle");
       return;
     }

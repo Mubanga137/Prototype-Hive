@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   buildOrderMessage,
@@ -58,6 +59,7 @@ const isZambianPhone = (raw: string) => {
 };
 
 const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -145,6 +147,11 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
+    if (!user?.id) {
+      toast.error("Please log in to place an order.");
+      return;
+    }
+
     const err = validate();
     if (err) {
       toast.error(err);
@@ -165,6 +172,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     // the operator in the Supabase SQL editor — see
     // docs/migrations/2026-04-17_orders_checkout_fields.sql.
     const insertPayload: Record<string, any> = {
+      buyer_id: user?.id ?? null,
       store_id: item.store_id ?? null,
       sme_id: item.sme_id ?? null,
       offer_id: item.id,
@@ -188,8 +196,15 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       .single();
 
     if (error) {
-      console.error("[checkout] insert failed:", error);
-      toast.error(error.message || "Could not place your order. Please try again.");
+      console.error("[checkout] insert failed:", {
+        message: error.message,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        payload: insertPayload,
+      });
+      const msg = (error as any).details || error.message || "Could not place your order. Please try again.";
+      toast.error(msg);
       setState("idle");
       return;
     }
