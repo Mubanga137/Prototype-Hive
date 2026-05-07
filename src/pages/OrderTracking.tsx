@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useLocationPermission } from "@/hooks/useLocationPermission";
 import GPSOffModal from "@/components/modals/GPSOffModal";
 import { createGoldenPulseMarker, updateGoldenPulseMarker, injectGoldenPingAnimation } from "@/utils/createGoldenPulseMarker";
+import { animateMarkerToPosition } from "@/utils/smoothMarkerAnimation";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"];
 type Runner = Database["public"]["Tables"]["runners"]["Row"];
@@ -233,7 +234,9 @@ const OrderTracking = () => {
         .addTo(map)
         .bindPopup("Rider Location");
     } else {
-      riderMarkerRef.current.setLatLng([riderLocation.lat, riderLocation.long]);
+      animateMarkerToPosition(riderMarkerRef.current, riderLocation.lat, riderLocation.long, {
+        duration: 800,
+      });
     }
 
     // Remove old routing control

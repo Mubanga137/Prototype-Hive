@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
+import { animateMarkerToPosition } from "@/utils/smoothMarkerAnimation";
 
 interface OrderRadarMapProps {
   orderId: number;
@@ -76,10 +77,10 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
           { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${workerId}` },
           (payload: any) => {
             const { latitude, longitude } = payload.new;
-            if (latitude && longitude) {
+            if (latitude && longitude && isFinite(latitude) && isFinite(longitude)) {
               const pos: [number, number] = [latitude, longitude];
               if (riderMarkerRef.current) {
-                riderMarkerRef.current.setLatLng(pos);
+                animateMarkerToPosition(riderMarkerRef.current, latitude, longitude, { duration: 800 });
               } else {
                 riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
               }
