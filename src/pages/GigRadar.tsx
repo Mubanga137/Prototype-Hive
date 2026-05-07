@@ -227,6 +227,8 @@ const GigRadar = () => {
                 bounties={bounties}
                 selectedOrderId={selectedOrderId}
                 onSelectOrder={setSelectedOrderId}
+                workerAccuracy={location?.accuracy}
+                locationStatus={locationStatus}
               />
             </div>
           </div>
