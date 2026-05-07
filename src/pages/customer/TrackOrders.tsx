@@ -4,6 +4,7 @@ import { MapPin, Package, Truck, CheckCircle2, Clock, Eye, EyeOff } from "lucide
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import OrderRadarMap from "@/components/OrderRadarMap";
+import DestinationMap from "@/components/DestinationMap";
 import { toast } from "sonner";
 
 const statusSteps = ["pending", "processing", "in_transit", "out_for_delivery", "delivered"];
@@ -16,6 +17,7 @@ const TrackOrders = () => {
   const [error, setError] = useState<string | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Set<number>>(new Set());
+  const [showDemo, setShowDemo] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -28,37 +30,61 @@ const TrackOrders = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    
     const fetchActiveOrders = async () => {
       try {
         setLoading(true);
         setError(null);
-        const { data, error: queryError } = await supabase
-          .from("orders")
-          .select("id, total_price, status, created_at, runner_id, otp_code, hive_catalogue!orders_item_id_fkey(product_name)")
-          .eq("buyer_id", user.id)
-          .neq("status", "delivered")
-          .neq("status", "cancelled")
-          .order("created_at", { ascending: false })
-          .limit(20);
 
-        if (queryError) {
-          setError(queryError.message);
+        if (!user) {
           setOrders([]);
+          setLoading(false);
           return;
         }
 
-        setOrders(data || []);
+        try {
+          const { data, error: queryError } = await supabase
+            .from("orders")
+            .select("id, total_price, status, created_at, runner_id, otp_code, delivery_address, hive_catalogue!orders_item_id_fkey(product_name)")
+            .eq("buyer_id", user.id)
+            .neq("status", "delivered")
+            .neq("status", "cancelled")
+            .order("created_at", { ascending: false })
+            .limit(20);
+
+          if (queryError) {
+            console.error("[TrackOrders] Supabase query error:", queryError);
+            setError(`Unable to load orders: ${queryError.message}`);
+            setOrders([]);
+            setLoading(false);
+            return;
+          }
+
+          setOrders(data || []);
+          setLoading(false);
+        } catch (fetchErr) {
+          // Network or connectivity error
+          const msg = fetchErr instanceof Error ? fetchErr.message : "Network error";
+          console.error("[TrackOrders] Network/fetch error:", msg);
+
+          // Check if it's a network connectivity issue
+          if (msg.includes("fetch") || msg.includes("Failed") || msg.includes("Network")) {
+            setError("Unable to connect to server. Please check your internet connection and try again.");
+          } else {
+            setError(`Error loading orders: ${msg}`);
+          }
+
+          setOrders([]);
+          setLoading(false);
+        }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to fetch orders";
-        setError(msg);
+        const msg = err instanceof Error ? err.message : "Unexpected error";
+        console.error("[TrackOrders] Unexpected error:", msg);
+        setError("An unexpected error occurred");
         setOrders([]);
-      } finally {
         setLoading(false);
       }
     };
-    
+
     fetchActiveOrders();
   }, [user]);
 
@@ -109,15 +135,24 @@ const TrackOrders = () => {
             <div className="text-5xl mb-4">⚠️</div>
             <p className="text-lg font-semibold mb-2" style={{ color: "#0F1A35" }}>Unable to Load Orders</p>
             <p className="text-sm mb-6 max-w-sm text-center" style={{ color: "#666" }}>{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
-              style={{ backgroundColor: "#D4A574", color: "#FFFBF2" }}
-            >
-              Try Again
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                style={{ backgroundColor: "#D4A574", color: "#FFFBF2" }}
+              >
+                🔄 Try Again
+              </button>
+              <button
+                onClick={() => { setError(null); setShowDemo(true); }}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all border-2"
+                style={{ borderColor: "#D4A574", color: "#D4A574", backgroundColor: "transparent" }}
+              >
+                🗺️ View Demo Map
+              </button>
+            </div>
           </motion.div>
-        ) : orders.length === 0 ? (
+        ) : orders.length === 0 && !showDemo ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -126,21 +161,44 @@ const TrackOrders = () => {
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-semibold mb-1" style={{ color: "#0F1A35" }}>No active deliveries in transit.</h3>
             <p className="text-sm mb-8 max-w-sm text-center" style={{ color: "#666" }}>All your orders have been delivered or cancelled.</p>
-            <button
-              onClick={navigateToMarketplace}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold border-2 transition-all hover:shadow-md"
-              style={{
-                backgroundColor: "transparent",
-                color: "#0F1A35",
-                borderColor: "#0F1A35"
-              }}
-            >
-              🛍️ Return to Marketplace
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={navigateToMarketplace}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold border-2 transition-all hover:shadow-md"
+                style={{
+                  backgroundColor: "transparent",
+                  color: "#0F1A35",
+                  borderColor: "#0F1A35"
+                }}
+              >
+                🛍️ Return to Marketplace
+              </button>
+              <button
+                onClick={() => setShowDemo(true)}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-all hover:shadow-md"
+                style={{
+                  backgroundColor: "#D4A574",
+                  color: "#FFFBF2"
+                }}
+              >
+                🗺️ View Map Demo
+              </button>
+            </div>
           </motion.div>
         ) : (
           <div className="space-y-8">
-            {orders.map((order, i) => {
+            {(showDemo && orders.length === 0 ? [
+              {
+                id: 999888,
+                total_price: 450.00,
+                status: "in_transit",
+                created_at: new Date().toISOString(),
+                runner_id: 1,
+                otp_code: "9437",
+                delivery_address: "Independence Avenue, Lusaka, Zambia",
+                hive_catalogue: { product_name: "Premium Headphones" }
+              }
+            ] : orders).map((order, i) => {
               const currentStep = getStepIndex(order.status);
               const itemName = order.hive_catalogue?.product_name || `Order #${order.id}`;
               const isInTransit = order.status === "in_transit" || order.status === "out_for_delivery";
@@ -158,11 +216,13 @@ const TrackOrders = () => {
                   {isInTransit && (
                     <>
                       <div
-                        className="w-full h-[70vh] rounded-2xl overflow-hidden shadow-lg flex flex-col items-center justify-center"
+                        className="w-full h-[70vh] rounded-2xl overflow-hidden shadow-lg"
                         style={{ backgroundColor: "#f0f0f0" }}
                       >
-                        <div className="text-6xl mb-4">🗺️</div>
-                        <p className="text-base font-medium" style={{ color: "#666" }}>Live Map Initializing...</p>
+                        <DestinationMap
+                          deliveryAddress={order.delivery_address}
+                          orderId={order.id}
+                        />
                       </div>
 
                       <motion.div
@@ -183,8 +243,10 @@ const TrackOrders = () => {
                             <span className="text-sm font-semibold" style={{ color: "#666" }}>Loading...</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-xs" style={{ color: "#666" }}>Status</span>
-                            <span className="text-sm font-semibold" style={{ color: "#D4A574" }}>Awaiting Dispatch</span>
+                            <span className="text-xs" style={{ color: "#666" }}>Destination</span>
+                            <span className="text-sm font-semibold" style={{ color: "#D4A574" }}>
+                              {order.delivery_address ? order.delivery_address.substring(0, 25) + "..." : "Address loading..."}
+                            </span>
                           </div>
                         </div>
                       </motion.div>
