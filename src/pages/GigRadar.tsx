@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Package, Bike, Zap, CheckCircle, MapPin, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useRunnerLocation } from "@/hooks/useRunnerLocation";
+import { useHighAccuracyLocation } from "@/hooks/useHighAccuracyLocation";
 import { toast } from "sonner";
 import BountyMap, { type BountyOrder } from "@/components/BountyMap";
 import GigSidenav from "@/components/gig/GigSidenav";
@@ -36,8 +36,8 @@ const GigRadar = () => {
   const [liveStatus, setLiveStatus] = useState<"idle" | "on_delivery" | "navigating">("idle");
   const selectedRef = useRef<HTMLDivElement | null>(null);
 
-  // ── GPS Heartbeat Hook: Manages location tracking & Supabase updates ──
-  const { location, isTransmitting, hasPermission, permissionError } = useRunnerLocation(
+  // ── High-Accuracy GPS Tracking: Production-grade location with distance filtering ──
+  const { location, isTransmitting, hasPermission, permissionError, locationStatus } = useHighAccuracyLocation(
     user,
     isOnline
   );

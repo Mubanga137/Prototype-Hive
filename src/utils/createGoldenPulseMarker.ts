@@ -52,7 +52,7 @@ export const createGoldenPulseMarker = (lat: number, lng: number, map: L.Map) =>
 };
 
 /**
- * Updates the position of a golden pulse marker.
+ * Updates the position of a golden pulse marker with smooth animation.
  * Call this when location changes to reposition the marker smoothly.
  */
 export const updateGoldenPulseMarker = (
@@ -65,12 +65,27 @@ export const updateGoldenPulseMarker = (
     return createGoldenPulseMarker(lat, lng, map);
   }
 
-  // Smooth pan to new location
-  marker.setLatLng([lat, lng]);
-  
-  // Optional: gently fly to the marker (comment out if you don't want auto-pan)
-  // map.flyTo([lat, lng], map.getZoom(), { duration: 1 });
+  const startLatLng = marker.getLatLng();
+  const startTime = Date.now();
+  const duration = 800; // ms
 
+  const animatePosition = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    const easeProgress = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+
+    const newLat = startLatLng.lat + (lat - startLatLng.lat) * easeProgress;
+    const newLng = startLatLng.lng + (lng - startLatLng.lng) * easeProgress;
+
+    marker.setLatLng([newLat, newLng]);
+
+    if (progress < 1) {
+      requestAnimationFrame(animatePosition);
+    }
+  };
+
+  animatePosition();
   return marker;
 };
 
