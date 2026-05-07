@@ -41,29 +41,45 @@ const TrackOrders = () => {
           return;
         }
 
-        const { data, error: queryError } = await supabase
-          .from("orders")
-          .select("id, total_price, status, created_at, runner_id, otp_code, delivery_address, hive_catalogue!orders_item_id_fkey(product_name)")
-          .eq("buyer_id", user.id)
-          .neq("status", "delivered")
-          .neq("status", "cancelled")
-          .order("created_at", { ascending: false })
-          .limit(20);
+        try {
+          const { data, error: queryError } = await supabase
+            .from("orders")
+            .select("id, total_price, status, created_at, runner_id, otp_code, delivery_address, hive_catalogue!orders_item_id_fkey(product_name)")
+            .eq("buyer_id", user.id)
+            .neq("status", "delivered")
+            .neq("status", "cancelled")
+            .order("created_at", { ascending: false })
+            .limit(20);
 
-        if (queryError) {
-          console.error("[TrackOrders] Supabase query error:", queryError);
-          setError(queryError.message);
+          if (queryError) {
+            console.error("[TrackOrders] Supabase query error:", queryError);
+            setError(`Unable to load orders: ${queryError.message}`);
+            setOrders([]);
+            setLoading(false);
+            return;
+          }
+
+          setOrders(data || []);
+          setLoading(false);
+        } catch (fetchErr) {
+          // Network or connectivity error
+          const msg = fetchErr instanceof Error ? fetchErr.message : "Network error";
+          console.error("[TrackOrders] Network/fetch error:", msg);
+
+          // Check if it's a network connectivity issue
+          if (msg.includes("fetch") || msg.includes("Failed") || msg.includes("Network")) {
+            setError("Unable to connect to server. Please check your internet connection and try again.");
+          } else {
+            setError(`Error loading orders: ${msg}`);
+          }
+
           setOrders([]);
           setLoading(false);
-          return;
         }
-
-        setOrders(data || []);
-        setLoading(false);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to fetch orders";
-        console.error("[TrackOrders] Fetch error:", msg);
-        setError(msg);
+        const msg = err instanceof Error ? err.message : "Unexpected error";
+        console.error("[TrackOrders] Unexpected error:", msg);
+        setError("An unexpected error occurred");
         setOrders([]);
         setLoading(false);
       }
@@ -119,13 +135,22 @@ const TrackOrders = () => {
             <div className="text-5xl mb-4">⚠️</div>
             <p className="text-lg font-semibold mb-2" style={{ color: "#0F1A35" }}>Unable to Load Orders</p>
             <p className="text-sm mb-6 max-w-sm text-center" style={{ color: "#666" }}>{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
-              style={{ backgroundColor: "#D4A574", color: "#FFFBF2" }}
-            >
-              Try Again
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                style={{ backgroundColor: "#D4A574", color: "#FFFBF2" }}
+              >
+                🔄 Try Again
+              </button>
+              <button
+                onClick={() => { setError(null); setShowDemo(true); }}
+                className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all border-2"
+                style={{ borderColor: "#D4A574", color: "#D4A574", backgroundColor: "transparent" }}
+              >
+                🗺️ View Demo Map
+              </button>
+            </div>
           </motion.div>
         ) : orders.length === 0 && !showDemo ? (
           <motion.div
