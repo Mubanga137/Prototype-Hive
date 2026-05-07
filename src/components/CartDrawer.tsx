@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   buildWhatsAppUrl, cleanZambianPhone, generateOtpCode,
@@ -67,6 +68,7 @@ const buildCartMessage = (
 const CartDrawer = ({
   open, onOpenChange, storeId, smeId, storeName, storeWhatsapp,
 }: CartDrawerProps) => {
+  const { user } = useAuth();
   const { lines, setQuantity, removeItem, clear, subtotal, itemCount } =
     useStoreCart(storeId);
 
@@ -96,6 +98,11 @@ const CartDrawer = ({
   };
 
   const handleCheckout = async () => {
+    if (!user?.id) {
+      toast.error("Please log in to place an order.");
+      return;
+    }
+
     const err = validate();
     if (err) { toast.error(err); return; }
     if (state !== "idle") return;
@@ -105,22 +112,14 @@ const CartDrawer = ({
     const otp = generateOtpCode();
     const cleanedPhone = cleanZambianPhone(phone) || phone;
 
-    // Insert one row per line (shared OTP). Cast to any — see the
-    // 2026-04-17 migration that adds the new columns.
+    // Insert one row per line (shared OTP). Only use confirmed schema fields.
     const payload = lines.map((l) => ({
-      store_id: storeId,
+      buyer_id: user.id,
       sme_id: smeId,
-      offer_id: l.offer_id,
       item_id: l.offer_id,
-      item_type: l.item_type ?? "physical",
-      quantity: l.quantity,
-      total_amount: l.unit_price * l.quantity,
       total_price: l.unit_price * l.quantity,
-      customer_name: name.trim(),
-      customer_phone: cleanedPhone,
-      delivery_address: address.trim(),
       status: "pending",
-      otp_code: otp,
+      "customer_phone number": cleanedPhone,
     }));
 
     const { data, error } = await (supabase.from("orders") as any)
@@ -128,8 +127,15 @@ const CartDrawer = ({
       .select("id");
 
     if (error) {
-      console.error("[cart-checkout] insert failed:", error);
-      toast.error(error.message || "Could not place your order.");
+      console.error("[cart-checkout] insert failed:", {
+        message: error.message,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        payload,
+      });
+      const msg = (error as any).details || error.message || "Could not place your order.";
+      toast.error(msg);
       setState("idle");
       return;
     }

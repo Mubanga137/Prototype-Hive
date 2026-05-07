@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
   buildOrderMessage,
@@ -58,6 +59,7 @@ const isZambianPhone = (raw: string) => {
 };
 
 const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -145,6 +147,11 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
+    if (!user?.id) {
+      toast.error("Please log in to place an order.");
+      return;
+    }
+
     const err = validate();
     if (err) {
       toast.error(err);
@@ -160,26 +167,16 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       ? `${scheduledDate}${serviceNotes ? " · " + serviceNotes : ""}`
       : address.trim();
 
-    // Insert into orders. Cast to `any` because the migration that adds the
-    // new columns (store_id, offer_id, customer_*, otp_code, …) is run by
-    // the operator in the Supabase SQL editor — see
-    // docs/migrations/2026-04-17_orders_checkout_fields.sql.
+    // Insert into orders. Only use fields confirmed to exist in the schema.
+    // Extra fields (customer_name, delivery_address, etc.) will be handled
+    // via WhatsApp message and can be stored in webhook handlers if needed.
     const insertPayload: Record<string, any> = {
-      store_id: item.store_id ?? null,
+      buyer_id: user?.id ?? null,
       sme_id: item.sme_id ?? null,
-      offer_id: item.id,
-      item_id: item.id, // legacy column kept for back-compat
-      item_type: item.item_type ?? (isService ? "service" : "physical"),
-      quantity: isService ? 1 : quantity,
-      total_amount: totalAmount,
-      total_price: totalAmount, // legacy column kept for back-compat
-      customer_name: name.trim(),
-      customer_phone: cleanedPhone,
-      delivery_address: isService ? null : address.trim(),
-      scheduled_date: isService ? scheduledDate : null,
-      service_notes: isService ? (serviceNotes.trim() || null) : null,
+      item_id: item.id,
+      total_price: totalAmount,
       status: "pending",
-      otp_code: otp,
+      "customer_phone number": cleanedPhone,
     };
 
     const { data, error } = await (supabase.from("orders") as any)
@@ -188,8 +185,15 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       .single();
 
     if (error) {
-      console.error("[checkout] insert failed:", error);
-      toast.error(error.message || "Could not place your order. Please try again.");
+      console.error("[checkout] insert failed:", {
+        message: error.message,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+        payload: insertPayload,
+      });
+      const msg = (error as any).details || error.message || "Could not place your order. Please try again.";
+      toast.error(msg);
       setState("idle");
       return;
     }

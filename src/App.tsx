@@ -35,6 +35,7 @@ import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
 import OrderTracking from "./pages/OrderTracking.tsx";
+import TrackOrders from "./pages/customer/TrackOrders.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
 import SupabaseHealthModal from "@/components/SupabaseHealthModal";
 
@@ -44,9 +45,11 @@ const App = () => {
   // Initialize global error handlers and health checks once on mount
   useEffect(() => {
     setupGlobalErrorHandlers();
-    logSupabaseHealth().catch((err) =>
-      console.warn("[App] Failed to log Supabase health:", err)
-    );
+    // Health check is optional — don't let it block the app
+    logSupabaseHealth()
+      .catch((err) => {
+        console.warn("[App] Supabase health check skipped:", err?.message || err);
+      });
   }, []);
 
   return (
@@ -69,6 +72,7 @@ const App = () => {
 
               {/* Customer — temporarily open */}
               <Route path="/customer-dash" element={<CustomerDashboard />} />
+              <Route path="/track-orders" element={<TrackOrders />} />
 
               {/* Vendor / SME — temporarily open */}
               <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />
