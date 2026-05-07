@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { RoadSnapper } from "@/utils/roadSnapping";
 
 interface LocationState {
   latitude: number;
@@ -9,6 +10,8 @@ interface LocationState {
   speed?: number;
   heading?: number;
   timestamp?: number;
+  isSnapped?: boolean;
+  snapConfidence?: number;
 }
 
 interface UseHighAccuracyLocationReturn {
@@ -68,6 +71,7 @@ export const useHighAccuracyLocation = (
   const lastUpdateTimeRef = useRef<number>(0);
   const lastSupabaseUpdateRef = useRef<number>(0);
   const throttleIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const roadSnapperRef = useRef<RoadSnapper>(new RoadSnapper());
   const isMountedRef = useRef(true);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = 5;
@@ -214,7 +218,7 @@ export const useHighAccuracyLocation = (
       }
 
       watchIdRef.current = navigator.geolocation.watchPosition(
-        (position) => {
+        async (position) => {
           const now = Date.now();
           const newLocation: LocationState = {
             latitude: position.coords.latitude,
@@ -247,6 +251,20 @@ export const useHighAccuracyLocation = (
           const validation = validateAndFilterLocation(newLocation);
 
           if (validation.valid) {
+            // Apply road snapping via OSRM map matching
+            const snappedPoint = await roadSnapperRef.current.addPoint({
+              latitude: newLocation.latitude,
+              longitude: newLocation.longitude,
+              timestamp: now,
+            });
+
+            if (snappedPoint) {
+              newLocation.latitude = snappedPoint.latitude;
+              newLocation.longitude = snappedPoint.longitude;
+              newLocation.isSnapped = snappedPoint.isSnapped;
+              newLocation.snapConfidence = snappedPoint.confidence;
+            }
+
             lastValidLocationRef.current = newLocation;
             lastUpdateTimeRef.current = now;
 
@@ -316,6 +334,9 @@ export const useHighAccuracyLocation = (
       clearInterval(throttleIntervalRef.current);
       throttleIntervalRef.current = null;
     }
+
+    // Flush any pending batch and reset road snapper
+    roadSnapperRef.current.reset();
 
     lastValidLocationRef.current = null;
     lastUpdateTimeRef.current = 0;
