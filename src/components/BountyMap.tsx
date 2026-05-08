@@ -61,7 +61,14 @@ const BountyMap = ({
       maxZoom: 19,
     }).addTo(map);
 
-    setTimeout(() => map.invalidateSize(), 200);
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+
+    // Re-invalidate after a bit more time to ensure proper sizing
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 800);
 
     // Disable follow mode on user interaction
     map.on("dragstart", () => {
@@ -108,6 +115,10 @@ const BountyMap = ({
     // Create or update user marker with Google Maps style
     if (!selfMarkerRef.current) {
       selfMarkerRef.current = createModernUserMarker(workerPosition[0], workerPosition[1], map);
+      // Center map on first GPS location
+      map.setView(workerPosition, 15, { animate: false });
+      isFollowingRef.current = true;
+      setIsFollowing(true);
     } else {
       selfMarkerRef.current = updateModernUserMarker(selfMarkerRef.current, workerPosition[0], workerPosition[1], map);
     }
@@ -127,7 +138,7 @@ const BountyMap = ({
     }
 
     // Only follow user position if follow mode is enabled
-    if (isFollowingRef.current) {
+    if (isFollowingRef.current && selfMarkerRef.current) {
       map.setView(workerPosition, 15, { animate: true, duration: 0.3 });
     }
   }, [workerPosition, workerAccuracy, locationStatus]);
@@ -173,6 +184,10 @@ const BountyMap = ({
         zIndex: 1,
         position: "relative",
         touchAction: "none",
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        backgroundColor: "#f5f5f5",
       }}
     >
       <div
@@ -181,20 +196,49 @@ const BountyMap = ({
         style={{
           position: "relative",
           touchAction: "none",
+          flex: 1,
+          minHeight: 260,
+          backgroundColor: "#f5f5f5",
         }}
       />
+
+      {/* Show helper when no location yet */}
+      {!workerPosition && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            zIndex: 40,
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: "14px", color: "#666", marginBottom: "8px" }}>Waiting for GPS location...</p>
+            <p style={{ fontSize: "12px", color: "#999" }}>Make sure location permission is enabled</p>
+          </div>
+        </div>
+      )}
+
       {/* Recenter button */}
-      <button
-        onClick={handleRecenter}
-        className={`absolute bottom-4 right-4 p-2.5 rounded-full shadow-lg transition-all z-50 ${
-          isFollowing
-            ? "bg-blue-500 text-white hover:bg-blue-600"
-            : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
-        }`}
-        title={isFollowing ? "Following enabled" : "Click to recenter"}
-      >
-        <MapPin size={20} />
-      </button>
+      {workerPosition && (
+        <button
+          onClick={handleRecenter}
+          className={`absolute bottom-4 right-4 p-2.5 rounded-full shadow-lg transition-all z-50 ${
+            isFollowing
+              ? "bg-blue-500 text-white hover:bg-blue-600"
+              : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+          }`}
+          title={isFollowing ? "Following enabled" : "Click to recenter"}
+        >
+          <MapPin size={20} />
+        </button>
+      )}
     </div>
   );
 };
