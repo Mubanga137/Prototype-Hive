@@ -31,7 +31,9 @@ export const updateAccuracyCircle = (
   }
 
   circle.setLatLng([lat, lng]);
-  circle.setRadius(Math.max(10, accuracyMeters));
+  const realRadius = Math.max(accuracyMeters, 300);
+  const cappedRadius = Math.min(realRadius, 1000);
+  circle.setRadius(cappedRadius);
 
   return circle;
 };

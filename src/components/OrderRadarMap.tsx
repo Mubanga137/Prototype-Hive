@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { animateMarkerToPosition } from "@/utils/smoothMarkerAnimation";
+import { MapPin } from "lucide-react";
 
 interface OrderRadarMapProps {
   orderId: number;
@@ -17,9 +18,20 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
   const mapInstanceRef = useRef<L.Map | null>(null);
   const riderMarkerRef = useRef<L.Marker | null>(null);
   const channelRef = useRef<any>(null);
+  const isFollowingRef = useRef(true);
+  const [isFollowing, setIsFollowing] = useState(true);
 
   const tableName = runnerId ? "runners" : riderId ? "riders" : null;
   const workerId = runnerId || riderId;
+
+  const handleRecenter = () => {
+    const map = mapInstanceRef.current;
+    if (!map || !riderMarkerRef.current) return;
+    isFollowingRef.current = true;
+    setIsFollowing(true);
+    const pos = riderMarkerRef.current.getLatLng();
+    map.flyTo([pos.lat, pos.lng], 15, { animate: true, duration: 0.8 });
+  };
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -37,6 +49,17 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
     }).addTo(map);
 
     setTimeout(() => map.invalidateSize(), 200);
+
+    // Disable follow mode on user interaction
+    map.on("dragstart", () => {
+      isFollowingRef.current = false;
+      setIsFollowing(false);
+    });
+
+    map.on("zoomstart", () => {
+      isFollowingRef.current = false;
+      setIsFollowing(false);
+    });
 
     // Customer marker
     if (customerLat && customerLng) {
@@ -84,7 +107,10 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
               } else {
                 riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
               }
-              map.panTo(pos, { animate: true, duration: 1 });
+              // Only pan to position if follow mode is enabled
+              if (isFollowingRef.current) {
+                map.setView(pos, 15, { animate: true, duration: 0.3 });
+              }
             }
           }
         )
@@ -101,8 +127,6 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
 
   return (
     <div
-      ref={mapRef}
-      className="w-full h-64 md:h-80"
       style={{
         borderRadius: 16,
         overflow: "hidden",
@@ -111,7 +135,28 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
         zIndex: 1,
         touchAction: "none",
       }}
-    />
+    >
+      <div
+        ref={mapRef}
+        className="w-full h-64 md:h-80"
+        style={{
+          position: "relative",
+          touchAction: "none",
+        }}
+      />
+      {/* Recenter button */}
+      <button
+        onClick={handleRecenter}
+        className={`absolute bottom-4 right-4 p-2.5 rounded-full shadow-lg transition-all z-50 ${
+          isFollowing
+            ? "bg-blue-500 text-white hover:bg-blue-600"
+            : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+        }`}
+        title={isFollowing ? "Following enabled" : "Click to recenter"}
+      >
+        <MapPin size={20} />
+      </button>
+    </div>
   );
 };
 

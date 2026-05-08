@@ -36,6 +36,8 @@ const OrderTracking = () => {
   const riderMarkerRef = useRef<L.Marker | null>(null);
   const selfMarkerRef = useRef<L.Marker | null>(null);
   const channelRef = useRef<any>(null);
+  const isFollowingRef = useRef(true);
+  const [isFollowing, setIsFollowing] = useState(true);
 
   // Location permission hook for customer's current location
   const { coordinates, isLoading: locationLoading, isPermissionDenied, requestLocation } = useLocationPermission();
@@ -174,6 +176,14 @@ const OrderTracking = () => {
     }
   }, [isPermissionDenied]);
 
+  const handleRecenter = () => {
+    const map = mapInstanceRef.current;
+    if (!map || !riderLocation) return;
+    isFollowingRef.current = true;
+    setIsFollowing(true);
+    map.flyTo([riderLocation.lat, riderLocation.long], 15, { animate: true, duration: 0.8 });
+  };
+
   // Initialize and manage map
   useEffect(() => {
     if (!order?.node || !riderLocation) return;
@@ -202,6 +212,17 @@ const OrderTracking = () => {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19,
       }).addTo(map);
+
+      // Disable follow mode on user interaction
+      map.on("dragstart", () => {
+        isFollowingRef.current = false;
+        setIsFollowing(false);
+      });
+
+      map.on("zoomstart", () => {
+        isFollowingRef.current = false;
+        setIsFollowing(false);
+      });
 
       // Create delivery marker (Gold)
       const deliveryIcon = L.divIcon({
@@ -290,12 +311,16 @@ const OrderTracking = () => {
       }
     });
 
-    // Fit bounds to show both points
-    const group = new L.FeatureGroup([
-      L.latLng(riderLocation.lat, riderLocation.long),
-      L.latLng(deliveryLat, deliveryLong),
-    ]);
-    map.fitBounds(group.getBounds(), { padding: [100, 100] });
+    // Only fit bounds on first load (not on follow mode updates)
+    if (isFollowingRef.current) {
+      const group = new L.FeatureGroup([
+        L.latLng(riderLocation.lat, riderLocation.long),
+        L.latLng(deliveryLat, deliveryLong),
+      ]);
+      map.fitBounds(group.getBounds(), { padding: [100, 100] });
+    } else if (isFollowingRef.current) {
+      map.setView([riderLocation.lat, riderLocation.long], 15, { animate: true, duration: 0.3 });
+    }
 
     return () => {
       // Cleanup on unmount or dependency changes
@@ -335,12 +360,26 @@ const OrderTracking = () => {
         onClose={() => setShowGPSModal(false)}
       />
 
-      {/* Full-screen map */}
-      <div
-        id="map-container"
-        className="w-full h-screen"
-        style={{ position: "relative", zIndex: 1 }}
-      />
+      {/* Full-screen map with recenter button */}
+      <div style={{ position: "relative", width: "100%", height: "100vh" }}>
+        <div
+          id="map-container"
+          className="w-full h-screen"
+          style={{ position: "relative", zIndex: 1 }}
+        />
+        {/* Recenter button */}
+        <button
+          onClick={handleRecenter}
+          className={`absolute top-4 right-4 p-2.5 rounded-full shadow-lg transition-all z-50 ${
+            isFollowing
+              ? "bg-blue-500 text-white hover:bg-blue-600"
+              : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+          }`}
+          title={isFollowing ? "Following enabled" : "Click to recenter"}
+        >
+          <MapPin size={20} />
+        </button>
+      </div>
 
       {/* Floating HUD Card at bottom */}
       <motion.div
