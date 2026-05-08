@@ -132,29 +132,45 @@ const BountyMap = ({
     }
   }, [workerPosition, workerAccuracy, locationStatus]);
 
-  // Update bounty markers
+  // Update bounty markers with distinct styling for gig discovery
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    const bountyIcon = L.divIcon({
-      className: "",
-      html: `<div style="width:32px;height:32px;border-radius:50%;background:#B37C1C;border:2px solid #FFF8EE;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(179,124,28,0.5);font-size:16px;">⚡</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
-    });
+    const createBountyIcon = (isSelected: boolean) => {
+      return L.divIcon({
+        className: "",
+        html: `<div style="
+          width:${isSelected ? 40 : 32}px;
+          height:${isSelected ? 40 : 32}px;
+          border-radius:50%;
+          background:${isSelected ? '#B37C1C' : '#FFB84D'};
+          border:3px solid #FFF8EE;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          box-shadow:${isSelected ? '0 4px 15px rgba(179,124,28,0.7)' : '0 2px 10px rgba(179,124,28,0.5)'};
+          font-size:18px;
+          transition:all 0.3s ease;
+          transform:${isSelected ? 'scale(1.2)' : 'scale(1)'};
+        ">⚡</div>`,
+        iconSize: [isSelected ? 40 : 32, isSelected ? 40 : 32],
+        iconAnchor: [isSelected ? 20 : 16, isSelected ? 20 : 16],
+      });
+    };
 
     bountyMarkersRef.current.forEach((m) => map.removeLayer(m));
     bountyMarkersRef.current.clear();
 
     bounties.forEach((b) => {
-      const marker = L.marker([b.lat, b.lng], { icon: bountyIcon })
+      const isSelected = b.id === selectedOrderId;
+      const marker = L.marker([b.lat, b.lng], { icon: createBountyIcon(isSelected) })
         .addTo(map)
-        .bindPopup(`<div style="font-size:12px;"><strong>Order #${b.id}</strong><br/>ZMW ${b.total_price || 0}<br/><span style="color:#B37C1C;font-weight:600;">⚡ Tap to claim</span></div>`);
+        .bindPopup(`<div style="font-size:12px;"><strong>Order #${b.id}</strong><br/>ZMW ${b.total_price || 0}<br/><span style="color:#B37C1C;font-weight:600;">⚡ Tap to preview</span></div>`);
       marker.on("click", () => onSelectOrder(b.id));
       bountyMarkersRef.current.set(b.id, marker);
     });
-  }, [bounties, onSelectOrder]);
+  }, [bounties, selectedOrderId, onSelectOrder]);
 
   // Highlight selected marker
   useEffect(() => {

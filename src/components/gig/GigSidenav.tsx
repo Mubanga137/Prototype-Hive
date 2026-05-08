@@ -72,11 +72,6 @@ const GigSidenav = ({
     { label: "Notifications", icon: Bell, path: "/gig-notifications", badge: unreadNotifications },
   ];
 
-  const hubLinks = [
-    { label: "Inventory", icon: Package, path: "/hub-inventory" },
-    { label: "Dispatch Panel", icon: Send, path: "/hub-dispatch" },
-  ];
-
   const handleLogout = async () => {
     await signOut();
     navigate("/");
@@ -253,22 +248,31 @@ const GigSidenav = ({
         {workerRole === "hub_owner" && (
           <>
             <p className="text-[10px] font-bold uppercase tracking-widest px-3 mt-5 mb-2" style={{ color: "hsl(220,20%,46%)" }}>Hub Operations</p>
-            {hubLinks.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => {
-                  navigate(item.path);
-                  setOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={{ color: "hsl(220,55%,13%)" }}
-              >
-                <item.icon size={18} style={{ color: "hsl(220,20%,46%)" }} />
-                {item.label}
-              </button>
-            ))}
+            <button
+              onClick={() => {
+                navigate("/hub-inventory");
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{ color: "hsl(220,55%,13%)" }}
+            >
+              <Package size={18} style={{ color: "hsl(220,20%,46%)" }} />
+              Inventory
+            </button>
+            <button
+              onClick={() => {
+                navigate("/hub-dispatch");
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{ color: "hsl(220,55%,13%)" }}
+            >
+              <Send size={18} style={{ color: "hsl(220,20%,46%)" }} />
+              Dispatch Panel
+            </button>
           </>
         )}
+
       </nav>
 
       {/* Bottom */}
