@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, Radar, ClipboardList, MessageSquare, Phone,
-  Wallet, Route, Bell, Package, Send, Settings, LogOut, X,
+  Radar, MessageSquare, Phone, LogOut, X,
   User, Bike, MapPin
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -63,18 +62,8 @@ const GigSidenav = ({
   const st = statusConfig[liveStatus];
 
   const primaryLinks = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/gig-dashboard", badge: 0 },
     { label: "Gig Radar", icon: Radar, path: "/gig-radar", badge: 0 },
-    { label: "Tasks / Jobs", icon: ClipboardList, path: "/gig-tasks", badge: activeOrderCount },
     { label: "Messages", icon: MessageSquare, path: "/messages", badge: unreadMessages },
-    { label: "Earnings", icon: Wallet, path: "/gig-earnings", badge: 0 },
-    { label: "Routes", icon: Route, path: "/gig-routes", badge: 0 },
-    { label: "Notifications", icon: Bell, path: "/gig-notifications", badge: unreadNotifications },
-  ];
-
-  const hubLinks = [
-    { label: "Inventory", icon: Package, path: "/hub-inventory" },
-    { label: "Dispatch Panel", icon: Send, path: "/hub-dispatch" },
   ];
 
   const handleLogout = async () => {
@@ -249,41 +238,10 @@ const GigSidenav = ({
           <span className="flex-1 text-left">Calls</span>
         </a>
 
-        {/* Hub Owner only */}
-        {workerRole === "hub_owner" && (
-          <>
-            <p className="text-[10px] font-bold uppercase tracking-widest px-3 mt-5 mb-2" style={{ color: "hsl(220,20%,46%)" }}>Hub Operations</p>
-            {hubLinks.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => {
-                  navigate(item.path);
-                  setOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={{ color: "hsl(220,55%,13%)" }}
-              >
-                <item.icon size={18} style={{ color: "hsl(220,20%,46%)" }} />
-                {item.label}
-              </button>
-            ))}
-          </>
-        )}
       </nav>
 
       {/* Bottom */}
       <div className="border-t px-4 py-4 space-y-2" style={{ borderColor: "hsl(38,40%,85%)" }}>
-        <button
-          onClick={() => {
-            navigate("/gig-settings");
-            setOpen(false);
-          }}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium"
-          style={{ color: "hsl(220,55%,13%)" }}
-        >
-          <Settings size={18} style={{ color: "hsl(220,20%,46%)" }} />
-          Settings
-        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors hover:text-red-600"
