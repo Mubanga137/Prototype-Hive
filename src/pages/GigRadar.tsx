@@ -4,10 +4,12 @@ import { Package, Bike, Zap, CheckCircle, MapPin, Navigation } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useHighAccuracyLocation } from "@/hooks/useHighAccuracyLocation";
+import { useNearbyGigs } from "@/hooks/useNearbyGigs";
 import { toast } from "sonner";
 import BountyMap, { type BountyOrder } from "@/components/BountyMap";
 import GigSidenav from "@/components/gig/GigSidenav";
 import OtpVerifyDrawer from "@/components/gig/OtpVerifyDrawer";
+import GigPreviewSheet from "@/components/gig/GigPreviewSheet";
 import { GPSTransmitterStatus } from "@/components/gig/GPSTransmitterStatus";
 import OnlineToggleCTA from "@/components/gig/OnlineToggleCTA";
 import { useMixedFleetRole, canAcceptJob, calculatePayout } from "@/hooks/useMixedFleetRole";
@@ -36,7 +38,17 @@ const GigRadar = () => {
   const [workerPosition, setWorkerPosition] = useState<[number, number] | null>(null);
   const [otpDrawerOrder, setOtpDrawerOrder] = useState<number | null>(null);
   const [liveStatus, setLiveStatus] = useState<"idle" | "on_delivery" | "navigating">("idle");
+  const [isClaimingGig, setIsClaimingGig] = useState(false);
+  const [previewGigId, setPreviewGigId] = useState<number | null>(null);
   const selectedRef = useRef<HTMLDivElement | null>(null);
+
+  // Load nearby gigs based on agent location
+  const { gigs: nearbyGigs } = useNearbyGigs({
+    agentLat: workerPosition?.[0] ?? null,
+    agentLng: workerPosition?.[1] ?? null,
+    radiusMeters: 5000,
+    refreshIntervalMs: 15000,
+  });
 
   // ── High-Accuracy GPS Tracking: Production-grade location with distance filtering ──
   const { location, isTransmitting, hasPermission, permissionError, locationStatus } = useHighAccuracyLocation(
@@ -77,7 +89,6 @@ const GigRadar = () => {
     }
 
     // Check if worker can accept job based on role & capacity
-    // pulse_credits not yet in DB schema, use default 50 for now
     const pulseCredits = (profile as any)?.pulse_credits ?? 50;
     const { canAccept, reason } = canAcceptJob(role, pulseCredits);
 
@@ -86,29 +97,52 @@ const GigRadar = () => {
       return;
     }
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "in_transit", runner_id: parseInt(user.id.slice(0, 8), 16) % 100000 } as any)
-      .eq("id", orderId);
+    setIsClaimingGig(true);
 
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "assigned",
+          runner_id: parseInt(user.id.slice(0, 8), 16) % 100000
+        } as any)
+        .eq("id", orderId);
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      // Update status to en_route_to_pickup
+      await supabase
+        .from("orders")
+        .update({ status: "en_route_to_pickup" } as any)
+        .eq("id", orderId);
+
+      // If runner/node: deduct -1 from pulse_credits (once column is added to DB)
+      if (!isRider) {
+        const newCapacity = Math.max(0, pulseCredits - 1);
+        // TODO: Uncomment when pulse_credits column is added to profiles table
+        // await supabase
+        //   .from("profiles")
+        //   .update({ pulse_credits: newCapacity } as any)
+        //   .eq("user_id", user.id);
+        // await refreshProfile();
+      }
+
+      toast.success("Gig claimed! 🚀 Heading to pickup...");
+
+      // Close preview and reset selection
+      setPreviewGigId(null);
+      setSelectedOrderId(null);
+
+      // Refetch orders to update UI
+      fetchOrders();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to claim gig");
+    } finally {
+      setIsClaimingGig(false);
     }
-
-    // If runner/node: deduct -1 from pulse_credits (once column is added to DB)
-    if (!isRider) {
-      const newCapacity = Math.max(0, pulseCredits - 1);
-      // TODO: Uncomment when pulse_credits column is added to profiles table
-      // await supabase
-      //   .from("profiles")
-      //   .update({ pulse_credits: newCapacity } as any)
-      //   .eq("user_id", user.id);
-      // await refreshProfile();
-    }
-
-    toast.success("Order accepted! You're on it 🚴");
-    fetchOrders();
   };
 
   const handleToggleOnline = async (val: boolean) => {
@@ -199,11 +233,18 @@ const GigRadar = () => {
     }
   }, [selectedOrderId]);
 
-  const bounties: BountyOrder[] = availableOrders.map((o) => ({
+  // Use nearby gigs if available, otherwise fallback to all available orders
+  const displayGigs = nearbyGigs.length > 0 ? nearbyGigs : availableOrders;
+
+  // Get selected gig for preview
+  const selectedGig = nearbyGigs.find((g) => g.id === selectedOrderId) ||
+    nearbyGigs.find((g) => g.id === previewGigId);
+
+  const bounties: BountyOrder[] = displayGigs.map((o: any) => ({
     id: o.id,
-    lat: -15.4167 + (Math.sin(o.id * 3.7) * 0.02),
-    lng: 28.2833 + (Math.cos(o.id * 2.3) * 0.02),
-    total_price: o.total_price,
+    lat: o.pickup_lat || (-15.4167 + (Math.sin(o.id * 3.7) * 0.02)),
+    lng: o.pickup_lng || (28.2833 + (Math.cos(o.id * 2.3) * 0.02)),
+    total_price: o.payout || o.total_price,
     status: o.status,
   }));
 
@@ -296,14 +337,17 @@ const GigRadar = () => {
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-t-transparent mx-auto" style={{ borderColor: "hsl(38,73%,40%)", borderTopColor: "transparent" }} />
               </div>
-            ) : availableOrders.length === 0 ? (
+            ) : displayGigs.length === 0 ? (
               <div className="text-center py-8">
                 <Bike size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm" style={{ color: "hsl(220,20%,46%)" }}>No active gigs right now.</p>
+                <div>
+                  <p className="text-sm font-semibold mb-1" style={{ color: "hsl(220,55%,13%)" }}>No gigs nearby</p>
+                  <p className="text-xs" style={{ color: "hsl(220,20%,46%)" }}>Move to a busier area to find deliveries</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
-                {availableOrders.map((order) => (
+                {displayGigs.map((order: any) => (
                   <motion.div
                     key={order.id}
                     ref={selectedOrderId === order.id ? selectedRef : undefined}
@@ -315,24 +359,30 @@ const GigRadar = () => {
                       background: selectedOrderId === order.id ? "hsl(38,73%,40%,0.06)" : "transparent",
                       boxShadow: selectedOrderId === order.id ? "0 0 0 2px hsl(38,73%,40%,0.15)" : "none",
                     }}
-                    onClick={() => setSelectedOrderId(order.id)}
+                    onClick={() => {
+                      setSelectedOrderId(order.id);
+                      setPreviewGigId(order.id);
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "hsl(38,73%,40%,0.1)" }}>
                         <Package size={16} style={{ color: "hsl(38,73%,40%)" }} />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold" style={{ color: "hsl(220,55%,13%)" }}>Order #{order.id}</p>
-                        <p className="text-xs" style={{ color: "hsl(220,20%,46%)" }}>ZMW {order.total_price || 0} • {order.status}</p>
+                        <p className="text-sm font-semibold" style={{ color: "hsl(220,55%,13%)" }}>Gig #{order.id}</p>
+                        <p className="text-xs" style={{ color: "hsl(220,20%,46%)" }}>
+                          ZMW {order.payout || order.total_price || 0} • {order.distance_estimate || "N/A"}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleAcceptOrder(order.id); }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-70"
                         style={{ background: "hsl(38,73%,40%)", color: "hsl(39,100%,97%)" }}
+                        disabled={isClaimingGig}
                       >
-                        <Zap size={12} /> ⚡ Claim
+                        <Zap size={12} /> {isClaimingGig ? "Claiming..." : "⚡ Claim"}
                       </button>
                     </div>
                   </motion.div>
@@ -342,6 +392,20 @@ const GigRadar = () => {
           </div>
         </div>
       </main>
+
+      {/* Gig Preview Sheet */}
+      <GigPreviewSheet
+        gig={selectedGig || null}
+        open={previewGigId !== null}
+        onClose={() => {
+          setPreviewGigId(null);
+          setSelectedOrderId(null);
+        }}
+        onAccept={handleAcceptOrder}
+        agentLat={workerPosition?.[0]}
+        agentLng={workerPosition?.[1]}
+        isLoading={isClaimingGig}
+      />
 
       {/* OTP Verification Drawer */}
       <OtpVerifyDrawer
