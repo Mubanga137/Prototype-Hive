@@ -52,7 +52,7 @@ const BountyMap = ({
       zoomControl: true,
       touchAction: "none",
       preferCanvas: false,
-    }).setView([0, 0], 15, { animate: false });
+    }).setView([-15.3875, 28.3228], 13, { animate: false });
     mapInstanceRef.current = map;
     initializedRef.current = true;
 
