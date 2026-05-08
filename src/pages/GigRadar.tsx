@@ -9,6 +9,7 @@ import BountyMap, { type BountyOrder } from "@/components/BountyMap";
 import GigSidenav from "@/components/gig/GigSidenav";
 import OtpVerifyDrawer from "@/components/gig/OtpVerifyDrawer";
 import { GPSTransmitterStatus } from "@/components/gig/GPSTransmitterStatus";
+import OnlineToggleCTA from "@/components/gig/OnlineToggleCTA";
 import { useMixedFleetRole, canAcceptJob, calculatePayout } from "@/hooks/useMixedFleetRole";
 import { logLocationData } from "@/utils/geolocationDebug";
 
@@ -179,56 +180,6 @@ const GigRadar = () => {
     }
   }, [location]);
 
-  // Request device location on mount - request permission and get initial position
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      console.error("[GigRadar] Geolocation not supported on this browser");
-      toast.error("Geolocation not supported");
-      return;
-    }
-
-    console.log("[GigRadar] Requesting device location with high accuracy...");
-
-    // Request high-accuracy position immediately - this will trigger permission dialog if needed
-    const positionWatchId = navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const acc = pos.coords.accuracy;
-
-        logLocationData(lat, lng, acc, "Initial Mount");
-        setWorkerPosition([lat, lng]);
-      },
-      (error) => {
-        console.error("[GigRadar] Geolocation error:", {
-          code: error.code,
-          message: error.message,
-          PERMISSION_DENIED: error.code === 1,
-          POSITION_UNAVAILABLE: error.code === 2,
-          TIMEOUT: error.code === 3,
-        });
-
-        if (error.code === 1) {
-          toast.error("Please enable location access to use this feature");
-        } else if (error.code === 2) {
-          toast.error("Location services unavailable");
-        } else if (error.code === 3) {
-          toast.error("Location request timed out");
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 8000,
-      }
-    );
-
-    return () => {
-      if (positionWatchId) {
-        // getCurrentPosition doesn't have a way to cancel, but we track for cleanup
-      }
-    };
-  }, []);
 
   // Fetch available orders when user loads
   useEffect(() => {
@@ -336,7 +287,7 @@ const GigRadar = () => {
         )}
 
         {/* Bottom section — available gigs list */}
-        <div className="w-full flex-1 max-w-5xl mx-auto px-4 pb-4 overflow-y-auto min-h-0">
+        <div className="w-full flex-1 max-w-5xl mx-auto px-4 pb-24 overflow-y-auto min-h-0">
           <div className="w-full rounded-xl border p-4" style={{ background: "white", borderColor: "hsl(38,40%,85%)" }}>
             <h3 className="text-base font-bold mb-1" style={{ color: "hsl(220,55%,13%)" }}>Available Gigs</h3>
             <p className="text-xs mb-4" style={{ color: "hsl(220,20%,46%)" }}>Tap a marker above or claim below</p>
@@ -398,6 +349,16 @@ const GigRadar = () => {
         onClose={() => setOtpDrawerOrder(null)}
         orderId={otpDrawerOrder || 0}
         onVerified={fetchOrders}
+      />
+
+      {/* Online/Offline CTA — Fixed Bottom Center */}
+      <OnlineToggleCTA
+        isOnline={isOnline}
+        onToggleOnline={handleToggleOnline}
+        hasPermission={hasPermission}
+        permissionError={permissionError}
+        isTransmitting={isTransmitting}
+        locationStatus={locationStatus}
       />
     </div>
   );

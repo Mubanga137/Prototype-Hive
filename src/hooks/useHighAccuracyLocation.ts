@@ -183,7 +183,7 @@ export const useHighAccuracyLocation = (
     setLocationStatus("locating");
     let permissionDenied = false;
 
-    // Request one-time position to check permissions
+    // Request one-time position to check permissions (no error toast here)
     navigator.geolocation.getCurrentPosition(
       () => {
         setHasPermission(true);
@@ -195,15 +195,14 @@ export const useHighAccuracyLocation = (
 
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            setPermissionError(
-              "Location access denied. Please enable location permissions in your browser settings."
-            );
+            setPermissionError("Location access denied");
             break;
           case err.POSITION_UNAVAILABLE:
-            setPermissionError("Location information is unavailable.");
+            setPermissionError("Location is unavailable. Enable location services on your device.");
             break;
           case err.TIMEOUT:
-            setPermissionError("Location request timed out. Please try again.");
+            setPermissionError("Location request timed out. Retrying...");
+            retryCountRef.current++;
             break;
           default:
             setPermissionError("Could not retrieve location.");
@@ -292,24 +291,17 @@ export const useHighAccuracyLocation = (
 
             switch (err.code) {
               case err.PERMISSION_DENIED:
-                setPermissionError(
-                  "Location access denied. Please enable location permissions in your browser settings."
-                );
+                setPermissionError("Location access denied");
                 break;
               case err.POSITION_UNAVAILABLE:
-                setPermissionError("Location is not available. Check that location services are enabled.");
+                setPermissionError("Location unavailable. Enable GPS on your device.");
                 break;
               case err.TIMEOUT:
-                setPermissionError("Location request timed out. Retrying...");
+                setPermissionError("Location request timed out");
                 retryCountRef.current++;
-                if (retryCountRef.current > MAX_RETRIES) {
-                  setPermissionError(
-                    "Location service unavailable after multiple retries. Please check your device settings."
-                  );
-                }
                 break;
               default:
-                setPermissionError("Could not retrieve location: " + err.message);
+                setPermissionError("Could not retrieve location");
             }
           }
         },
