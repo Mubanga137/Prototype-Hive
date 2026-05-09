@@ -25,6 +25,7 @@ const mapItem = (item: any): FeaturedItem => ({
   old_price: item.old_price,
   image_url: item.image_url,
   store_name: item.sme_stores?.brand_name || "The Hive Store",
+  store_whatsapp: item.sme_stores?.whatsapp_number || null,
   category: item.category || "General",
   is_featured: (item.stock_count ?? 0) > 10,
   in_stock: (item.stock_count ?? 0) > 0,

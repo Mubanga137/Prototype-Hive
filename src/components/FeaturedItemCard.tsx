@@ -18,6 +18,7 @@ export interface FeaturedItem {
   free_shipping?: boolean;
   item_type?: "product" | "service";
   sme_id?: number;
+  store_whatsapp?: string | null;
   vendor_capacity?: number;
 }
 
