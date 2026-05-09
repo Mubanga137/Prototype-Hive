@@ -179,8 +179,8 @@ const TrackOrders = () => {
             </button>
           </motion.div>
         ) : orders.length === 0 ? (
-          <div className="relative w-full">
-            <div 
+          <div className="w-full space-y-6">
+            <div
               ref={mapRef}
               className="w-full h-[70vh] rounded-2xl overflow-hidden"
               style={{ backgroundColor: "#f0f0f0" }}
@@ -198,11 +198,11 @@ const TrackOrders = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="absolute bottom-0 left-0 right-0 w-full px-4 pb-4"
+              className="w-full"
             >
-              <div 
+              <div
                 className="w-full rounded-2xl px-6 py-8 backdrop-blur-xl border border-white/20 shadow-2xl"
-                style={{ 
+                style={{
                   backgroundColor: "rgba(255, 251, 242, 0.85)",
                 }}
               >
@@ -216,7 +216,7 @@ const TrackOrders = () => {
                   onClick={navigateToMarketplace}
                   className="w-full px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:shadow-lg active:scale-95"
                   style={{
-                    backgroundColor: "#D4A574",
+                    background: "linear-gradient(135deg, #D4A574 0%, #1a1a2e 100%)",
                     color: "#FFFBF2"
                   }}
                 >
