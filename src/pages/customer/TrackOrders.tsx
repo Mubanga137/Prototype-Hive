@@ -109,21 +109,32 @@ const TrackOrders = () => {
   };
 
   useEffect(() => {
-    if (!mapRef.current || mapInstance || orders.length > 0) return;
+    if (!mapRef.current || orders.length > 0) return;
+
+    // Prevent duplicate map instances
+    if (mapInstance) {
+      mapInstance.remove();
+    }
 
     const center: [number, number] = [customerCoords?.lat || -15.4167, customerCoords?.lng || 28.2833];
+
     const map = L.map(mapRef.current, {
       scrollWheelZoom: false,
       dragging: true,
       touchZoom: true,
+      zoomControl: true,
     }).setView(center, 13);
-    setMapInstance(map);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+      minZoom: 1,
     }).addTo(map);
 
-    setTimeout(() => map.invalidateSize(), 200);
+    // Invalidate size after DOM has rendered
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
 
     if (customerCoords) {
       const selfIcon = L.divIcon({
@@ -133,14 +144,20 @@ const TrackOrders = () => {
         iconAnchor: [18, 18],
       });
       L.marker([customerCoords.lat, customerCoords.lng], { icon: selfIcon }).addTo(map).bindPopup("Your location");
-      map.flyTo([customerCoords.lat, customerCoords.lng], 14, { animate: true, duration: 1.2 });
+
+      setTimeout(() => {
+        map.flyTo([customerCoords.lat, customerCoords.lng], 14, { animate: true, duration: 1.2 });
+      }, 150);
     }
 
+    setMapInstance(map);
+
     return () => {
-      map.remove();
-      setMapInstance(null);
+      if (map) {
+        map.remove();
+      }
     };
-  }, [customerCoords, mapInstance, orders.length]);
+  }, [orders.length, customerCoords]);
 
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: "#FFFBF2" }}>
@@ -182,8 +199,8 @@ const TrackOrders = () => {
           <div className="w-full space-y-6">
             <div
               ref={mapRef}
-              className="w-full h-[70vh] rounded-2xl overflow-hidden"
-              style={{ backgroundColor: "#f0f0f0" }}
+              className="w-full h-[70vh] rounded-2xl overflow-hidden leaflet-container"
+              style={{ backgroundColor: "#f0f0f0", position: "relative" }}
             />
             <style>{`
               @keyframes pulse-ring {
