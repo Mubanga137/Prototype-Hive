@@ -135,9 +135,6 @@ const StorePage_v2 = () => {
   };
 
   const handleBuyNow = (item: OfferItem) => {
-    if (!sellerHasCapacity) return;
-    const isPhysical = item.item_type !== "service" && item.item_type !== "digital";
-    if (isPhysical && (item.stock_count ?? 0) <= 0) return;
     setSelectedItem({
       id: item.id,
       item_name: item.product_name || "Item",
@@ -155,8 +152,6 @@ const StorePage_v2 = () => {
   };
 
   const handleAddToCart = (item: OfferItem) => {
-    if (!sellerHasCapacity) return;
-    if ((item.stock_count ?? 0) <= 0) return;
     addItem({
       offer_id: item.id,
       item_name: item.product_name || "Item",
