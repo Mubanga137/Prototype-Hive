@@ -1,429 +1,255 @@
-import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { Package, Bike, Zap, CheckCircle, MapPin, Navigation } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
+import L from "leaflet";
 import { useAuth } from "@/hooks/useAuth";
-import { useHighAccuracyLocation } from "@/hooks/useHighAccuracyLocation";
-import { useNearbyGigs } from "@/hooks/useNearbyGigs";
-import { toast } from "sonner";
-import BountyMap, { type BountyOrder } from "@/components/BountyMap";
-import GigSidenav from "@/components/gig/GigSidenav";
-import OtpVerifyDrawer from "@/components/gig/OtpVerifyDrawer";
-import GigPreviewSheet from "@/components/gig/GigPreviewSheet";
-import { GPSTransmitterStatus } from "@/components/gig/GPSTransmitterStatus";
-import OnlineToggleCTA from "@/components/gig/OnlineToggleCTA";
-import { useMixedFleetRole, canAcceptJob, calculatePayout } from "@/hooks/useMixedFleetRole";
-import { logLocationData } from "@/utils/geolocationDebug";
+import { useLocationService } from "@/hooks/gig-radar/useLocationService";
+import { useGigSimulation } from "@/hooks/gig-radar/useGigSimulation";
+import GigRadarTopBar from "@/components/gig-radar/layout/GigRadarTopBar";
+import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
+import MapControlsPanel from "@/components/gig-radar/MapControlsPanel";
+import BottomGigSheet from "@/components/gig-radar/BottomGigSheet";
+import GigDetailCard from "@/components/gig-radar/GigDetailCard";
+import LocationPermissionPrompt from "@/components/gig-radar/LocationPermissionPrompt";
+import QuickStatsOverlay from "@/components/gig-radar/QuickStatsOverlay";
+import { Loader2 } from "lucide-react";
+import type { GigMarker } from "@/types/gig-radar";
 
-interface OrderItem {
-  id: number;
-  status: string | null;
-  total_price: number | null;
-  created_at: string;
-  buyer_id: string | null;
-  runner_id: number | null;
-  item_id: number | null;
-  dropoff_lat?: number | null;
-  dropoff_lng?: number | null;
-}
+const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
+const DEFAULT_ZOOM = 14;
 
 const GigRadar = () => {
-  const { user, profile, refreshProfile } = useAuth();
-  const { role, isRider, isRunner, isNode } = useMixedFleetRole();
-  const [availableOrders, setAvailableOrders] = useState<OrderItem[]>([]);
-  const [myActiveOrders, setMyActiveOrders] = useState<OrderItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isOnline, setIsOnline] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [workerPosition, setWorkerPosition] = useState<[number, number] | null>(null);
-  const [otpDrawerOrder, setOtpDrawerOrder] = useState<number | null>(null);
-  const [liveStatus, setLiveStatus] = useState<"idle" | "on_delivery" | "navigating">("idle");
-  const [isClaimingGig, setIsClaimingGig] = useState(false);
-  const [previewGigId, setPreviewGigId] = useState<number | null>(null);
-  const selectedRef = useRef<HTMLDivElement | null>(null);
+  const { user } = useAuth();
+  const mapRef = useRef<L.Map | null>(null);
+  const markerLayerGroup = useRef<L.LayerGroup | null>(null);
 
-  // Load nearby gigs based on agent location
-  const { gigs: nearbyGigs } = useNearbyGigs({
-    agentLat: workerPosition?.[0] ?? null,
-    agentLng: workerPosition?.[1] ?? null,
-    radiusMeters: 5000,
-    refreshIntervalMs: 15000,
-  });
+  // UI State
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false);
+  const [selectedGig, setSelectedGig] = useState<GigMarker | null>(null);
+  const [showGigDetail, setShowGigDetail] = useState(false);
 
-  // ── High-Accuracy GPS Tracking: Production-grade location with distance filtering ──
-  const { location, isTransmitting, hasPermission, permissionError, locationStatus } = useHighAccuracyLocation(
-    user,
-    isOnline
-  );
+  // Location & gig services
+  const {
+    location,
+    isOnline,
+    setIsOnline,
+    locationStatus,
+    permissionDenied,
+    setPermissionDenied,
+    accuracy,
+  } = useLocationService();
 
-  // Fetch orders from Supabase
-  const fetchOrders = async () => {
-    setLoading(true);
-    const { data: available } = await supabase
-      .from("orders")
-      .select("*")
-      .is("runner_id", null)
-      .in("status", ["pending", "processing"])
-      .order("created_at", { ascending: false })
-      .limit(20);
+  const { gigs, acceptGig } = useGigSimulation(location, isOnline);
 
-    setAvailableOrders((available as OrderItem[]) || []);
+  const mapCenter = location || LUSAKA_CENTER;
+  const userRole = user?.role || "gig_worker";
 
-    if (user) {
-      const { data: mine } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("runner_id", parseInt(user.id.slice(0, 8), 16) % 100000)
-        .in("status", ["in_transit", "out_for_delivery"])
-        .order("created_at", { ascending: false })
-        .limit(10);
-      setMyActiveOrders((mine as OrderItem[]) || []);
-    }
-    setLoading(false);
-  };
-
-  const handleAcceptOrder = async (orderId: number) => {
-    if (!user || !profile) {
-      toast.error("Please log in first.");
-      return;
-    }
-
-    // Check if worker can accept job based on role & capacity
-    const pulseCredits = (profile as any)?.pulse_credits ?? 50;
-    const { canAccept, reason } = canAcceptJob(role, pulseCredits);
-
-    if (!canAccept) {
-      toast.error(reason || "Cannot accept this job.");
-      return;
-    }
-
-    setIsClaimingGig(true);
-
-    try {
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          status: "assigned",
-          runner_id: parseInt(user.id.slice(0, 8), 16) % 100000
-        } as any)
-        .eq("id", orderId);
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      // Update status to en_route_to_pickup
-      await supabase
-        .from("orders")
-        .update({ status: "en_route_to_pickup" } as any)
-        .eq("id", orderId);
-
-      // If runner/node: deduct -1 from pulse_credits (once column is added to DB)
-      if (!isRider) {
-        const newCapacity = Math.max(0, pulseCredits - 1);
-        // TODO: Uncomment when pulse_credits column is added to profiles table
-        // await supabase
-        //   .from("profiles")
-        //   .update({ pulse_credits: newCapacity } as any)
-        //   .eq("user_id", user.id);
-        // await refreshProfile();
-      }
-
-      toast.success("Gig claimed! 🚀 Heading to pickup...");
-
-      // Close preview and reset selection
-      setPreviewGigId(null);
-      setSelectedOrderId(null);
-
-      // Refetch orders to update UI
-      fetchOrders();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to claim gig");
-    } finally {
-      setIsClaimingGig(false);
-    }
-  };
-
-  const handleToggleOnline = async (val: boolean) => {
-    if (!user) {
-      toast.error("Please log in first.");
-      return;
-    }
-
-    try {
-      // Update is_online boolean in profiles table
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_online: val })
-        .eq("user_id", user.id);
-
-      if (error) {
-        toast.error(`Failed to update status: ${error.message}`);
-        return;
-      }
-
-      setIsOnline(val);
-      if (val) {
-        // Request fresh location when going online
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const lat = pos.coords.latitude;
-              const lng = pos.coords.longitude;
-              const acc = pos.coords.accuracy;
-              logLocationData(lat, lng, acc, "Fresh on Online");
-              setWorkerPosition([lat, lng]);
-            },
-            (error) => {
-              console.error("[GigRadar] Could not get fresh location when going online:", error.message);
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-          );
-        }
-        toast.success("🟢 You are now online");
-      } else {
-        toast.success("🔴 You are offline");
-      }
-    } catch (err) {
-      console.error("[GigRadar] Toggle online error:", err);
-      toast.error("Could not update online status");
-    }
-  };
-
-  const openNavigation = (order: OrderItem) => {
-    if (!workerPosition) {
-      toast.error("Waiting for your GPS location...");
-      return;
-    }
-    const destLat = order.dropoff_lat || -15.4167 + (Math.sin(order.id * 1.7) * 0.01);
-    const destLng = order.dropoff_lng || 28.2833 + (Math.cos(order.id * 2.1) * 0.01);
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${workerPosition[0]},${workerPosition[1]}&destination=${destLat},${destLng}`;
-    window.open(url, "_blank");
-    setLiveStatus("navigating");
-  };
-
-  // Update worker position when GPS location changes (highest priority - real device location)
+  // Update map markers
   useEffect(() => {
-    if (location && location.latitude && location.longitude) {
-      // Only update if we have valid coordinates
-      if (Math.abs(location.latitude) <= 90 && Math.abs(location.longitude) <= 180) {
-        logLocationData(location.latitude, location.longitude, location.accuracy, "Continuous Update");
-        setWorkerPosition([location.latitude, location.longitude]);
-      }
+    if (!mapRef.current) return;
+
+    if (!markerLayerGroup.current) {
+      markerLayerGroup.current = L.layerGroup().addTo(mapRef.current);
     }
-  }, [location]);
 
+    markerLayerGroup.current.clearLayers();
 
-  // Fetch available orders when user loads
+    gigs.forEach((gig) => {
+      const isSelected = selectedGig?.id === gig.id;
+      const baseColor =
+        gig.type === "delivery"
+          ? "from-blue-500 to-blue-600"
+          : gig.type === "runner"
+            ? "from-green-500 to-green-600"
+            : "from-purple-500 to-purple-600";
+
+      const icon = L.divIcon({
+        className: "gig-marker",
+        html: `
+          <style>
+            @keyframes pulse-ring {
+              0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+              70% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
+              100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+            }
+            .gig-marker-selected {
+              animation: pulse-ring 2s infinite;
+            }
+          </style>
+          <div class="flex items-center justify-center w-14 h-14 rounded-full shadow-2xl transition-all transform ${
+            isSelected
+              ? 'scale-125 ring-2 ring-yellow-400 gig-marker-selected'
+              : 'hover:scale-110 cursor-pointer'
+          } bg-gradient-to-br ${baseColor}">
+            <span class="text-white font-bold text-base drop-shadow-lg">
+              ${gig.price.replace('K', '')}
+            </span>
+          </div>
+        `,
+        iconSize: [56, 56],
+        iconAnchor: [28, 28],
+      });
+
+      const marker = L.marker([gig.lat, gig.lng], { icon });
+
+      marker.on("click", () => {
+        setSelectedGig(gig);
+        setShowGigDetail(true);
+        mapRef.current?.flyTo([gig.lat, gig.lng], 16, { animate: true, duration: 1 });
+      });
+
+      markerLayerGroup.current?.addLayer(marker);
+    });
+  }, [gigs, selectedGig]);
+
+  // Pan to user when online
   useEffect(() => {
-    fetchOrders();
-  }, [user]);
-
-  // Derive live status based on active orders
-  useEffect(() => {
-    if (myActiveOrders.length > 0) setLiveStatus("on_delivery");
-    else setLiveStatus("idle");
-  }, [myActiveOrders]);
-
-  // Scroll to selected card
-  useEffect(() => {
-    if (selectedRef.current) {
-      selectedRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (mapRef.current && location && isOnline) {
+      mapRef.current.panTo([location.lat, location.lng], { animate: true });
     }
-  }, [selectedOrderId]);
+  }, [location, isOnline]);
 
-  // Use nearby gigs if available, otherwise fallback to all available orders
-  const displayGigs = nearbyGigs.length > 0 ? nearbyGigs : availableOrders;
-
-  // Get selected gig for preview
-  const selectedGig = nearbyGigs.find((g) => g.id === selectedOrderId) ||
-    nearbyGigs.find((g) => g.id === previewGigId);
-
-  const bounties: BountyOrder[] = displayGigs.map((o: any) => ({
-    id: o.id,
-    lat: o.pickup_lat || (-15.4167 + (Math.sin(o.id * 3.7) * 0.02)),
-    lng: o.pickup_lng || (28.2833 + (Math.cos(o.id * 2.3) * 0.02)),
-    total_price: o.payout || o.total_price,
-    status: o.status,
-  }));
+  const handleAcceptGig = (gigId: string) => {
+    acceptGig(gigId);
+    setShowGigDetail(false);
+    setSelectedGig(null);
+  };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row" style={{ background: "hsl(39,100%,97%)" }}>
-      {/* GigSidenav: renders mobile header + desktop sidebar + mobile drawer */}
-      <GigSidenav
-        isOnline={isOnline}
-        onToggleOnline={handleToggleOnline}
-        activeOrderCount={myActiveOrders.length}
-        liveStatus={liveStatus}
-        workerRole={role === "rider" ? "rider" : role === "node_operator" ? "hub_owner" : "runner"}
-        isTransmitting={isTransmitting}
-        hasPermission={hasPermission}
+    <div className="relative w-full h-screen flex bg-black overflow-hidden">
+      {/* Sidebar */}
+      <GigRadarSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        userRole={userRole}
       />
 
       {/* Main content area */}
-      <main className="w-full flex-1 flex flex-col min-w-0 relative z-10">
-        {/* Map — top section */}
-        <div className="w-full max-w-5xl mx-auto px-4 pt-4 pb-3 md:pb-4 flex flex-col">
-          {/* GPS Transmitter Status */}
-          <GPSTransmitterStatus
-            isTransmitting={isTransmitting}
-            hasPermission={hasPermission}
-            permissionError={permissionError}
+      <div className="flex-1 flex flex-col">
+        {/* Top bar */}
+        <GigRadarTopBar
+          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          locationStatus={locationStatus}
+          isOnline={isOnline}
+        />
+
+        {/* Map container */}
+        <div className="flex-1 relative">
+          <MapContainer
+            ref={mapRef}
+            center={[mapCenter.lat, mapCenter.lng]}
+            zoom={DEFAULT_ZOOM}
+            className="w-full h-full"
+            zoomControl={false}
+            attributionControl={true}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
+            />
+
+            {/* User location */}
+            {location && isOnline && (
+              <>
+                <Marker
+                  position={[location.lat, location.lng]}
+                  icon={L.divIcon({
+                    className: "user-marker",
+                    html: `
+                      <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-3 border-white shadow-2xl">
+                        <div class="w-5 h-5 bg-blue-200 rounded-full animate-pulse"></div>
+                      </div>
+                    `,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20],
+                  })}
+                >
+                  <Popup>Your Location</Popup>
+                </Marker>
+                {accuracy && (
+                  <Circle
+                    center={[location.lat, location.lng]}
+                    radius={accuracy}
+                    pathOptions={{
+                      color: "rgba(59, 130, 246, 0.3)",
+                      fill: true,
+                      fillColor: "rgba(59, 130, 246, 0.08)",
+                      weight: 2,
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </MapContainer>
+
+          {/* Permission prompt */}
+          {permissionDenied && (
+            <LocationPermissionPrompt
+              onRetry={() => setPermissionDenied(false)}
+            />
+          )}
+
+          {/* Map controls */}
+          <MapControlsPanel
+            mapRef={mapRef}
+            userLocation={location}
             isOnline={isOnline}
           />
 
-          <div className="w-full rounded-2xl overflow-hidden border-2 mt-3" style={{ borderColor: "hsl(38,73%,40%,0.2)" }}>
-            <div className="w-full h-[60vh] md:h-[65vh] lg:h-[70vh] relative">
-              <BountyMap
-                workerPosition={workerPosition}
-                bounties={bounties}
-                selectedOrderId={selectedOrderId}
-                onSelectOrder={setSelectedOrderId}
-                workerAccuracy={location?.accuracy}
-                locationStatus={locationStatus}
-              />
-            </div>
-          </div>
+          {/* Quick stats */}
+          <QuickStatsOverlay
+            gigs={gigs}
+            isOnline={isOnline}
+          />
         </div>
+      </div>
 
-        {/* Active orders — my deliveries */}
-        {myActiveOrders.length > 0 && (
-          <div className="w-full max-w-5xl mx-auto px-4 mb-3">
-            <h3 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: "hsl(220,55%,13%)" }}>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> My Active Deliveries
-            </h3>
-            <div className="space-y-2 w-full">
-              {myActiveOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 rounded-xl border" style={{ background: "white", borderColor: "hsl(38,40%,85%)" }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "hsl(38,73%,40%,0.1)" }}>
-                      <Package size={16} style={{ color: "hsl(38,73%,40%)" }} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(220,55%,13%)" }}>Order #{order.id}</p>
-                      <p className="text-xs" style={{ color: "hsl(220,20%,46%)" }}>ZMW {order.total_price || 0} • {order.status}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openNavigation(order)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
-                      style={{ background: "hsl(38,73%,40%)", color: "hsl(39,100%,97%)" }}
-                    >
-                      <Navigation size={12} /> 🗺️ Navigate
-                    </button>
-                    <button
-                      onClick={() => setOtpDrawerOrder(order.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all"
-                      style={{ borderColor: "hsl(38,73%,40%,0.3)", color: "hsl(38,73%,40%)" }}
-                    >
-                      🔒 Verify Handoff
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom section — available gigs list */}
-        <div className="w-full flex-1 max-w-5xl mx-auto px-4 pb-24 overflow-y-auto min-h-0">
-          <div className="w-full rounded-xl border p-4" style={{ background: "white", borderColor: "hsl(38,40%,85%)" }}>
-            <h3 className="text-base font-bold mb-1" style={{ color: "hsl(220,55%,13%)" }}>Available Gigs</h3>
-            <p className="text-xs mb-4" style={{ color: "hsl(220,20%,46%)" }}>Tap a marker above or claim below</p>
-
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-t-transparent mx-auto" style={{ borderColor: "hsl(38,73%,40%)", borderTopColor: "transparent" }} />
-              </div>
-            ) : displayGigs.length === 0 ? (
-              <div className="text-center py-8">
-                <Bike size={40} className="mx-auto mb-3 opacity-30" />
-                <div>
-                  <p className="text-sm font-semibold mb-1" style={{ color: "hsl(220,55%,13%)" }}>No gigs nearby</p>
-                  <p className="text-xs" style={{ color: "hsl(220,20%,46%)" }}>Move to a busier area to find deliveries</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {displayGigs.map((order: any) => (
-                  <motion.div
-                    key={order.id}
-                    ref={selectedOrderId === order.id ? selectedRef : undefined}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer"
-                    style={{
-                      borderColor: selectedOrderId === order.id ? "hsl(38,73%,40%)" : "hsl(38,40%,85%)",
-                      background: selectedOrderId === order.id ? "hsl(38,73%,40%,0.06)" : "transparent",
-                      boxShadow: selectedOrderId === order.id ? "0 0 0 2px hsl(38,73%,40%,0.15)" : "none",
-                    }}
-                    onClick={() => {
-                      setSelectedOrderId(order.id);
-                      setPreviewGigId(order.id);
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "hsl(38,73%,40%,0.1)" }}>
-                        <Package size={16} style={{ color: "hsl(38,73%,40%)" }} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: "hsl(220,55%,13%)" }}>Gig #{order.id}</p>
-                        <p className="text-xs" style={{ color: "hsl(220,20%,46%)" }}>
-                          ZMW {order.payout || order.total_price || 0} • {order.distance_estimate || "N/A"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleAcceptOrder(order.id); }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-70"
-                        style={{ background: "hsl(38,73%,40%)", color: "hsl(39,100%,97%)" }}
-                        disabled={isClaimingGig}
-                      >
-                        <Zap size={12} /> {isClaimingGig ? "Claiming..." : "⚡ Claim"}
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* Gig Preview Sheet */}
-      <GigPreviewSheet
-        gig={selectedGig || null}
-        open={previewGigId !== null}
-        onClose={() => {
-          setPreviewGigId(null);
-          setSelectedOrderId(null);
+      {/* Bottom gig sheet */}
+      <BottomGigSheet
+        gigs={gigs}
+        isExpanded={bottomSheetExpanded}
+        onExpandedChange={setBottomSheetExpanded}
+        onSelectGig={(gig) => {
+          setSelectedGig(gig);
+          setShowGigDetail(true);
         }}
-        onAccept={handleAcceptOrder}
-        agentLat={workerPosition?.[0]}
-        agentLng={workerPosition?.[1]}
-        isLoading={isClaimingGig}
-      />
-
-      {/* OTP Verification Drawer */}
-      <OtpVerifyDrawer
-        open={otpDrawerOrder !== null}
-        onClose={() => setOtpDrawerOrder(null)}
-        orderId={otpDrawerOrder || 0}
-        onVerified={fetchOrders}
-      />
-
-      {/* Online/Offline CTA — Fixed Bottom Center */}
-      <OnlineToggleCTA
         isOnline={isOnline}
-        onToggleOnline={handleToggleOnline}
-        hasPermission={hasPermission}
-        permissionError={permissionError}
-        isTransmitting={isTransmitting}
-        locationStatus={locationStatus}
       />
+
+      {/* Gig detail card */}
+      {showGigDetail && selectedGig && (
+        <GigDetailCard
+          gig={selectedGig}
+          onClose={() => {
+            setShowGigDetail(false);
+            setSelectedGig(null);
+          }}
+          onAccept={() => handleAcceptGig(selectedGig.id)}
+          userRole={userRole}
+        />
+      )}
+
+      {/* Online toggle (floating) */}
+      <div className="fixed bottom-6 left-6 z-30">
+        <button
+          onClick={() => setIsOnline(!isOnline)}
+          disabled={locationStatus === "requesting"}
+          className={`px-6 py-3 rounded-full font-bold text-white shadow-2xl flex items-center gap-2 transition-all transform hover:scale-105 ${
+            isOnline
+              ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
+              : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
+          } ${locationStatus === "requesting" ? "opacity-75" : ""}`}
+        >
+          {locationStatus === "requesting" && (
+            <Loader2 size={18} className="animate-spin" />
+          )}
+          <span>{isOnline ? "Go Offline" : "Go Online"}</span>
+          {isOnline && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
+        </button>
+        {locationStatus === "ready" && (
+          <p className="text-xs text-green-400 mt-1 ml-2">● Live</p>
+        )}
+      </div>
     </div>
   );
 };
