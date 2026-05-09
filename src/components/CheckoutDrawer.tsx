@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ import {
   cleanZambianPhone,
   generateOtpCode,
 } from "@/lib/whatsapp";
+import AuthGateModal from "./modals/AuthGateModal";
 
 export interface CheckoutItem {
   id: number;
@@ -59,6 +61,7 @@ const isZambianPhone = (raw: string) => {
 };
 
 const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -67,6 +70,8 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   const [serviceNotes, setServiceNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [state, setState] = useState<SubmitState>("idle");
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
 
   const isService = item?.item_type === "service";
 
@@ -80,6 +85,8 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       setServiceNotes("");
       setQuantity(1);
       setState("idle");
+      setShowAuthGate(false);
+      setGuestMode(false);
     }
   }, [open, item?.id]);
 
@@ -147,8 +154,8 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
-    if (!user?.id) {
-      toast.error("Please log in to place an order.");
+    if (!user?.id && !guestMode) {
+      setShowAuthGate(true);
       return;
     }
 
@@ -171,7 +178,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     // Extra fields (customer_name, delivery_address, etc.) will be handled
     // via WhatsApp message and can be stored in webhook handlers if needed.
     const insertPayload: Record<string, any> = {
-      buyer_id: user?.id ?? null,
+      buyer_id: guestMode ? null : (user?.id ?? null),
       sme_id: item.sme_id ?? null,
       item_id: item.id,
       total_price: totalAmount,
@@ -236,19 +243,30 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
   if (typeof document === "undefined") return null;
 
-  return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, y: "6%" }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: "100%" }}
-          transition={{ type: "spring", damping: 30, stiffness: 260 }}
-          className="fixed inset-0 z-[200] overflow-hidden bg-background"
-        >
-          <div className="absolute inset-0 bg-background" />
+  return (
+    <>
+      <AuthGateModal
+        open={showAuthGate}
+        onOpenChange={setShowAuthGate}
+        onContinueAsGuest={() => setGuestMode(true)}
+        onSignIn={() => navigate("/login")}
+        title="Continue to Order"
+        description="Please choose how you'd like to proceed"
+      />
 
-          <div className="relative flex h-full flex-col bg-background">
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: "6%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 260 }}
+              className="fixed inset-0 z-[200] overflow-hidden bg-background"
+            >
+              <div className="absolute inset-0 bg-background" />
+
+              <div className="relative flex h-full flex-col bg-background">
             <div className="shrink-0 border-b border-border bg-background/95 backdrop-blur-sm">
               <div className="mx-auto max-w-lg px-5 pb-4 pt-3">
                 <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
@@ -436,10 +454,12 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
               </div>
             </div>
           </div>
-        </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
       )}
-    </AnimatePresence>,
-    document.body,
+    </>
   );
 };
 

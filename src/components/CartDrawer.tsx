@@ -8,6 +8,7 @@ import {
   Check, Loader2, ShoppingCart,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import {
   buildWhatsAppUrl, cleanZambianPhone, generateOtpCode,
 } from "@/lib/whatsapp";
 import { useStoreCart, type CartLine } from "@/hooks/useStoreCart";
+import AuthGateModal from "./modals/AuthGateModal";
 
 interface CartDrawerProps {
   open: boolean;
@@ -68,6 +70,7 @@ const buildCartMessage = (
 const CartDrawer = ({
   open, onOpenChange, storeId, smeId, storeName, storeWhatsapp,
 }: CartDrawerProps) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { lines, setQuantity, removeItem, clear, subtotal, itemCount } =
     useStoreCart(storeId);
@@ -76,6 +79,8 @@ const CartDrawer = ({
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [state, setState] = useState<SubmitState>("idle");
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -98,8 +103,8 @@ const CartDrawer = ({
   };
 
   const handleCheckout = async () => {
-    if (!user?.id) {
-      toast.error("Please log in to place an order.");
+    if (!user?.id && !guestMode) {
+      setShowAuthGate(true);
       return;
     }
 
@@ -114,7 +119,7 @@ const CartDrawer = ({
 
     // Insert one row per line (shared OTP). Only use confirmed schema fields.
     const payload = lines.map((l) => ({
-      buyer_id: user.id,
+      buyer_id: guestMode ? null : user.id,
       sme_id: smeId,
       item_id: l.offer_id,
       total_price: l.unit_price * l.quantity,
@@ -168,19 +173,29 @@ const CartDrawer = ({
   const success = state === "success";
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
+    <>
+      <AuthGateModal
+        open={showAuthGate}
+        onOpenChange={setShowAuthGate}
+        onContinueAsGuest={() => setGuestMode(true)}
+        onSignIn={() => navigate("/login")}
+        title="Continue to Order"
+        description="Please choose how you'd like to proceed"
+      />
+
+      <AnimatePresence>
+        {open && (
+          <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => !submitting && !success && onOpenChange(false)}
             className="fixed inset-0 z-[80] bg-foreground/40 backdrop-blur-sm"
           />
-          <motion.div
-            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 32, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-[90] flex max-h-[92vh] flex-col rounded-t-3xl border-t border-primary/20 bg-background shadow-2xl"
-          >
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 32, stiffness: 320 }}
+              className="fixed inset-x-0 bottom-0 z-[90] flex max-h-[92vh] flex-col rounded-t-3xl border-t border-primary/20 bg-background shadow-2xl"
+            >
             <div className="mx-auto flex w-full max-w-lg flex-col overflow-hidden px-5 pb-6 pt-3">
               <div className="mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-border" />
 
@@ -304,10 +319,11 @@ const CartDrawer = ({
                 </div>
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

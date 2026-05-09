@@ -39,7 +39,6 @@ interface FeaturedItemCardProps {
 const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "default", themeClasses }: FeaturedItemCardProps) => {
   const savings = item.old_price ? Math.round(((item.old_price - item.price) / item.old_price) * 100) : 0;
   const isService = item.item_type === "service";
-  const isVendorAtCapacity = item.vendor_capacity === 0;
 
   // All variants use the same gold color scheme
   const borderClass = "border-primary/30 hover:border-primary/60";
@@ -106,12 +105,9 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
         </div>
         <div className="flex flex-col gap-1.5">
           <button
-            onClick={() => !isVendorAtCapacity && onBuyNow?.(item)}
-            disabled={isVendorAtCapacity}
+            onClick={() => onBuyNow?.(item)}
             className={`w-full flex items-center justify-center gap-1 text-[11px] py-2 px-2.5 rounded-lg font-bold transition-all ${
-              isVendorAtCapacity
-                ? "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-                : themeClasses
+              themeClasses
                 ? `${themeClasses.btnBg} ${themeClasses.btnHover} ${themeClasses.btnText}`
                 : "btn-gold"
             }`}
@@ -120,21 +116,12 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
           </button>
           <div className="grid grid-cols-2 gap-1.5">
             <button
-              onClick={() => !isVendorAtCapacity && onVisitStore?.(item)}
-              disabled={isVendorAtCapacity}
-              className={`flex items-center justify-center gap-0.5 text-[10px] font-semibold rounded-lg py-1 px-1.5 transition-colors ${
-                isVendorAtCapacity
-                  ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
-                  : "text-primary border border-primary/30 hover:bg-primary/5"
-              }`}
+              onClick={() => onVisitStore?.(item)}
+              className="flex items-center justify-center gap-0.5 text-[10px] font-semibold rounded-lg py-1 px-1.5 transition-colors text-primary border border-primary/30 hover:bg-primary/5"
             >
               <Package size={10} /> Store
             </button>
-            <button className={`flex items-center justify-center gap-0.5 text-[10px] font-semibold rounded-lg py-1 px-1.5 transition-colors ${
-              isVendorAtCapacity
-                ? "text-muted-foreground border-border bg-muted/30 cursor-not-allowed"
-                : "text-muted-foreground border border-border hover:bg-secondary"
-            }`}>
+            <button className="flex items-center justify-center gap-0.5 text-[10px] font-semibold rounded-lg py-1 px-1.5 transition-colors text-muted-foreground border border-border hover:bg-secondary">
               Details
             </button>
           </div>
