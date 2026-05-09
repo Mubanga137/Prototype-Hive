@@ -155,7 +155,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
   const handleSubmit = async () => {
     if (!user?.id && !guestMode) {
-      setShowAuthGate(true);
+      setGuestMode(true);
       return;
     }
 
