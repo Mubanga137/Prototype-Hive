@@ -76,7 +76,7 @@ const Marketplace = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("hive_catalogue")
-        .select("*, sme_stores(brand_name)")
+        .select("*, sme_stores(brand_name, whatsapp_number)")
         .order("created_at", { ascending: false })
         .limit(60);
 

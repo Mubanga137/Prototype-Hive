@@ -75,6 +75,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
   const isService = item?.item_type === "service";
 
+  // Ensure item has required data before rendering
+  if (!open || !item) return null;
+
   // Reset form whenever the drawer opens for a new item
   useEffect(() => {
     if (open) {
@@ -133,11 +136,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   }, [open]);
 
   const totalAmount = useMemo(
-    () => (item?.price ?? 0) * (isService ? 1 : quantity),
-    [item?.price, isService, quantity]
+    () => (item.price ?? 0) * (isService ? 1 : quantity),
+    [item.price, isService, quantity]
   );
-
-  if (!item) return null;
 
   const validate = (): string | null => {
     if (!name.trim()) return "Please enter your name.";
