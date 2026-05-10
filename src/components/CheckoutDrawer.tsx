@@ -75,9 +75,6 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
   const isService = item?.item_type === "service";
 
-  // Ensure item has required data before rendering
-  if (!open || !item) return null;
-
   // Reset form whenever the drawer opens for a new item
   useEffect(() => {
     if (open) {
@@ -242,7 +239,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   const submitting = state === "submitting";
   const success = state === "success";
 
-  if (typeof document === "undefined") return null;
+  if (typeof document === "undefined" || !item) return null;
 
   return (
     <>
