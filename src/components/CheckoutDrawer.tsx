@@ -133,8 +133,8 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   }, [open]);
 
   const totalAmount = useMemo(
-    () => (item.price ?? 0) * (isService ? 1 : quantity),
-    [item.price, isService, quantity]
+    () => (item?.price ?? 0) * (isService ? 1 : quantity),
+    [item?.price, isService, quantity]
   );
 
   const validate = (): string | null => {
