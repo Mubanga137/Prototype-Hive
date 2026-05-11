@@ -31,7 +31,7 @@ const GigRadar = () => {
   const polylineRef = useRef<L.Polyline | null>(null);
   const bottomSheetRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState(0);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(window.innerWidth >= 1024);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedBounty, setSelectedBounty] = useState<BountyCard | null>(null);
@@ -228,8 +228,8 @@ const GigRadar = () => {
             </div>
           </header>
 
-          {/* Map Container - 60% */}
-          <div className="flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2" style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}>
+          {/* Map Container - 60% on desktop, responsive on mobile */}
+          <div className="flex-[0.6] lg:flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2" style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}>
             <MapContainer
               ref={mapRef}
               center={[mapCenter.lat, mapCenter.lng]}
@@ -239,8 +239,8 @@ const GigRadar = () => {
               attributionControl={false}
             >
               <TileLayer
-                url="https://cartodb-basemaps-{s}.global.ssl.fastly.net/positron/{z}/{x}/{y}.png"
-                attribution="&copy; OpenStreetMap"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
 
               {location && isOnline && (
@@ -277,7 +277,7 @@ const GigRadar = () => {
             </motion.button>
           </div>
 
-          {/* Bottom Drawer - 40% - Premium Slide-up Sheet */}
+          {/* Bottom Drawer - 40% on desktop, expands to fullscreen on mobile */}
           <motion.div
             ref={bottomSheetRef}
             onTouchStart={handleTouchStart}
@@ -287,7 +287,7 @@ const GigRadar = () => {
               height: sheetExpanded ? "100%" : "auto",
             }}
             transition={{ type: "spring", damping: 28, stiffness: 260 }}
-            className="flex-[0.4] relative rounded-t-2xl sm:rounded-t-3xl overflow-hidden shadow-2xl flex flex-col"
+            className="flex-[0.4] lg:flex-[0.4] relative rounded-t-2xl sm:rounded-t-3xl overflow-hidden shadow-2xl flex flex-col"
             style={{
               backgroundColor: "#FFFBF2",
               borderTop: "1px solid hsl(38,40%,85%)",
@@ -339,12 +339,12 @@ const GigRadar = () => {
               </motion.button>
             </div>
 
-            {/* Carousel - Horizontal Scroll */}
+            {/* Bounties List - Responsive Layout */}
             <div
-              className="flex-1 overflow-x-auto snap-x snap-mandatory px-4 sm:px-6 py-4 scrollbar-hide"
+              className="flex-1 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto snap-x snap-mandatory lg:snap-none px-4 sm:px-6 py-4 scrollbar-hide"
               style={{ scrollBehavior: "smooth" }}
             >
-              <div className="flex gap-4 pb-2">
+              <div className="flex lg:grid gap-4 pb-2 lg:grid-cols-2 lg:auto-rows-max">
                 {bounties.length > 0 ? (
                   bounties.map((bounty, idx) => (
                     <motion.div
@@ -353,7 +353,7 @@ const GigRadar = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
                       onClick={() => setSelectedBounty(bounty)}
-                      className="flex-shrink-0 w-72 rounded-2xl p-5 sm:p-6 cursor-pointer snap-start border overflow-hidden flex flex-col transition-all duration-200"
+                      className="flex-shrink-0 lg:flex-shrink w-72 lg:w-full rounded-2xl p-5 sm:p-6 cursor-pointer snap-start lg:snap-none border overflow-hidden flex flex-col transition-all duration-200"
                       style={{
                         backgroundColor: "#FFFFFF",
                         borderColor: selectedBounty?.id === bounty.id ? "#B37C1C" : "hsl(38,40%,85%)",
