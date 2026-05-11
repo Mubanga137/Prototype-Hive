@@ -176,22 +176,41 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
             e.currentTarget.style.borderColor = "hsl(38,40%,85%)";
           }}
         >
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
+          {/* Premium Avatar */}
+          <motion.div
+            className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border-2 relative"
             style={{
-              backgroundColor: "hsl(38,73%,40%,0.15)",
-              borderColor: "hsl(38,73%,40%,0.3)",
-              color: "#B37C1C",
-              border: "2px solid hsl(38,73%,40%,0.3)",
+              borderColor: "#B37C1C",
+              background: "linear-gradient(135deg, #FFFBF2 0%, #F5F0E8 100%)",
+              boxShadow: "0 4px 12px rgba(179, 124, 28, 0.25), inset 0 1px 3px rgba(255, 255, 255, 0.6)",
             }}
+            whileHover={{ scale: 1.05 }}
           >
-            {profile?.full_name?.[0]?.toUpperCase() || "G"}
-          </div>
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.full_name || "User"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg
+                viewBox="0 0 24 24"
+                className="w-6 h-6"
+                fill="none"
+                stroke="#B37C1C"
+                strokeWidth="2"
+              >
+                {/* Male silhouette */}
+                <circle cx="12" cy="8" r="4" />
+                <path d="M 12 12 C 16 12 18 15 18 20 L 6 20 C 6 15 8 12 12 12" />
+              </svg>
+            )}
+          </motion.div>
           <div className={`flex-1 min-w-0 text-left ${isCollapsed && !isMobile ? "hidden" : ""}`}>
             <p className="text-sm font-bold text-[#0F1A35] truncate">
-              {profile?.full_name || "Gig Worker"}
+              {profile?.full_name || "Worker"}
             </p>
-            <p className="text-[10px] text-[#0F1A35]/60 mt-0.5">Active Gig Worker</p>
+            <p className="text-[10px] text-[#0F1A35]/60 mt-0.5">Gig Account</p>
           </div>
         </motion.button>
         <motion.button
