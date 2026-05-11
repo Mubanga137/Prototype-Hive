@@ -1,4 +1,5 @@
-import { X, LayoutDashboard, ListTodo, TrendingUp, MapPin, Bell, Settings, Package, Zap } from "lucide-react";
+import { X, LayoutDashboard, Zap, TrendingUp, Wallet, MessageSquare, Bell, Package, Truck } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface GigRadarSidebarProps {
   isOpen: boolean;
@@ -11,112 +12,155 @@ export const GigRadarSidebar = ({
   onClose,
   userRole = "gig_worker",
 }: GigRadarSidebarProps) => {
-  const menuItems = [
+  const mainMenuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "#" },
-    { icon: ListTodo, label: "Gig Tasks", href: "#" },
+    { icon: Zap, label: "Bounties", href: "#" },
     { icon: TrendingUp, label: "Earnings", href: "#" },
-    { icon: MapPin, label: "Routes", href: "#" },
+    { icon: Wallet, label: "Wallet", href: "#" },
+    { icon: MessageSquare, label: "Messages", href: "#" },
+  ];
+
+  const hiveNodeItems = [
+    { icon: Package, label: "Hub-Inventory", href: "#" },
+    { icon: Truck, label: "Dispatch", href: "#" },
   ];
 
   const bottomMenuItems = [
     { icon: Bell, label: "Notifications", href: "#" },
-    { icon: Settings, label: "Settings", href: "#" },
-  ];
-
-  const hiveMenuItems = [
-    { icon: Package, label: "Inventory", href: "#" },
-    { icon: Zap, label: "Dispatch", href: "#" },
   ];
 
   return (
     <>
       {/* Overlay */}
       {isOpen && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-20 md:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-screen w-64 bg-gradient-to-b from-gray-900 via-gray-950 to-black border-r border-yellow-600/10 z-30 transform transition-all duration-300 md:relative md:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full md:-translate-x-full"
+      <motion.aside
+        initial={{ x: -256 }}
+        animate={{ x: isOpen ? 0 : -256 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={`fixed top-0 left-0 h-screen w-64 z-30 transform md:relative md:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        style={{ backgroundColor: "#FFFBF2", borderRight: "1px solid #D4A57420" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-yellow-600/10">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-300 bg-clip-text text-transparent">
-            Hive
-          </h2>
-          <button
+        <div className="flex items-center justify-between h-16 px-6 border-b" style={{ borderColor: "#D4A57420" }}>
+          <div>
+            <h2 className="text-lg font-display font-bold" style={{ color: "#0F1A35" }}>
+              🐝 THE HIVE
+            </h2>
+            <p className="text-xs" style={{ color: "#999" }}>Rider Studio</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onClose}
-            className="md:hidden p-2 hover:bg-yellow-600/10 rounded-lg transition-colors"
+            className="md:hidden p-2 rounded-lg transition-all"
+            style={{ backgroundColor: "#F5F0E8" }}
           >
-            <X size={20} className="text-yellow-500" />
-          </button>
+            <X size={20} style={{ color: "#0F1A35" }} />
+          </motion.button>
         </div>
 
-        {/* Main menu */}
+        {/* Main Menu */}
         <nav className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-2 mb-8">
-            {menuItems.map((item) => (
-              <a
+          <div className="space-y-1 mb-8">
+            {mainMenuItems.map((item) => (
+              <motion.a
                 key={item.label}
                 href={item.href}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all group"
+                whileHover={{ x: 4 }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group"
+                style={{
+                  color: "#0F1A35",
+                  backgroundColor: "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#F5F0E8";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
               >
-                <item.icon
-                  size={20}
-                  className="text-gray-500 group-hover:text-yellow-400 transition-colors"
-                />
-                <span className="font-medium">{item.label}</span>
-              </a>
+                <item.icon size={20} style={{ color: "#D4A574" }} />
+                <span className="font-medium text-sm">{item.label}</span>
+              </motion.a>
             ))}
           </div>
 
-          {/* Hive-specific items */}
+          {/* Hive Nodes Only Section */}
           {userRole === "hive_node" && (
-            <div className="mb-8 pb-8 border-b border-yellow-600/10">
-              <p className="text-xs uppercase tracking-wider text-gray-600 font-bold px-4 mb-3">
-                Hive Control
+            <div className="mb-8 pb-8 border-b" style={{ borderColor: "#D4A57420" }}>
+              <p className="text-xs uppercase tracking-wider font-bold px-4 mb-3" style={{ color: "#999" }}>
+                Hive Nodes Only
               </p>
-              <div className="space-y-2">
-                {hiveMenuItems.map((item) => (
-                  <a
+              <div className="space-y-1">
+                {hiveNodeItems.map((item) => (
+                  <motion.a
                     key={item.label}
                     href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all group"
+                    whileHover={{ x: 4 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all group"
+                    style={{ color: "#0F1A35" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#F5F0E8";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
                   >
-                    <item.icon
-                      size={20}
-                      className="text-gray-500 group-hover:text-yellow-400 transition-colors"
-                    />
-                    <span className="font-medium">{item.label}</span>
-                  </a>
+                    <item.icon size={20} style={{ color: "#B37C1C" }} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </motion.a>
                 ))}
               </div>
             </div>
           )}
         </nav>
 
-        {/* Bottom menu */}
-        <div className="border-t border-yellow-600/10 p-4 space-y-2">
+        {/* Bottom Menu */}
+        <div className="border-t p-4 space-y-1" style={{ borderColor: "#D4A57420" }}>
           {bottomMenuItems.map((item) => (
-            <a
+            <motion.a
               key={item.label}
               href={item.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:text-yellow-400 hover:bg-yellow-600/10 transition-all group"
+              whileHover={{ x: 4 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
+              style={{ color: "#0F1A35" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#F5F0E8";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
-              <item.icon
-                size={20}
-                className="text-gray-500 group-hover:text-yellow-400 transition-colors"
-              />
-              <span className="font-medium">{item.label}</span>
-            </a>
+              <item.icon size={20} style={{ color: "#D4A574" }} />
+              <span className="font-medium text-sm">{item.label}</span>
+            </motion.a>
           ))}
         </div>
-      </aside>
+
+        {/* Sign Out Button */}
+        <div className="border-t p-4" style={{ borderColor: "#D4A57420" }}>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-2 rounded-xl font-semibold text-sm transition-all"
+            style={{ backgroundColor: "#F5F0E8", color: "#0F1A35" }}
+          >
+            Sign Out
+          </motion.button>
+        </div>
+      </motion.aside>
     </>
   );
 };
