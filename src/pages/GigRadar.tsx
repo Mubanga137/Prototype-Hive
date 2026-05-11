@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
 import { useGigSimulation } from "@/hooks/gig-radar/useGigSimulation";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
-import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned } from "lucide-react";
+import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
 
@@ -180,21 +180,6 @@ const GigRadar = () => {
               </div>
             </div>
 
-            {/* Center: Status Pill */}
-            <div className="flex-1 flex justify-center">
-              <motion.div
-                animate={{ scale: isOnline ? 1 : 0.95 }}
-                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all"
-                style={{
-                  backgroundColor: isOnline ? "rgba(76, 175, 80, 0.12)" : "rgba(212, 165, 116, 0.12)",
-                  border: `1px solid ${isOnline ? "hsl(120, 61%, 50%, 0.3)" : "hsl(38, 73%, 40%, 0.3)"}`,
-                  color: isOnline ? "#2E7D32" : "#B37C1C",
-                }}
-              >
-                <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-amber-600"} animate-pulse`}></span>
-                <span>{isOnline ? "🟢 ONLINE" : "⚫ OFFLINE"}</span>
-              </motion.div>
-            </div>
 
             {/* Right: Gig Worker Name & Avatar */}
             <div className="flex items-center gap-3">
@@ -396,15 +381,36 @@ const GigRadar = () => {
                         <p className="font-bold text-base" style={{ color: "#0F1A35" }}>
                           {bounty.pickup}
                         </p>
-                        <span
-                          className="text-xs px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors"
-                          style={{
-                            backgroundColor: "hsl(38,73%,40%,0.12)",
-                            color: "#B37C1C",
-                          }}
-                        >
-                          {bounty.type}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <motion.div
+                            animate={{ scale: isOnline ? 1 : 0.9 }}
+                            className="flex items-center justify-center relative"
+                          >
+                            {isOnline ? (
+                              <div className="relative flex items-center justify-center">
+                                <div className="absolute inset-0 animate-pulse" style={{
+                                  background: "radial-gradient(circle, rgba(179, 124, 28, 0.4) 0%, rgba(179, 124, 28, 0) 70%)",
+                                }}></div>
+                                <div className="absolute inset-0 animate-pulse" style={{
+                                  background: "radial-gradient(circle, rgba(179, 124, 28, 0.3) 0%, rgba(179, 124, 28, 0) 70%)",
+                                  animationDelay: "0.15s",
+                                }}></div>
+                                <Lightbulb size={18} style={{ color: "#B37C1C", zIndex: 10 }} fill="#B37C1C" />
+                              </div>
+                            ) : (
+                              <Lightbulb size={18} style={{ color: "#E0E0E0" }} />
+                            )}
+                          </motion.div>
+                          <span
+                            className="text-xs px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors"
+                            style={{
+                              backgroundColor: "hsl(38,73%,40%,0.12)",
+                              color: "#B37C1C",
+                            }}
+                          >
+                            {bounty.type}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Distance & Time Grid */}
