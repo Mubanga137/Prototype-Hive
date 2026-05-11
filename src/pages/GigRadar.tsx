@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
 import { useGigSimulation } from "@/hooks/gig-radar/useGigSimulation";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
-import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned } from "lucide-react";
+import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
 
@@ -143,14 +143,14 @@ const GigRadar = () => {
       <HoneycombBackground />
 
       {/* Sidebar */}
-      <div className="flex h-full w-full relative z-30 lg:z-20">
+      <div className="flex flex-1 w-full relative z-30 lg:z-20" style={{ minHeight: 0 }}>
         <GigRadarSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col relative z-10">
+        <div className="flex-1 flex flex-col relative z-10" style={{ minHeight: 0 }}>
           {/* Top Header - Premium Glassmorphic Design */}
           <header
-            className="h-16 border-b flex items-center px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
+            className="h-16 border-b flex items-center justify-between px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
             style={{
               backgroundColor: "rgba(255, 251, 242, 0.85)",
               borderColor: "hsl(38,40%,85%)",
@@ -178,22 +178,6 @@ const GigRadar = () => {
                   </p>
                 </div>
               </div>
-            </div>
-
-            {/* Center: Status Pill */}
-            <div className="flex-1 flex justify-center">
-              <motion.div
-                animate={{ scale: isOnline ? 1 : 0.95 }}
-                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all"
-                style={{
-                  backgroundColor: isOnline ? "rgba(76, 175, 80, 0.12)" : "rgba(212, 165, 116, 0.12)",
-                  border: `1px solid ${isOnline ? "hsl(120, 61%, 50%, 0.3)" : "hsl(38, 73%, 40%, 0.3)"}`,
-                  color: isOnline ? "#2E7D32" : "#B37C1C",
-                }}
-              >
-                <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500" : "bg-amber-600"} animate-pulse`}></span>
-                <span>{isOnline ? "🟢 ONLINE" : "⚫ OFFLINE"}</span>
-              </motion.div>
             </div>
 
             {/* Right: Gig Worker Name & Avatar */}
@@ -245,7 +229,7 @@ const GigRadar = () => {
           </header>
 
           {/* Map Container - 60% */}
-          <div className="flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2" style={{ backgroundColor: "#f0f0f0" }}>
+          <div className="flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2" style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}>
             <MapContainer
               ref={mapRef}
               center={[mapCenter.lat, mapCenter.lng]}
@@ -307,6 +291,7 @@ const GigRadar = () => {
             style={{
               backgroundColor: "#FFFBF2",
               borderTop: "1px solid hsl(38,40%,85%)",
+              minHeight: 0,
             }}
           >
             {/* Drag Handle - Sleek & Minimal */}
@@ -487,7 +472,20 @@ const GigRadar = () => {
             : "0 8px 20px rgba(15, 26, 53, 0.2)",
         }}
       >
-        {isOnline ? <PhoneOff size={20} /> : <Phone size={20} />}
+        {isOnline ? (
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 animate-pulse" style={{
+              background: "radial-gradient(circle, rgba(255, 251, 242, 0.4) 0%, rgba(255, 251, 242, 0) 70%)",
+            }}></div>
+            <div className="absolute inset-0 animate-pulse" style={{
+              background: "radial-gradient(circle, rgba(255, 251, 242, 0.3) 0%, rgba(255, 251, 242, 0) 70%)",
+              animationDelay: "0.15s",
+            }}></div>
+            <Lightbulb size={20} style={{ color: "#FFFBF2", zIndex: 10 }} fill="#FFFBF2" />
+          </div>
+        ) : (
+          <Lightbulb size={20} style={{ color: "#FFFBF2" }} />
+        )}
         <span className="hidden sm:inline font-semibold">{isOnline ? "Go Offline" : "Go Online"}</span>
         {isOnline && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
       </motion.button>

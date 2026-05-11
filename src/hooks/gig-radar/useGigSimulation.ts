@@ -64,8 +64,8 @@ export const useGigSimulation = (location: Location | null, isOnline: boolean) =
   const spawnGig = useCallback(() => {
     if (!location || !isOnline) return;
 
-    // 30% chance gig is already taken
-    if (Math.random() < 0.3) return;
+    // 15% chance gig is already taken (reduced from 30% for better visibility)
+    if (Math.random() < 0.15) return;
 
     const newGig: GigMarker = {
       id: Math.random().toString(36).substr(2, 9),
@@ -75,7 +75,7 @@ export const useGigSimulation = (location: Location | null, isOnline: boolean) =
       distance: 0,
       eta: "",
       price: `K${(20 + Math.random() * 45).toFixed(2)}`,
-      expiresAt: Date.now() + (25000 + Math.random() * 45000), // 25-70 seconds
+      expiresAt: Date.now() + (35000 + Math.random() * 55000), // 35-90 seconds (increased from 25-70)
     };
 
     // Calculate distance
@@ -116,7 +116,7 @@ export const useGigSimulation = (location: Location | null, isOnline: boolean) =
     spawnIntervalRef.current = setInterval(() => {
       spawnGig();
       setGigs(Array.from(gigsRef.current.values()));
-    }, 2000); // Spawn every 2 seconds
+    }, 1500); // Spawn every 1.5 seconds (more frequent)
 
     return () => {
       if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
