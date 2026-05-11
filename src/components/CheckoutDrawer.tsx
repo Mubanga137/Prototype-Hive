@@ -137,8 +137,6 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     [item?.price, isService, quantity]
   );
 
-  if (!item) return null;
-
   const validate = (): string | null => {
     if (!name.trim()) return "Please enter your name.";
     if (name.trim().length > 80) return "Name is too long.";
@@ -155,7 +153,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
   const handleSubmit = async () => {
     if (!user?.id && !guestMode) {
-      setShowAuthGate(true);
+      setGuestMode(true);
       return;
     }
 
@@ -241,7 +239,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   const submitting = state === "submitting";
   const success = state === "success";
 
-  if (typeof document === "undefined") return null;
+  if (typeof document === "undefined" || !item) return null;
 
   return (
     <>

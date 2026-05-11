@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Package, Truck, CheckCircle2, Clock, Eye, EyeOff } from "lucide-react";
+import { MapPin, Truck, CheckCircle2, Clock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import OrderRadarMap from "@/components/OrderRadarMap";
 import DestinationMap from "@/components/DestinationMap";
 import { toast } from "sonner";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const statusSteps = ["pending", "processing", "in_transit", "out_for_delivery", "delivered"];
 const stepLabels = ["Order Placed", "Confirmed", "Shipped", "Out for Delivery", "Delivered"];
@@ -17,7 +19,8 @@ const TrackOrders = () => {
   const [error, setError] = useState<string | null>(null);
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Set<number>>(new Set());
-  const [showDemo, setShowDemo] = useState(false);
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -62,11 +65,9 @@ const TrackOrders = () => {
           setOrders(data || []);
           setLoading(false);
         } catch (fetchErr) {
-          // Network or connectivity error
           const msg = fetchErr instanceof Error ? fetchErr.message : "Network error";
           console.error("[TrackOrders] Network/fetch error:", msg);
 
-          // Check if it's a network connectivity issue
           if (msg.includes("fetch") || msg.includes("Failed") || msg.includes("Network")) {
             setError("Unable to connect to server. Please check your internet connection and try again.");
           } else {
@@ -104,8 +105,59 @@ const TrackOrders = () => {
   };
 
   const navigateToMarketplace = () => {
-    window.location.hash = "#marketplace";
+    window.location.hash = "#/customer-dash";
   };
+
+  useEffect(() => {
+    if (!mapRef.current || orders.length > 0) return;
+
+    // Prevent duplicate map instances
+    if (mapInstance) {
+      mapInstance.remove();
+    }
+
+    const center: [number, number] = [customerCoords?.lat || -15.4167, customerCoords?.lng || 28.2833];
+
+    const map = L.map(mapRef.current, {
+      scrollWheelZoom: false,
+      dragging: true,
+      touchZoom: true,
+      zoomControl: true,
+    }).setView(center, 13);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+      minZoom: 1,
+    }).addTo(map);
+
+    // Invalidate size after DOM has rendered
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    if (customerCoords) {
+      const selfIcon = L.divIcon({
+        className: "",
+        html: `<div style="width:36px;height:36px;border-radius:50%;background:#D4A574;border:3px solid #FFFBF2;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 8px rgba(212,165,116,0.25), 0 0 0 12px rgba(212,165,116,0.15);animation:pulse 2s infinite;"><span style="font-size:14px;">📍</span></div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+      L.marker([customerCoords.lat, customerCoords.lng], { icon: selfIcon }).addTo(map).bindPopup("Your location");
+
+      setTimeout(() => {
+        map.flyTo([customerCoords.lat, customerCoords.lng], 14, { animate: true, duration: 1.2 });
+      }, 150);
+    }
+
+    setMapInstance(map);
+
+    return () => {
+      if (map) {
+        map.remove();
+      }
+    };
+  }, [orders.length, customerCoords]);
 
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: "#FFFBF2" }}>
@@ -135,70 +187,64 @@ const TrackOrders = () => {
             <div className="text-5xl mb-4">⚠️</div>
             <p className="text-lg font-semibold mb-2" style={{ color: "#0F1A35" }}>Unable to Load Orders</p>
             <p className="text-sm mb-6 max-w-sm text-center" style={{ color: "#666" }}>{error}</p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
-                style={{ backgroundColor: "#D4A574", color: "#FFFBF2" }}
-              >
-                🔄 Try Again
-              </button>
-              <button
-                onClick={() => { setError(null); setShowDemo(true); }}
-                className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all border-2"
-                style={{ borderColor: "#D4A574", color: "#D4A574", backgroundColor: "transparent" }}
-              >
-                🗺️ View Demo Map
-              </button>
-            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
+              style={{ backgroundColor: "#D4A574", color: "#FFFBF2" }}
+            >
+              🔄 Try Again
+            </button>
           </motion.div>
-        ) : orders.length === 0 && !showDemo ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-24"
-          >
-            <div className="text-6xl mb-4">📭</div>
-            <h3 className="text-xl font-semibold mb-1" style={{ color: "#0F1A35" }}>No active deliveries in transit.</h3>
-            <p className="text-sm mb-8 max-w-sm text-center" style={{ color: "#666" }}>All your orders have been delivered or cancelled.</p>
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={navigateToMarketplace}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold border-2 transition-all hover:shadow-md"
+        ) : orders.length === 0 ? (
+          <div className="w-full space-y-6">
+            <div
+              ref={mapRef}
+              className="w-full h-[70vh] rounded-2xl overflow-hidden leaflet-container"
+              style={{ backgroundColor: "#f0f0f0", position: "relative" }}
+            />
+            <style>{`
+              @keyframes pulse-ring {
+                0% { box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.7), 0 0 0 8px rgba(212, 165, 116, 0.25), 0 0 0 12px rgba(212, 165, 116, 0.15); }
+                50% { box-shadow: 0 0 0 8px rgba(212, 165, 116, 0.3), 0 0 0 16px rgba(212, 165, 116, 0.1), 0 0 0 20px rgba(212, 165, 116, 0.05); }
+                100% { box-shadow: 0 0 0 0 rgba(212, 165, 116, 0), 0 0 0 8px rgba(212, 165, 116, 0.25), 0 0 0 12px rgba(212, 165, 116, 0.15); }
+              }
+              [style*="animation:pulse"] { animation: pulse-ring 2s infinite !important; }
+            `}</style>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="w-full"
+            >
+              <div
+                className="w-full rounded-2xl px-6 py-8 backdrop-blur-xl border border-white/20 shadow-2xl"
                 style={{
-                  backgroundColor: "transparent",
-                  color: "#0F1A35",
-                  borderColor: "#0F1A35"
+                  backgroundColor: "rgba(255, 251, 242, 0.85)",
                 }}
               >
-                🛍️ Return to Marketplace
-              </button>
-              <button
-                onClick={() => setShowDemo(true)}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-all hover:shadow-md"
-                style={{
-                  backgroundColor: "#D4A574",
-                  color: "#FFFBF2"
-                }}
-              >
-                🗺️ View Map Demo
-              </button>
-            </div>
-          </motion.div>
+                <h3 className="text-2xl font-display font-bold mb-2" style={{ color: "#0F1A35" }}>
+                  Your radar is clear.
+                </h3>
+                <p className="text-sm mb-6" style={{ color: "#666" }}>
+                  Lock a deal in the Marketplace and watch it arrive right here in real-time.
+                </p>
+                <button
+                  onClick={navigateToMarketplace}
+                  className="w-full px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:shadow-lg active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, #D4A574 0%, #1a1a2e 100%)",
+                    color: "#FFFBF2"
+                  }}
+                >
+                  🛒 Shop The Hive
+                </button>
+              </div>
+            </motion.div>
+          </div>
         ) : (
           <div className="space-y-8">
-            {(showDemo && orders.length === 0 ? [
-              {
-                id: 999888,
-                total_price: 450.00,
-                status: "in_transit",
-                created_at: new Date().toISOString(),
-                runner_id: 1,
-                otp_code: "9437",
-                delivery_address: "Independence Avenue, Lusaka, Zambia",
-                hive_catalogue: { product_name: "Premium Headphones" }
-              }
-            ] : orders).map((order, i) => {
+            {orders.map((order, i) => {
               const currentStep = getStepIndex(order.status);
               const itemName = order.hive_catalogue?.product_name || `Order #${order.id}`;
               const isInTransit = order.status === "in_transit" || order.status === "out_for_delivery";

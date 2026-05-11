@@ -25,6 +25,7 @@ const mapItem = (item: any): FeaturedItem => ({
   old_price: item.old_price,
   image_url: item.image_url,
   store_name: item.sme_stores?.brand_name || "The Hive Store",
+  store_whatsapp: item.sme_stores?.whatsapp_number || null,
   category: item.category || "General",
   is_featured: (item.stock_count ?? 0) > 10,
   in_stock: (item.stock_count ?? 0) > 0,
@@ -68,13 +69,14 @@ const Marketplace = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [overlayHeight, setOverlayHeight] = useState(0);
 
   useEffect(() => {
     const fetchItems = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("hive_catalogue")
-        .select("*, sme_stores(brand_name)")
+        .select("*, sme_stores(brand_name, whatsapp_number)")
         .order("created_at", { ascending: false })
         .limit(60);
 
@@ -162,6 +164,46 @@ const Marketplace = () => {
               ))}
             </div>
           </div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-16 pt-8 border-t border-border">
+            <div className="mb-12">
+              <h3 className="text-lg font-display font-bold text-foreground mb-6">Featured Vendors</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {allItems.slice(0, 6).map((item) => (
+                  <motion.div
+                    key={`vendor-${item.id}`}
+                    whileHover={{ y: -4 }}
+                    onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}
+                    className="p-4 rounded-xl border border-border bg-card hover:bg-secondary cursor-pointer transition-all"
+                  >
+                    <div className="flex gap-3 mb-3">
+                      {item.image_url && (
+                        <img src={item.image_url} alt={item.item_name} className="w-12 h-12 rounded-lg object-cover" />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground truncate">{item.store_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.item_name.substring(0, 30)}...</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-primary">ZMW {item.price.toLocaleString()}</span>
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">{item.category}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8 text-center">
+              <h3 className="text-2xl font-display font-bold mb-2 text-foreground">Join The Hive</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                Become a vendor and reach thousands of customers. Flexible terms, zero commission for the first 30 days.
+              </p>
+              <button className="px-6 py-2.5 rounded-xl font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all">
+                Start Selling Today
+              </button>
+            </div>
+          </motion.div>
         </>
       )}
 
