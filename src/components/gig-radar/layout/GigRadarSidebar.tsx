@@ -118,9 +118,9 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
                 {mod.group}
               </p>
               <div className="space-y-1">
-                {mod.items.map((item) => (
+                {mod.items.map((item, idx) => (
                   <motion.button
-                    key={item.path}
+                    key={`${mod.group}-${idx}`}
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all justify-center lg:justify-start"
