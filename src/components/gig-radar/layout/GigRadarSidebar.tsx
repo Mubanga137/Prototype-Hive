@@ -15,13 +15,13 @@ interface GigRadarSidebarProps {
 
 const sidebarModules = [
   {
-    group: "Operations",
+    group: "OVERVIEW",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, path: "#" },
     ],
   },
   {
-    group: "Gig Management",
+    group: "GIG MANAGEMENT",
     items: [
       { label: "Bounties", icon: Zap, path: "#" },
       { label: "Earnings", icon: TrendingUp, path: "#" },
@@ -29,14 +29,14 @@ const sidebarModules = [
     ],
   },
   {
-    group: "Communication",
+    group: "COMMUNICATION",
     items: [
       { label: "Messages", icon: MessageSquare, path: "#" },
       { label: "Notifications", icon: Bell, path: "#" },
     ],
   },
   {
-    group: "Hive Nodes Only",
+    group: "HIVE NODES ONLY",
     items: [
       { label: "Hub-Inventory", icon: Package, path: "#" },
       { label: "Dispatch", icon: Truck, path: "#" },
@@ -85,50 +85,52 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
         )}
       </div>
 
-      {/* Active Bounties Counter */}
-      <div className={isCollapsed ? "hidden" : ""}>
-        <div className="px-5 pb-0">
-          <div
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-colors"
-            style={{
-              borderColor: "hsl(38,73%,40%,0.25)",
-              backgroundColor: "hsl(38,73%,40%,0.12)",
-              color: "#B37C1C",
-            }}
-          >
-            <span className="text-base leading-none">⚡</span>
-            <span className="tabular-nums font-bold">5</span>
-            <span className="opacity-80">Active</span>
+      {/* Active Deliveries/Drops Counter - Premium Badge */}
+      <div className={`px-5 pb-2 ${isCollapsed && !isMobile ? "hidden" : ""}`}>
+        <motion.div
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all"
+          style={{
+            borderColor: "hsl(38,73%,40%,0.25)",
+            backgroundColor: "hsl(38,73%,40%,0.12)",
+            color: "#B37C1C",
+          }}
+          whileHover={{ y: -2, boxShadow: "0 4px 12px rgba(179, 124, 28, 0.1)" }}
+        >
+          <span className="text-lg leading-none animate-pulse">⚡</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold tabular-nums">5</span>
+            <span className="text-[10px] opacity-75">Active Drops</span>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Navigation (Scrollable) */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
         {sidebarModules.map((mod) => {
           // Hide Hive Nodes section if not a hive node
-          if (mod.group === "Hive Nodes Only" && userRole !== "hive_node") {
+          if (mod.group === "HIVE NODES ONLY" && userRole !== "hive_node") {
             return null;
           }
 
           return (
             <div key={mod.group}>
-              <p className="text-[10px] font-bold text-[#0F1A35]/50 uppercase tracking-widest px-3 mb-2">
+              <p className="text-[9px] font-extrabold text-[#0F1A35]/45 uppercase tracking-[0.15em] px-3 mb-3">
                 {mod.group}
               </p>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {mod.items.map((item) => (
                   <motion.button
                     key={item.path}
                     whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.98 }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all justify-center lg:justify-start"
                     style={{
                       color: "#0F1A35",
                       border: "1px solid transparent",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.08)";
-                      e.currentTarget.style.borderColor = "hsl(38,73%,40%,0.15)";
+                      e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.1)";
+                      e.currentTarget.style.borderColor = "hsl(38,73%,40%,0.2)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "transparent";
@@ -137,11 +139,11 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
                     title={isCollapsed ? item.label : undefined}
                   >
                     <item.icon
-                      size={18}
+                      size={20}
                       style={{ color: "#B37C1C" }}
                       className="shrink-0"
                     />
-                    <span className={`flex-1 text-left ${isCollapsed ? "hidden" : ""}`}>
+                    <span className={`flex-1 text-left text-sm ${isCollapsed ? "hidden" : ""}`}>
                       {item.label}
                     </span>
                   </motion.button>
@@ -153,59 +155,63 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
       </nav>
 
       {/* Bottom: Profile & Logout (Pinned) */}
-      <div 
+      <div
         className="border-t px-4 py-4 shrink-0"
         style={{ borderColor: "hsl(38,40%,85%)" }}
       >
-        <button
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-3 border"
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all mb-3 border"
           style={{
             color: "#0F1A35",
             borderColor: "hsl(38,40%,85%)",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.08)";
+            e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.12)";
+            e.currentTarget.style.borderColor = "hsl(38,73%,40%,0.25)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.borderColor = "hsl(38,40%,85%)";
           }}
         >
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
             style={{
-              backgroundColor: "hsl(38,73%,40%,0.12)",
-              borderColor: "hsl(38,73%,40%,0.25)",
+              backgroundColor: "hsl(38,73%,40%,0.15)",
+              borderColor: "hsl(38,73%,40%,0.3)",
               color: "#B37C1C",
-              border: "1px solid hsl(38,73%,40%,0.25)"
+              border: "2px solid hsl(38,73%,40%,0.3)",
             }}
           >
-            {profile?.full_name?.[0]?.toUpperCase() || "R"}
+            {profile?.full_name?.[0]?.toUpperCase() || "G"}
           </div>
-          <div className="flex-1 min-w-0 text-left">
-            <p className="text-sm font-semibold text-[#0F1A35] truncate">
-              {profile?.full_name || "Rider"}
+          <div className={`flex-1 min-w-0 text-left ${isCollapsed && !isMobile ? "hidden" : ""}`}>
+            <p className="text-sm font-bold text-[#0F1A35] truncate">
+              {profile?.full_name || "Gig Worker"}
             </p>
-            <p className="text-[10px] text-[#0F1A35]/60">Gig Account</p>
+            <p className="text-[10px] text-[#0F1A35]/60 mt-0.5">Active Gig Worker</p>
           </div>
-        </button>
-        <motion.button 
+        </motion.button>
+        <motion.button
           onClick={handleLogout}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors"
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold border rounded-xl transition-colors uppercase tracking-wide"
           style={{
             color: "#B37C1C",
-            borderColor: "hsl(38,73%,40%,0.3)",
+            borderColor: "hsl(38,73%,40%,0.2)",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.08)";
+            e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.12)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "transparent";
           }}
         >
-          <LogOut size={14} />
-          Sign Out
+          <LogOut size={16} />
+          <span className={isCollapsed && !isMobile ? "hidden" : ""}>Sign Out</span>
         </motion.button>
       </div>
     </div>
@@ -213,9 +219,9 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside 
-        className="hidden lg:flex w-56 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen"
+      {/* Desktop Sidebar - Always Visible */}
+      <aside
+        className="hidden lg:flex w-64 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen"
         style={{ borderColor: "hsl(38,40%,85%)" }}
       >
         <SidebarContent />
@@ -225,11 +231,11 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
       <AnimatePresence>
         {isOpen && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={onClose} 
+              onClick={onClose}
               className="fixed inset-0 backdrop-blur-sm z-[60] lg:hidden"
               style={{ background: "hsl(220,55%,13%,0.4)" }}
             />
@@ -238,11 +244,11 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 left-0 h-full z-[70] shadow-2xl lg:hidden flex flex-col"
+              className="fixed top-0 left-0 h-full z-[70] shadow-2xl lg:hidden flex flex-col overflow-hidden"
               style={{
                 width: mobileSidebarCollapsed ? "80px" : "256px",
                 maxWidth: "75vw",
-                backgroundColor: "#FFFBF2"
+                backgroundColor: "#FFFBF2",
               }}
             >
               <div className="absolute top-4 right-4 z-10 lg:hidden">
