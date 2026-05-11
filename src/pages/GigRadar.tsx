@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
 import { useGigSimulation } from "@/hooks/gig-radar/useGigSimulation";
+import { useOSRMTwoLegRouting } from "@/hooks/gig-radar/useOSRMTwoLegRouting";
+import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
-import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb } from "lucide-react";
+import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
 
@@ -22,10 +24,17 @@ interface BountyCard {
   time: string;
   price: string;
   type: "delivery" | "runner" | "task";
+  sme_lat?: number;
+  sme_lng?: number;
+  customer_lat?: number;
+  customer_lng?: number;
+  routeETA?: string;
+  routeDistance?: string;
 }
 
 const GigRadar = () => {
   const { user, profile } = useAuth();
+  const { isRider, isRunner } = useMixedFleetRole();
   const mapRef = useRef<L.Map | null>(null);
   const markerLayerGroup = useRef<L.LayerGroup | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
@@ -35,23 +44,36 @@ const GigRadar = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedBounty, setSelectedBounty] = useState<BountyCard | null>(null);
+  const [routeETAMap, setRouteETAMap] = useState<Map<string, { eta: string; distance: string }>>(new Map());
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
+  const { drawRoute, clearRoute } = useOSRMTwoLegRouting();
 
   const mapCenter = location || LUSAKA_CENTER;
   const userRole = user?.role || "gig_worker";
 
-  const bounties: BountyCard[] = gigs.map((gig, idx) => ({
-    id: gig.id,
-    lat: gig.lat,
-    lng: gig.lng,
-    pickup: `📍 ${["Central Market", "Lusaka Tech Hub", "Embassy Area", "Kabulonga"][idx % 4]}`,
-    distance: `${(Math.random() * 8 + 0.5).toFixed(1)} km`,
-    time: `${Math.floor(Math.random() * 20 + 10)} min`,
-    price: gig.price,
-    type: gig.type,
-  }));
+  const bounties: BountyCard[] = gigs.map((gig, idx) => {
+    const sme_lat = gig.lat + (Math.random() - 0.5) * 0.02;
+    const sme_lng = gig.lng + (Math.random() - 0.5) * 0.02;
+    const customer_lat = gig.lat + (Math.random() - 0.5) * 0.03;
+    const customer_lng = gig.lng + (Math.random() - 0.5) * 0.03;
+
+    return {
+      id: gig.id,
+      lat: gig.lat,
+      lng: gig.lng,
+      pickup: `📍 ${["Central Market", "Lusaka Tech Hub", "Embassy Area", "Kabulonga"][idx % 4]}`,
+      distance: `${(Math.random() * 8 + 0.5).toFixed(1)} km`,
+      time: `${Math.floor(Math.random() * 20 + 10)} min`,
+      price: gig.price,
+      type: gig.type,
+      sme_lat,
+      sme_lng,
+      customer_lat,
+      customer_lng,
+    };
+  });
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -84,9 +106,48 @@ const GigRadar = () => {
     });
   }, [bounties, selectedBounty]);
 
+  // Handle two-leg route rendering when bounty is selected
   useEffect(() => {
-    if (!mapRef.current || !location || bounties.length === 0 || !isOnline) {
-      // Remove polyline when offline or no bounties
+    if (!mapRef.current || !selectedBounty || !location) {
+      if (mapRef.current && selectedBounty === null) {
+        clearRoute(mapRef.current);
+      }
+      return;
+    }
+
+    // Determine OSRM profile based on worker role
+    const routeProfile = isRider ? "driving" : "foot";
+
+    const sme_lat = selectedBounty.sme_lat || selectedBounty.lat;
+    const sme_lng = selectedBounty.sme_lng || selectedBounty.lng;
+    const customer_lat = selectedBounty.customer_lat || selectedBounty.lat;
+    const customer_lng = selectedBounty.customer_lng || selectedBounty.lng;
+
+    drawRoute({
+      workerLat: location.lat,
+      workerLng: location.lng,
+      pickupLat: sme_lat,
+      pickupLng: sme_lng,
+      customerLat: customer_lat,
+      customerLng: customer_lng,
+      profile: routeProfile,
+      map: mapRef.current,
+      onRouteFound: (routeData) => {
+        const eta = `${routeData.duration}min`;
+        const distance = `${routeData.distance.toFixed(1)}km`;
+        const newMap = new Map(routeETAMap);
+        newMap.set(selectedBounty.id, { eta, distance });
+        setRouteETAMap(newMap);
+      },
+      onError: (error) => {
+        console.warn("[GigRadar] Route error (using fallback):", error);
+      },
+    });
+  }, [selectedBounty, location, isRider, drawRoute, clearRoute, routeETAMap]);
+
+  useEffect(() => {
+    if (!mapRef.current || !location || bounties.length === 0 || !isOnline || selectedBounty) {
+      // Remove polyline when offline, no bounties, or bounty is selected (route is active)
       if (polylineRef.current && mapRef.current) {
         mapRef.current.removeLayer(polylineRef.current);
         polylineRef.current = null;
@@ -109,7 +170,7 @@ const GigRadar = () => {
       opacity: 0.8,
       dashArray: "8, 6",
     }).addTo(mapRef.current);
-  }, [location, bounties, isOnline]);
+  }, [location, bounties, isOnline, selectedBounty]);
 
   useEffect(() => {
     if (mapRef.current && location && isOnline) {
@@ -391,6 +452,23 @@ const GigRadar = () => {
                           {bounty.type}
                         </span>
                       </div>
+
+                      {/* Route Intelligence - Live ETA Display */}
+                      {selectedBounty?.id === bounty.id && routeETAMap.has(bounty.id) && (
+                        <div className="mb-4 pb-4 border-b p-3 rounded-lg" style={{ backgroundColor: "hsl(38,73%,40%,0.06)", borderColor: "hsl(38,40%,85%)" }}>
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                            {isRider ? "🚗" : "👟"} {isRider ? "Rider" : "Runner"} Route
+                          </p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span style={{ color: "#0F1A35" }}>
+                              🚗 Distance: <strong>{routeETAMap.get(bounty.id)?.distance}</strong>
+                            </span>
+                            <span style={{ color: "#0F1A35" }}>
+                              ⏱️ ETA: <strong>{routeETAMap.get(bounty.id)?.eta}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Distance & Time Grid */}
                       <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b" style={{ borderColor: "hsl(38,40%,85%)" }}>
