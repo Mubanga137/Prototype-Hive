@@ -27,8 +27,9 @@ const getReply = (input: string): string => {
   return AUTO_REPLIES.default;
 };
 
-const HiveBotWidget = () => {
+const HiveBotWidget = ({ hidden = false }: { hidden?: boolean }) => {
   const [open, setOpen] = useState(false);
+  const [isHidden, setIsHidden] = useState(hidden);
   const [messages, setMessages] = useState<BotMessage[]>([
     { id: "welcome", role: "bot", text: "🐝 Welcome to The Hive! I'm your assistant. Type **help** to get started.", ts: Date.now() },
   ]);
@@ -49,6 +50,8 @@ const HiveBotWidget = () => {
       setMessages((prev) => [...prev, { id: `b-${Date.now()}`, role: "bot", text: reply, ts: Date.now() }]);
     }, 600);
   };
+
+  if (isHidden) return null;
 
   return (
     <>
@@ -74,14 +77,23 @@ const HiveBotWidget = () => {
             style={{ height: 420, backgroundColor: "#FFFBF2" }}
           >
             {/* Header */}
-            <div className="px-4 py-3 flex items-center gap-2 border-b border-border" style={{ backgroundColor: "#0F1A35" }}>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "#B37C1C" }}>
-                <Bot size={16} color="#FFFBF2" />
+            <div className="px-4 py-3 flex items-center justify-between border-b border-border" style={{ backgroundColor: "#0F1A35" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "#B37C1C" }}>
+                  <Bot size={16} color="#FFFBF2" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "#FFFBF2" }}>🤖 Hive Bot</p>
+                  <p className="text-[10px]" style={{ color: "rgba(255,251,242,0.6)" }}>Always online</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-bold" style={{ color: "#FFFBF2" }}>🤖 Hive Bot</p>
-                <p className="text-[10px]" style={{ color: "rgba(255,251,242,0.6)" }}>Always online</p>
-              </div>
+              <button
+                onClick={() => setIsHidden(true)}
+                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
+                aria-label="Hide bot"
+              >
+                <X size={16} color="#FFFBF2" />
+              </button>
             </div>
 
             {/* Messages */}

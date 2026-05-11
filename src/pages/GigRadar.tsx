@@ -150,7 +150,7 @@ const GigRadar = () => {
         <div className="flex-1 flex flex-col relative z-10">
           {/* Top Header - Premium Glassmorphic Design */}
           <header
-            className="h-16 border-b flex items-center px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
+            className="h-16 border-b flex items-center justify-between px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
             style={{
               backgroundColor: "rgba(255, 251, 242, 0.85)",
               borderColor: "hsl(38,40%,85%)",
@@ -179,7 +179,6 @@ const GigRadar = () => {
                 </div>
               </div>
             </div>
-
 
             {/* Right: Gig Worker Name & Avatar */}
             <div className="flex items-center gap-3">
