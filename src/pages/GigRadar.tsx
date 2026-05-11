@@ -380,36 +380,15 @@ const GigRadar = () => {
                         <p className="font-bold text-base" style={{ color: "#0F1A35" }}>
                           {bounty.pickup}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <motion.div
-                            animate={{ scale: isOnline ? 1 : 0.9 }}
-                            className="flex items-center justify-center relative"
-                          >
-                            {isOnline ? (
-                              <div className="relative flex items-center justify-center">
-                                <div className="absolute inset-0 animate-pulse" style={{
-                                  background: "radial-gradient(circle, rgba(179, 124, 28, 0.4) 0%, rgba(179, 124, 28, 0) 70%)",
-                                }}></div>
-                                <div className="absolute inset-0 animate-pulse" style={{
-                                  background: "radial-gradient(circle, rgba(179, 124, 28, 0.3) 0%, rgba(179, 124, 28, 0) 70%)",
-                                  animationDelay: "0.15s",
-                                }}></div>
-                                <Lightbulb size={18} style={{ color: "#B37C1C", zIndex: 10 }} fill="#B37C1C" />
-                              </div>
-                            ) : (
-                              <Lightbulb size={18} style={{ color: "#E0E0E0" }} />
-                            )}
-                          </motion.div>
-                          <span
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors"
-                            style={{
-                              backgroundColor: "hsl(38,73%,40%,0.12)",
-                              color: "#B37C1C",
-                            }}
-                          >
-                            {bounty.type}
-                          </span>
-                        </div>
+                        <span
+                          className="text-xs px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors"
+                          style={{
+                            backgroundColor: "hsl(38,73%,40%,0.12)",
+                            color: "#B37C1C",
+                          }}
+                        >
+                          {bounty.type}
+                        </span>
                       </div>
 
                       {/* Distance & Time Grid */}
@@ -492,7 +471,20 @@ const GigRadar = () => {
             : "0 8px 20px rgba(15, 26, 53, 0.2)",
         }}
       >
-        {isOnline ? <PhoneOff size={20} /> : <Phone size={20} />}
+        {isOnline ? (
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 animate-pulse" style={{
+              background: "radial-gradient(circle, rgba(255, 251, 242, 0.4) 0%, rgba(255, 251, 242, 0) 70%)",
+            }}></div>
+            <div className="absolute inset-0 animate-pulse" style={{
+              background: "radial-gradient(circle, rgba(255, 251, 242, 0.3) 0%, rgba(255, 251, 242, 0) 70%)",
+              animationDelay: "0.15s",
+            }}></div>
+            <Lightbulb size={20} style={{ color: "#FFFBF2", zIndex: 10 }} fill="#FFFBF2" />
+          </div>
+        ) : (
+          <Lightbulb size={20} style={{ color: "#FFFBF2" }} />
+        )}
         <span className="hidden sm:inline font-semibold">{isOnline ? "Go Offline" : "Go Online"}</span>
         {isOnline && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
       </motion.button>
