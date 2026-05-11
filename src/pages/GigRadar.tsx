@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
 import { useGigSimulation } from "@/hooks/gig-radar/useGigSimulation";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
-import { Menu, MapPin, Zap, PhoneOff, Phone } from "lucide-react";
+import { Menu, MapPin, Zap, Phone, PhoneOff } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
@@ -29,28 +29,15 @@ const GigRadar = () => {
   const markerLayerGroup = useRef<L.LayerGroup | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
 
-  // UI State
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [bottomSheetHeight, setBottomSheetHeight] = useState("40%");
   const [selectedBounty, setSelectedBounty] = useState<BountyCard | null>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
 
-  // Location & gig services
-  const {
-    location,
-    isOnline,
-    setIsOnline,
-    locationStatus,
-    permissionDenied,
-    accuracy,
-  } = useLocationService();
-
+  const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
 
   const mapCenter = location || LUSAKA_CENTER;
   const userRole = user?.role || "gig_worker";
 
-  // Convert gigs to bounty cards
   const bounties: BountyCard[] = gigs.map((gig, idx) => ({
     id: gig.id,
     lat: gig.lat,
@@ -62,7 +49,6 @@ const GigRadar = () => {
     type: gig.type,
   }));
 
-  // Update map markers
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -76,7 +62,7 @@ const GigRadar = () => {
       const icon = L.divIcon({
         className: "bounty-marker",
         html: `
-          <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 border-2 border-white shadow-xl hover:scale-110 transition-transform cursor-pointer" style="box-shadow: 0 0 20px rgba(212, 165, 116, 0.6);">
+          <div class="flex items-center justify-center w-12 h-12 rounded-full border-2 border-white transition-transform hover:scale-110 cursor-pointer" style="background: linear-gradient(135deg, #B37C1C 0%, #8B6914 100%); box-shadow: 0 0 20px rgba(179, 124, 28, 0.6);">
             <span class="text-white font-bold text-sm drop-shadow-lg">⚡</span>
           </div>
         `,
@@ -85,7 +71,6 @@ const GigRadar = () => {
       });
 
       const marker = L.marker([bounty.lat, bounty.lng], { icon });
-
       marker.on("click", () => {
         setSelectedBounty(bounty);
         mapRef.current?.flyTo([bounty.lat, bounty.lng], 16, { animate: true, duration: 0.8 });
@@ -95,7 +80,6 @@ const GigRadar = () => {
     });
   }, [bounties, selectedBounty]);
 
-  // Draw polyline for route
   useEffect(() => {
     if (!mapRef.current || !location || bounties.length === 0) return;
 
@@ -116,7 +100,6 @@ const GigRadar = () => {
     }).addTo(mapRef.current);
   }, [location, bounties]);
 
-  // Pan to user when online
   useEffect(() => {
     if (mapRef.current && location && isOnline) {
       mapRef.current.panTo([location.lat, location.lng], { animate: true });
@@ -137,13 +120,13 @@ const GigRadar = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative z-10">
-        {/* Header Section */}
-        <header className="h-16 border-b flex items-center px-6" style={{ backgroundColor: "#FFFBF2", borderColor: "#D4A574", backdropFilter: "blur(10px)" }}>
+        {/* Header */}
+        <header className="h-16 border-b flex items-center px-6 shrink-0" style={{ backgroundColor: "#FFFBF2", borderColor: "hsl(38,40%,85%)" }}>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg mr-4 transition-all"
+            className="p-2 rounded-lg mr-4 lg:hidden transition-all"
             style={{ backgroundColor: "#F5F0E8" }}
           >
             <Menu size={24} style={{ color: "#0F1A35" }} />
@@ -151,13 +134,12 @@ const GigRadar = () => {
 
           <div className="flex-1 flex items-center justify-between">
             <div>
-              <h1 className="font-display font-bold text-xl" style={{ color: "#0F1A35" }}>
-                🐝 THE HIVE
+              <h1 className="font-display font-bold text-lg" style={{ color: "#0F1A35" }}>
+                Gig Radar
               </h1>
-              <p className="text-xs" style={{ color: "#999" }}>Logistics Terminal</p>
+              <p className="text-xs" style={{ color: "#0F1A35/70" }}>Real-time logistics terminal</p>
             </div>
 
-            {/* Status Pill */}
             <motion.div
               animate={{ scale: isOnline ? 1 : 0.95 }}
               className="flex items-center gap-2 px-4 py-2 rounded-full"
@@ -172,14 +154,13 @@ const GigRadar = () => {
               </span>
             </motion.div>
 
-            {/* User Avatar */}
-            <div className="w-10 h-10 rounded-full ml-4 flex items-center justify-center font-bold text-white" style={{ backgroundColor: "#D4A574" }}>
+            <div className="w-10 h-10 rounded-full ml-4 flex items-center justify-center font-bold text-white text-sm" style={{ backgroundColor: "#B37C1C" }}>
               {user?.email?.[0].toUpperCase() || "H"}
             </div>
           </div>
         </header>
 
-        {/* Map Container - 60% of remaining space */}
+        {/* Map Container - 60% */}
         <div className="flex-[0.6] relative overflow-hidden rounded-b-3xl mx-2 mb-2" style={{ backgroundColor: "#f0f0f0" }}>
           <MapContainer
             ref={mapRef}
@@ -192,10 +173,8 @@ const GigRadar = () => {
             <TileLayer
               url="https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png"
               attribution="&copy; OpenStreetMap"
-              maxZoom={19}
             />
 
-            {/* User location marker - Pulsing gold */}
             {location && isOnline && (
               <Marker
                 position={[location.lat, location.lng]}
@@ -203,60 +182,55 @@ const GigRadar = () => {
                   className: "user-location-marker",
                   html: `
                     <div class="relative flex items-center justify-center" style="width: 48px; height: 48px;">
-                      <div class="absolute w-full h-full rounded-full border-2 border-white shadow-lg" style="background: linear-gradient(135deg, #D4A574 0%, #B37C1C 100%);"></div>
-                      <div class="absolute w-3 h-3 bg-white rounded-full" style="box-shadow: 0 0 12px rgba(212, 165, 116, 0.8); animation: pulse 2s infinite;"></div>
+                      <div class="absolute w-full h-full rounded-full border-2 border-white" style="background: linear-gradient(135deg, #B37C1C 0%, #8B6914 100%); box-shadow: 0 0 20px rgba(179, 124, 28, 0.8);"></div>
+                      <div class="absolute w-3 h-3 bg-white rounded-full" style="box-shadow: 0 0 12px rgba(179, 124, 28, 0.8); animation: pulse 2s infinite;"></div>
                     </div>
                   `,
                   iconSize: [48, 48],
                   iconAnchor: [24, 24],
                 })}
-              >
-                <Popup>Your Location</Popup>
-              </Marker>
+              />
             )}
           </MapContainer>
 
-          {/* Map Controls */}
-          <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (location && mapRef.current) {
-                  mapRef.current.flyTo([location.lat, location.lng], 15, { animate: true, duration: 0.8 });
-                }
-              }}
-              className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
-              style={{ backgroundColor: "#FFFBF2", color: "#0F1A35" }}
-            >
-              <MapPin size={20} />
-            </motion.button>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (location && mapRef.current) {
+                mapRef.current.flyTo([location.lat, location.lng], 15, { animate: true, duration: 0.8 });
+              }
+            }}
+            className="absolute top-4 right-4 z-20 w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
+            style={{ backgroundColor: "#FFFBF2", color: "#0F1A35" }}
+          >
+            <MapPin size={20} />
+          </motion.button>
         </div>
 
-        {/* Bottom Drawer - Available Bounties */}
+        {/* Bottom Drawer - 40% */}
         <motion.div
           initial={{ y: 20 }}
           animate={{ y: 0 }}
-          className="flex-[0.4] relative rounded-t-3xl overflow-hidden shadow-2xl"
-          style={{ backgroundColor: "#FFFBF2", borderTop: "1px solid #D4A57420" }}
+          className="flex-[0.4] relative rounded-t-3xl overflow-hidden shadow-2xl flex flex-col"
+          style={{ backgroundColor: "#FFFBF2", borderTop: "1px solid hsl(38,40%,85%)" }}
         >
-          {/* Drawer Handle */}
+          {/* Drag Handle */}
           <div className="flex justify-center pt-3 pb-2">
             <div className="w-12 h-1 rounded-full" style={{ backgroundColor: "#D4A574" }}></div>
           </div>
 
           {/* Header */}
-          <div className="px-6 pb-4 border-b flex items-center justify-between" style={{ borderColor: "#D4A57420" }}>
-            <h2 className="text-lg font-display font-bold flex items-center gap-2" style={{ color: "#0F1A35" }}>
+          <div className="px-6 pb-4 border-b flex items-center justify-between shrink-0" style={{ borderColor: "hsl(38,40%,85%)" }}>
+            <h2 className="text-base font-display font-bold flex items-center gap-2" style={{ color: "#0F1A35" }}>
               📍 Available Bounties
-              <span className="text-sm px-2 py-1 rounded-full" style={{ backgroundColor: "#D4A57420", color: "#B37C1C" }}>
-                {bounties.length} available
+              <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "hsl(38,73%,40%,0.12)", color: "#B37C1C" }}>
+                {bounties.length}
               </span>
             </h2>
           </div>
 
-          {/* Horizontal Carousel */}
+          {/* Carousel */}
           <div className="flex-1 overflow-x-auto snap-x snap-mandatory px-6 py-4" style={{ scrollBehavior: "smooth" }}>
             <div className="flex gap-4 pb-2">
               {bounties.map((bounty, idx) => (
@@ -266,30 +240,30 @@ const GigRadar = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => setSelectedBounty(bounty)}
-                  className="flex-shrink-0 w-80 rounded-2xl p-4 cursor-pointer transition-all snap-start border"
+                  className="flex-shrink-0 w-72 rounded-2xl p-4 cursor-pointer transition-all snap-start border"
                   style={{
                     backgroundColor: "#FFFFFF",
-                    borderColor: selectedBounty?.id === bounty.id ? "#B37C1C" : "#D4A57420",
-                    boxShadow: selectedBounty?.id === bounty.id ? "0 8px 24px rgba(212, 165, 116, 0.15)" : "0 2px 8px rgba(0, 0, 0, 0.05)",
+                    borderColor: selectedBounty?.id === bounty.id ? "#B37C1C" : "hsl(38,40%,85%)",
+                    boxShadow: selectedBounty?.id === bounty.id ? "0 8px 24px rgba(179, 124, 28, 0.15)" : "0 2px 8px rgba(0, 0, 0, 0.05)",
                   }}
-                  whileHover={{ y: -4, boxShadow: "0 12px 32px rgba(212, 165, 116, 0.2)" }}
+                  whileHover={{ y: -4 }}
                 >
-                  {/* Top: Pickup Location */}
+                  {/* Location */}
                   <p className="font-bold text-sm mb-3" style={{ color: "#0F1A35" }}>
                     {bounty.pickup}
                   </p>
 
-                  {/* Middle: Distance & Time */}
-                  <div className="flex gap-4 mb-4 pb-4 border-b" style={{ borderColor: "#D4A57420" }}>
-                    <div className="text-xs" style={{ color: "#999" }}>
-                      <p style={{ color: "#666" }}>Distance</p>
-                      <p className="font-semibold mt-1" style={{ color: "#0F1A35" }}>
+                  {/* Distance & Time */}
+                  <div className="flex gap-4 mb-4 pb-4 border-b" style={{ borderColor: "hsl(38,40%,85%)" }}>
+                    <div>
+                      <p className="text-xs" style={{ color: "#999" }}>Distance</p>
+                      <p className="font-semibold text-sm mt-1" style={{ color: "#0F1A35" }}>
                         {bounty.distance}
                       </p>
                     </div>
-                    <div className="text-xs" style={{ color: "#999" }}>
-                      <p style={{ color: "#666" }}>Est. Time</p>
-                      <p className="font-semibold mt-1" style={{ color: "#0F1A35" }}>
+                    <div>
+                      <p className="text-xs" style={{ color: "#999" }}>Est. Time</p>
+                      <p className="font-semibold text-sm mt-1" style={{ color: "#0F1A35" }}>
                         {bounty.time}
                       </p>
                     </div>
@@ -298,12 +272,12 @@ const GigRadar = () => {
                   {/* Price */}
                   <div className="mb-4">
                     <p className="text-xs" style={{ color: "#999" }}>Payout</p>
-                    <p className="text-xl font-bold" style={{ color: "#B37C1C" }}>
+                    <p className="text-lg font-bold" style={{ color: "#B37C1C" }}>
                       {bounty.price}
                     </p>
                   </div>
 
-                  {/* Action Button - Gold to Black Gradient */}
+                  {/* Button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -323,7 +297,7 @@ const GigRadar = () => {
         </motion.div>
       </div>
 
-      {/* Online Toggle Button */}
+      {/* Online Toggle */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -331,7 +305,7 @@ const GigRadar = () => {
         disabled={locationStatus === "requesting"}
         className="fixed bottom-8 right-8 px-6 py-3 rounded-full font-bold text-white shadow-2xl flex items-center gap-2 transition-all z-50"
         style={{
-          background: isOnline ? "linear-gradient(135deg, #D4A574 0%, #B37C1C 100%)" : "#0F1A35",
+          background: isOnline ? "linear-gradient(135deg, #B37C1C 0%, #8B6914 100%)" : "#0F1A35",
         }}
       >
         {isOnline ? <PhoneOff size={18} /> : <Phone size={18} />}
