@@ -143,11 +143,11 @@ const GigRadar = () => {
       <HoneycombBackground />
 
       {/* Sidebar */}
-      <div className="flex h-full w-full relative z-30 lg:z-20">
+      <div className="flex flex-1 w-full relative z-30 lg:z-20" style={{ minHeight: 0 }}>
         <GigRadarSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col relative z-10">
+        <div className="flex-1 flex flex-col relative z-10" style={{ minHeight: 0 }}>
           {/* Top Header - Premium Glassmorphic Design */}
           <header
             className="h-16 border-b flex items-center justify-between px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
@@ -229,7 +229,7 @@ const GigRadar = () => {
           </header>
 
           {/* Map Container - 60% */}
-          <div className="flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2" style={{ backgroundColor: "#f0f0f0" }}>
+          <div className="flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2" style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}>
             <MapContainer
               ref={mapRef}
               center={[mapCenter.lat, mapCenter.lng]}
@@ -291,6 +291,7 @@ const GigRadar = () => {
             style={{
               backgroundColor: "#FFFBF2",
               borderTop: "1px solid hsl(38,40%,85%)",
+              minHeight: 0,
             }}
           >
             {/* Drag Handle - Sleek & Minimal */}

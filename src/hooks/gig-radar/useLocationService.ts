@@ -13,8 +13,10 @@ export const useLocationService = () => {
 
   const requestLocation = useCallback(async () => {
     if (!navigator.geolocation) {
-      console.error("Geolocation not supported");
-      setLocationStatus("error");
+      console.error("Geolocation not supported, using default location");
+      // Fallback to Lusaka center for development/testing
+      setLocation({ lat: -15.3875, lng: 28.3228 });
+      setLocationStatus("ready");
       return;
     }
 
@@ -34,14 +36,19 @@ export const useLocationService = () => {
       (error) => {
         console.error("Geolocation error:", error);
         if (error.code === 1) {
-          // Permission denied
+          // Permission denied - use fallback location
           setPermissionDenied(true);
+          setLocation({ lat: -15.3875, lng: 28.3228 });
+          setLocationStatus("ready");
+        } else {
+          // Other error - use fallback location
+          setLocation({ lat: -15.3875, lng: 28.3228 });
+          setLocationStatus("ready");
         }
-        setLocationStatus("error");
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 5000,
         maximumAge: 0,
       }
     );
