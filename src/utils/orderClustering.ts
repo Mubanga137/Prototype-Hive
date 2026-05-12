@@ -3,8 +3,6 @@ import { haversineDistance } from "./haversineDistance";
 export interface OrderClusterItem {
   id: number;
   sme_id: number | null;
-  customer_name: string | null;
-  customer_phone: string | null;
   delivery_address: string | null;
   total_price: number | null;
   otp_code: string | null;
@@ -90,8 +88,8 @@ export function clusterOrders(
       const clusterId = `${smeId}-${clusterIdx}`;
       const dropoffs = dropoffGroup.map((order) => ({
         orderId: order.id,
-        customer: order.customer_name || "Unknown",
-        phone: order.customer_phone || "",
+        customer: `Order #${order.id}`,
+        phone: "",
         loc: deliveryLocationEstimates.get(order.id) || { lat: 0, lng: 0 },
       }));
 

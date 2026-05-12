@@ -19,7 +19,6 @@ export function useOrderClustering() {
           `
           id,
           sme_id,
-          customer_phone,
           delivery_address,
           total_price,
           otp_code,
