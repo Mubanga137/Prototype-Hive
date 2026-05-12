@@ -3,9 +3,7 @@ import { haversineDistance } from "./haversineDistance";
 export interface OrderClusterItem {
   id: number;
   sme_id: number | null;
-  delivery_address: string | null;
   total_price: number | null;
-  otp_code: string | null;
   status: string | null;
 }
 

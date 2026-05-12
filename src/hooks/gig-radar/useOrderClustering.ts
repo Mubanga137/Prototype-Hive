@@ -19,9 +19,7 @@ export function useOrderClustering() {
           `
           id,
           sme_id,
-          delivery_address,
           total_price,
-          otp_code,
           status
         `
         )
@@ -63,25 +61,10 @@ export function useOrderClustering() {
           }
         }
 
-        try {
-          const { data: geoData } = await supabase
-            .rpc("geocode_address", { address: order.delivery_address })
-            .single();
-
-          if (geoData && geoData.lat && geoData.lng) {
-            deliveryEstimates.set(order.id, {
-              lat: geoData.lat,
-              lng: geoData.lng,
-            });
-          } else {
-            throw new Error("No geo data");
-          }
-        } catch {
-          deliveryEstimates.set(order.id, {
-            lat: riderLoc.lat + (Math.random() - 0.5) * 0.05,
-            lng: riderLoc.lng + (Math.random() - 0.5) * 0.05,
-          });
-        }
+        deliveryEstimates.set(order.id, {
+          lat: riderLoc.lat + (Math.random() - 0.5) * 0.05,
+          lng: riderLoc.lng + (Math.random() - 0.5) * 0.05,
+        });
       }
 
       const clustered = clusterOrders(orders, smeLocations, deliveryEstimates);
