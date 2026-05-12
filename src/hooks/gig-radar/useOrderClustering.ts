@@ -30,8 +30,9 @@ export function useOrderClustering() {
         .eq("status", "processing");
 
       if (ordersError) {
-        console.error("[useOrderClustering] Orders fetch error:", ordersError);
-        throw ordersError;
+        const errorMessage = ordersError instanceof Error ? ordersError.message : JSON.stringify(ordersError);
+        console.error("[useOrderClustering] Orders fetch error:", errorMessage);
+        throw new Error(errorMessage);
       }
       if (!orders || orders.length === 0) {
         console.log("[useOrderClustering] No processing orders found");
@@ -99,7 +100,7 @@ export function useOrderClustering() {
         if (smeNameError) {
           console.warn(`[useOrderClustering] Could not fetch SME name for ${smeId}:`, smeNameError);
         } else if (smeData?.name) {
-          batch.pickupSmeNam = smeData.name;
+          batch.pickupSmeName = smeData.name;
         }
       }
 
