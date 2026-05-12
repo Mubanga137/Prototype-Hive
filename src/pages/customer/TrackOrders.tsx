@@ -47,7 +47,7 @@ const TrackOrders = () => {
         try {
           const { data, error: queryError } = await supabase
             .from("orders")
-            .select("id, total_price, status, created_at, runner_id, otp_code, delivery_address, hive_catalogue!orders_item_id_fkey(product_name)")
+            .select("id, total_price, status, created_at, runner_id, otp_code, hive_catalogue!orders_item_id_fkey(product_name)")
             .eq("buyer_id", user.id)
             .neq("status", "delivered")
             .neq("status", "cancelled")
@@ -266,7 +266,6 @@ const TrackOrders = () => {
                         style={{ backgroundColor: "#f0f0f0" }}
                       >
                         <DestinationMap
-                          deliveryAddress={order.delivery_address}
                           orderId={order.id}
                         />
                       </div>
