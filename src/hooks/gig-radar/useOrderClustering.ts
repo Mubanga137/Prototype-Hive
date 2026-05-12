@@ -19,19 +19,16 @@ export function useOrderClustering() {
           `
           id,
           sme_id,
-          customer_name,
-          customer_phone,
-          delivery_address,
           total_price,
-          otp_code,
           status
         `
         )
         .eq("status", "processing");
 
       if (ordersError) {
-        console.error("[useOrderClustering] Orders fetch error:", ordersError);
-        throw ordersError;
+        const errorMessage = ordersError instanceof Error ? ordersError.message : JSON.stringify(ordersError);
+        console.error("[useOrderClustering] Orders fetch error:", errorMessage);
+        throw new Error(errorMessage);
       }
       if (!orders || orders.length === 0) {
         console.log("[useOrderClustering] No processing orders found");
@@ -64,25 +61,10 @@ export function useOrderClustering() {
           }
         }
 
-        try {
-          const { data: geoData } = await supabase
-            .rpc("geocode_address", { address: order.delivery_address })
-            .single();
-
-          if (geoData && geoData.lat && geoData.lng) {
-            deliveryEstimates.set(order.id, {
-              lat: geoData.lat,
-              lng: geoData.lng,
-            });
-          } else {
-            throw new Error("No geo data");
-          }
-        } catch {
-          deliveryEstimates.set(order.id, {
-            lat: riderLoc.lat + (Math.random() - 0.5) * 0.05,
-            lng: riderLoc.lng + (Math.random() - 0.5) * 0.05,
-          });
-        }
+        deliveryEstimates.set(order.id, {
+          lat: riderLoc.lat + (Math.random() - 0.5) * 0.05,
+          lng: riderLoc.lng + (Math.random() - 0.5) * 0.05,
+        });
       }
 
       const clustered = clusterOrders(orders, smeLocations, deliveryEstimates);
@@ -99,7 +81,7 @@ export function useOrderClustering() {
         if (smeNameError) {
           console.warn(`[useOrderClustering] Could not fetch SME name for ${smeId}:`, smeNameError);
         } else if (smeData?.name) {
-          batch.pickupSmeNam = smeData.name;
+          batch.pickupSmeName = smeData.name;
         }
       }
 

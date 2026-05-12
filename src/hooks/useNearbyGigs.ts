@@ -53,8 +53,7 @@ export function useNearbyGigs({
           id,
           total_price as payout,
           status,
-          created_at,
-          delivery_address
+          created_at
           `
         )
         .is("runner_id", null)

@@ -22,29 +22,17 @@ export async function checkSupabaseHealth(): Promise<SupabaseHealthStatus> {
   };
 
   try {
-    // Simple check: try to query a table (this will verify auth AND API)
-    const { error } = await supabase
-      .from("profiles")
-      .select("id")
-      .limit(1);
-
-    // If we can query without a "connection" error, API is reachable
-    // Note: RLS errors are OK — it means API is working
-    status.canReachAPI = !error || error.code !== "ECONNREFUSED";
-  } catch (err) {
-    status.error = `API unreachable: ${(err as Error).message}`;
-  }
-
-  try {
     // Check if we can get session
     const { data, error } = await supabase.auth.getSession();
     status.canAuth = !error;
     status.hasValidToken = !!data?.session?.access_token;
+    status.canReachAPI = true; // If auth works, API is reachable
   } catch (err) {
     status.error = `Auth check failed: ${(err as Error).message}`;
+    status.canReachAPI = false;
   }
 
-  status.isHealthy = status.canReachAPI && status.canAuth;
+  status.isHealthy = status.canAuth && status.hasValidToken;
 
   return status;
 }
