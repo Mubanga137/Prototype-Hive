@@ -76,19 +76,17 @@ const GigRadar = () => {
 
   // Handle batch claim
   const handleClaimBatch = async (batch: BatchedOrder) => {
-    if (!profile?.id) {
-      toast.error("User profile not found");
+    if (!user?.id) {
+      toast.error("User not authenticated");
       return;
     }
-
-    const riderId = parseInt(profile.id as string);
 
     try {
       const { error } = await supabase
         .from("orders")
         .update({
           status: "in_transit",
-          rider_id: riderId,
+          rider_id: user.id,
         })
         .in("id", batch.orderIds);
 
