@@ -7,8 +7,21 @@ const SupabaseHealthModal = () => {
   const [open, setOpen] = useState(false);
 
   const runCheck = async () => {
-    const result = await checkSupabaseHealth();
-    setHealth(result);
+    try {
+      const result = await checkSupabaseHealth();
+      setHealth(result);
+    } catch (error) {
+      console.error("[SupabaseHealthModal] Error running health check:", error);
+      // Set a default unhealthy status on error
+      setHealth({
+        isHealthy: false,
+        canReachAPI: false,
+        canAuth: false,
+        hasValidToken: false,
+        error: error instanceof Error ? error.message : "Health check failed",
+        timestamp: new Date(),
+      });
+    }
   };
 
   useEffect(() => {
