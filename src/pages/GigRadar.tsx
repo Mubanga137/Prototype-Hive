@@ -6,16 +6,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
 import { useGigSimulation } from "@/hooks/gig-radar/useGigSimulation";
 import { useOSRMTwoLegRouting } from "@/hooks/gig-radar/useOSRMTwoLegRouting";
+import { useOrderClustering } from "@/hooks/gig-radar/useOrderClustering";
 import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
+import { BountyCard } from "@/components/gig-radar/BountyCard";
+import { ActiveNavigationModal } from "@/components/gig-radar/ActiveNavigationModal";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
+import { BatchedOrder } from "@/utils/orderClustering";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
 const DEFAULT_ZOOM = 14;
 
-interface BountyCard {
+interface SimulatedBounty {
   id: string;
   lat: number;
   lng: number;
@@ -43,17 +49,62 @@ const GigRadar = () => {
   const [sheetExpanded, setSheetExpanded] = useState(window.innerWidth >= 1024);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedBounty, setSelectedBounty] = useState<BountyCard | null>(null);
+  const [selectedBounty, setSelectedBounty] = useState<SimulatedBounty | null>(null);
   const [routeETAMap, setRouteETAMap] = useState<Map<string, { eta: string; distance: string }>>(new Map());
+  const [selectedBatch, setSelectedBatch] = useState<BatchedOrder | null>(null);
+  const [showActiveNav, setShowActiveNav] = useState(false);
+  const [viewMode, setViewMode] = useState<"bounties" | "batches">("batches");
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
   const { drawRoute, clearRoute } = useOSRMTwoLegRouting();
+  const { batches, isLoading: isClustering, fetchAndClusterOrders } = useOrderClustering();
 
   const mapCenter = location || LUSAKA_CENTER;
   const userRole = user?.role || "gig_worker";
 
-  const bounties: BountyCard[] = gigs.map((gig, idx) => {
+  // Fetch and cluster orders when online and location changes
+  useEffect(() => {
+    if (isOnline && location) {
+      fetchAndClusterOrders(location);
+      const interval = setInterval(() => {
+        fetchAndClusterOrders(location);
+      }, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isOnline, location, fetchAndClusterOrders]);
+
+  // Handle batch claim
+  const handleClaimBatch = async (batch: BatchedOrder) => {
+    if (!profile?.id) {
+      toast.error("User profile not found");
+      return;
+    }
+
+    const riderId = parseInt(profile.id as string);
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "in_transit",
+          rider_id: riderId,
+        })
+        .in("id", batch.orderIds);
+
+      if (error) throw error;
+
+      toast.success(`✨ Batch claimed! ${batch.orderCount} orders in_transit.`);
+      setSelectedBatch(batch);
+      setShowActiveNav(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to claim batch";
+      toast.error(message);
+      console.error("[GigRadar] Claim error:", message);
+    }
+  };
+
+  const bounties: SimulatedBounty[] = gigs.map((gig, idx) => {
     const sme_lat = gig.lat + (Math.random() - 0.5) * 0.02;
     const sme_lng = gig.lng + (Math.random() - 0.5) * 0.02;
     const customer_lat = gig.lat + (Math.random() - 0.5) * 0.03;
@@ -366,22 +417,57 @@ const GigRadar = () => {
               ></div>
             </motion.div>
 
-            {/* Header */}
+            {/* Header with Mode Toggle */}
             <div
               className="px-4 sm:px-6 pb-3 sm:pb-4 border-b flex items-center justify-between shrink-0"
               style={{ borderColor: "hsl(38,40%,85%)" }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 <MapPinned size={22} style={{ color: "#B37C1C" }} className="flex-shrink-0" />
-                <div>
+                <div className="flex-1">
                   <h2 className="text-base sm:text-lg font-display font-bold" style={{ color: "#0F1A35" }}>
-                    Available Bounties
+                    {viewMode === "batches" ? "Route Batches" : "Available Bounties"}
                   </h2>
                   <p className="text-xs" style={{ color: "#0F1A35/60" }}>
-                    {bounties.length} active deliveries
+                    {viewMode === "batches"
+                      ? `${batches.length} optimized routes`
+                      : `${bounties.length} active deliveries`}
                   </p>
                 </div>
               </div>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center gap-2 mr-3">
+                {isRider && (
+                  <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: "#F5F0E8" }}>
+                    <motion.button
+                      onClick={() => setViewMode("batches")}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="px-3 py-1.5 rounded-md text-xs font-bold transition-all"
+                      style={{
+                        backgroundColor: viewMode === "batches" ? "#B37C1C" : "transparent",
+                        color: viewMode === "batches" ? "white" : "#0F1A35",
+                      }}
+                    >
+                      Batches
+                    </motion.button>
+                    <motion.button
+                      onClick={() => setViewMode("bounties")}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="px-3 py-1.5 rounded-md text-xs font-bold transition-all"
+                      style={{
+                        backgroundColor: viewMode === "bounties" ? "#B37C1C" : "transparent",
+                        color: viewMode === "bounties" ? "white" : "#0F1A35",
+                      }}
+                    >
+                      Bounties
+                    </motion.button>
+                  </div>
+                )}
+              </div>
+
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -400,14 +486,82 @@ const GigRadar = () => {
               </motion.button>
             </div>
 
-            {/* Bounties List - Responsive Layout */}
+            {/* Content List - Bounties or Batches */}
             <div
               className="flex-1 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto snap-x snap-mandatory lg:snap-none px-4 sm:px-6 py-4 scrollbar-hide"
               style={{ scrollBehavior: "smooth" }}
             >
-              <div className="flex lg:grid gap-4 pb-2 lg:grid-cols-2 lg:auto-rows-max">
-                {bounties.length > 0 ? (
-                  bounties.map((bounty, idx) => (
+              <AnimatePresence mode="wait">
+                {viewMode === "batches" ? (
+                  <motion.div
+                    key="batches"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex lg:grid gap-4 pb-2 lg:grid-cols-2 lg:auto-rows-max"
+                  >
+                    {isClustering ? (
+                      <div className="w-full col-span-full flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            className="w-12 h-12 rounded-full border-2 border-transparent mx-auto mb-4"
+                            style={{
+                              borderTopColor: "#B37C1C",
+                              borderRightColor: "#B37C1C",
+                            }}
+                          />
+                          <p style={{ color: "#0F1A35/60" }}>Clustering orders...</p>
+                        </div>
+                      </div>
+                    ) : batches.length > 0 ? (
+                      batches.map((batch, idx) => (
+                        <motion.div
+                          key={batch.clusterId}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="flex-shrink-0 lg:flex-shrink w-72 lg:w-full snap-start lg:snap-none"
+                        >
+                          <BountyCard
+                            batch={batch}
+                            isSelected={selectedBatch?.clusterId === batch.clusterId}
+                            onClick={() => handleClaimBatch(batch)}
+                          />
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="w-full col-span-full flex items-center justify-center py-16">
+                        <div className="text-center px-4">
+                          <div
+                            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                            style={{
+                              backgroundColor: "hsl(38,73%,40%,0.1)",
+                            }}
+                          >
+                            <MapPinned size={28} style={{ color: "#B37C1C" }} />
+                          </div>
+                          <p className="text-lg font-bold mb-1" style={{ color: "#0F1A35" }}>
+                            No Route Batches
+                          </p>
+                          <p style={{ color: "#0F1A35/60" }}>
+                            Waiting for orders to cluster...
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="bounties"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex lg:grid gap-4 pb-2 lg:grid-cols-2 lg:auto-rows-max"
+                  >
+                    {bounties.length > 0 ? (
+                      bounties.map((bounty, idx) => (
                     <motion.div
                       key={bounty.id}
                       initial={{ opacity: 0, x: 20 }}
@@ -510,31 +664,48 @@ const GigRadar = () => {
                       </button>
                     </motion.div>
                   ))
-                ) : (
-                  <div className="w-full flex items-center justify-center py-16">
-                    <div className="text-center px-4">
-                      <div
-                        className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                        style={{
-                          backgroundColor: "hsl(38,73%,40%,0.1)",
-                        }}
-                      >
-                        <MapPinned size={28} style={{ color: "#B37C1C" }} />
+                    ) : (
+                      <div className="w-full col-span-full flex items-center justify-center py-16">
+                        <div className="text-center px-4">
+                          <div
+                            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                            style={{
+                              backgroundColor: "hsl(38,73%,40%,0.1)",
+                            }}
+                          >
+                            <MapPinned size={28} style={{ color: "#B37C1C" }} />
+                          </div>
+                          <p className="text-lg font-bold mb-1" style={{ color: "#0F1A35" }}>
+                            No Active Bounties
+                          </p>
+                          <p style={{ color: "#0F1A35/60" }}>
+                            Turn on to receive delivery notifications
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-lg font-bold mb-1" style={{ color: "#0F1A35" }}>
-                        No Active Bounties
-                      </p>
-                      <p style={{ color: "#0F1A35/60" }}>
-                        Turn on to receive delivery notifications
-                      </p>
-                    </div>
-                  </div>
+                    )}
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
           </motion.div>
         </div>
       </div>
+
+      {/* Active Navigation Modal */}
+      <AnimatePresence>
+        {showActiveNav && selectedBatch && location && (
+          <ActiveNavigationModal
+            batch={selectedBatch}
+            riderLat={location.lat}
+            riderLng={location.lng}
+            onClose={() => {
+              setShowActiveNav(false);
+              setSelectedBatch(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Online Toggle - Premium Action Button */}
       <motion.button
