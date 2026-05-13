@@ -199,9 +199,9 @@ export const CommandCenter = ({
             <Truck size={20} style={{ color: "#B37C1C" }} />
             Active Delivery
           </h2>
-          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: mode === "pickup" ? "rgba(34, 197, 94, 0.1)" : "rgba(59, 130, 246, 0.1)" }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: mode === "pickup" ? "#22C55E" : "#3B82F6" }} />
-            <span style={{ color: mode === "pickup" ? "#16A34A" : "#1D4ED8" }}>
+          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#FFFBF2" }} />
+            <span>
               {mode === "pickup" ? "PICKUP" : "DELIVERY"}
             </span>
           </div>
@@ -361,10 +361,10 @@ export const CommandCenter = ({
               </div>
             </div>
 
-            {/* Mode Badge - Sleek design */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border" style={{ backgroundColor: mode === "pickup" ? "rgba(34, 197, 94, 0.08)" : "rgba(59, 130, 246, 0.08)", borderColor: mode === "pickup" ? "#22C55E" : "#3B82F6" }}>
-              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: mode === "pickup" ? "#22C55E" : "#3B82F6" }} />
-              <span style={{ color: mode === "pickup" ? "#16A34A" : "#1D4ED8" }}>
+            {/* Mode Badge - Gold and Black gradient */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#FFFBF2" }} />
+              <span>
                 {mode === "pickup" ? "PICKUP" : "DELIVERY"}
               </span>
             </div>

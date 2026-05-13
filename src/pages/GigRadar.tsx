@@ -494,7 +494,7 @@ const GigRadar = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="flex lg:grid gap-4 pb-2 lg:grid-cols-2 lg:auto-rows-max"
+                    className="flex lg:grid gap-3 pb-2 lg:grid-cols-2 lg:auto-rows-max"
                   >
                     {isClustering ? (
                       <div className="w-full col-span-full flex items-center justify-center py-12">
@@ -518,7 +518,7 @@ const GigRadar = () => {
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.05 }}
-                          className="flex-shrink-0 lg:flex-shrink w-72 lg:w-full snap-start lg:snap-none"
+                          className="flex-shrink-0 lg:flex-shrink w-64 lg:w-full snap-start lg:snap-none"
                         >
                           <BountyCard
                             batch={batch}
@@ -554,7 +554,7 @@ const GigRadar = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="flex lg:grid gap-4 pb-2 lg:grid-cols-2 lg:auto-rows-max"
+                    className="flex lg:grid gap-3 pb-2 lg:grid-cols-2 lg:auto-rows-max"
                   >
                     {bounties.length > 0 ? (
                       bounties.map((bounty, idx) => (
@@ -564,39 +564,38 @@ const GigRadar = () => {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
                       onClick={() => setSelectedBounty(bounty)}
-                      className="flex-shrink-0 lg:flex-shrink w-72 lg:w-full rounded-2xl p-5 sm:p-6 cursor-pointer snap-start lg:snap-none border overflow-hidden flex flex-col transition-all duration-200"
+                      className="flex-shrink-0 lg:flex-shrink w-64 lg:w-full rounded-lg p-4 sm:p-5 cursor-pointer snap-start lg:snap-none border overflow-hidden flex flex-col transition-all duration-200"
                       style={{
-                        backgroundColor: "#FFFFFF",
-                        borderColor: selectedBounty?.id === bounty.id ? "#B37C1C" : "hsl(38,40%,85%)",
-                        borderWidth: selectedBounty?.id === bounty.id ? "2px" : "1px",
+                        background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
+                        borderColor: "#0F1A35",
+                        borderWidth: "1px",
+                        color: "#FFFBF2",
                         boxShadow:
                           selectedBounty?.id === bounty.id
-                            ? "0 12px 32px rgba(179, 124, 28, 0.2)"
-                            : "0 2px 8px rgba(0, 0, 0, 0.06)",
+                            ? "0 12px 32px rgba(179, 124, 28, 0.3)"
+                            : "0 2px 8px rgba(0, 0, 0, 0.1)",
                       }}
                       onMouseEnter={(e) => {
                         if (e.currentTarget instanceof HTMLElement) {
-                          e.currentTarget.style.boxShadow = "0 12px 32px rgba(179, 124, 28, 0.2)";
-                          e.currentTarget.style.borderColor = "#B37C1C";
+                          e.currentTarget.style.boxShadow = "0 12px 32px rgba(179, 124, 28, 0.3)";
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (e.currentTarget instanceof HTMLElement) {
-                          e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.06)";
-                          e.currentTarget.style.borderColor = selectedBounty?.id === bounty.id ? "#B37C1C" : "hsl(38,40%,85%)";
+                          e.currentTarget.style.boxShadow = selectedBounty?.id === bounty.id ? "0 12px 32px rgba(179, 124, 28, 0.3)" : "0 2px 8px rgba(0, 0, 0, 0.1)";
                         }
                       }}
                     >
                       {/* Location Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <p className="font-bold text-base" style={{ color: "#0F1A35" }}>
+                      <div className="flex items-start justify-between mb-3">
+                        <p className="font-bold text-sm" style={{ color: "#FFFBF2" }}>
                           {bounty.pickup}
                         </p>
                         <span
-                          className="text-xs px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors"
+                          className="text-xs px-2 py-0.5 rounded-md font-semibold whitespace-nowrap transition-colors"
                           style={{
-                            backgroundColor: "hsl(38,73%,40%,0.12)",
-                            color: "#B37C1C",
+                            backgroundColor: "rgba(255, 251, 242, 0.2)",
+                            color: "#FFFBF2",
                           }}
                         >
                           {bounty.type}
@@ -605,58 +604,59 @@ const GigRadar = () => {
 
                       {/* Route Intelligence - Live ETA Display */}
                       {selectedBounty?.id === bounty.id && routeETAMap.has(bounty.id) && (
-                        <div className="mb-4 pb-4 border-b p-3 rounded-lg" style={{ backgroundColor: "hsl(38,73%,40%,0.06)", borderColor: "hsl(38,40%,85%)" }}>
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                            {isRider ? "🚗" : "👟"} {isRider ? "Rider" : "Runner"} Route
+                        <div className="mb-3 pb-3 border-b p-2 rounded-md text-sm" style={{ backgroundColor: "rgba(255, 251, 242, 0.1)", borderColor: "rgba(255, 251, 242, 0.2)" }}>
+                          <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "#FFFBF2/70" }}>
+                            {isRider ? "Rider" : "Runner"} Route
                           </p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <span style={{ color: "#0F1A35" }}>
-                              🚗 Distance: <strong>{routeETAMap.get(bounty.id)?.distance}</strong>
+                          <div className="flex items-center gap-3 text-xs">
+                            <span style={{ color: "#FFFBF2" }}>
+                              Distance: <strong>{routeETAMap.get(bounty.id)?.distance}</strong>
                             </span>
-                            <span style={{ color: "#0F1A35" }}>
-                              ⏱️ ETA: <strong>{routeETAMap.get(bounty.id)?.eta}</strong>
+                            <span style={{ color: "#FFFBF2" }}>
+                              ETA: <strong>{routeETAMap.get(bounty.id)?.eta}</strong>
                             </span>
                           </div>
                         </div>
                       )}
 
                       {/* Distance & Time Grid */}
-                      <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b" style={{ borderColor: "hsl(38,40%,85%)" }}>
+                      <div className="grid grid-cols-2 gap-2 mb-3 pb-3 border-b text-sm" style={{ borderColor: "rgba(255, 251, 242, 0.2)" }}>
                         <div>
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Distance</p>
-                          <p className="font-bold text-base mt-1.5" style={{ color: "#0F1A35" }}>
+                          <p className="text-xs uppercase tracking-wider" style={{ color: "#FFFBF2/70" }}>Distance</p>
+                          <p className="font-bold mt-1" style={{ color: "#FFFBF2" }}>
                             {bounty.distance}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Time</p>
-                          <p className="font-bold text-base mt-1.5" style={{ color: "#0F1A35" }}>
+                          <p className="text-xs uppercase tracking-wider" style={{ color: "#FFFBF2/70" }}>Time</p>
+                          <p className="font-bold mt-1" style={{ color: "#FFFBF2" }}>
                             {bounty.time}
                           </p>
                         </div>
                       </div>
 
                       {/* Payout Section */}
-                      <div className="mb-6">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Payout</p>
-                        <p className="text-3xl font-bold mt-2" style={{ color: "#B37C1C" }}>
+                      <div className="mb-4">
+                        <p className="text-xs uppercase tracking-wider" style={{ color: "#FFFBF2/70" }}>Payout</p>
+                        <p className="text-2xl font-bold mt-1" style={{ color: "#FFFBF2" }}>
                           {bounty.price}
                         </p>
                       </div>
 
-                      {/* Premium Gradient Action Button */}
+                      {/* CTA Button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAcceptBounty(bounty.id);
                         }}
-                        className="w-full py-3 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 mt-auto text-sm sm:text-base hover:shadow-lg active:scale-95"
+                        className="w-full py-2 px-3 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-1.5 mt-auto text-xs hover:shadow-lg active:scale-95"
                         style={{
-                          background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
+                          backgroundColor: "rgba(255, 251, 242, 0.15)",
+                          border: "1px solid rgba(255, 251, 242, 0.3)",
                         }}
                       >
-                        <Zap size={18} />
-                        <span>ACCEPT BOUNTY</span>
+                        <Zap size={12} />
+                        <span>ACCEPT</span>
                       </button>
                     </motion.div>
                   ))
