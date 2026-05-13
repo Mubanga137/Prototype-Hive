@@ -253,7 +253,7 @@ const GigRadar = () => {
       <HoneycombBackground />
 
       {/* Sidebar */}
-      <div className="flex flex-1 w-full relative z-30 lg:z-20" style={{ minHeight: 0 }}>
+      <div className="flex flex-1 w-full relative z-30" style={{ minHeight: 0 }}>
         <GigRadarSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
 
         {/* Main Content */}
@@ -273,7 +273,7 @@ const GigRadar = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg lg:hidden transition-all"
+                className="p-2 rounded-lg transition-all"
                 style={{ backgroundColor: "#F5F0E8" }}
               >
                 <Menu size={20} style={{ color: "#0F1A35" }} />
@@ -282,11 +282,9 @@ const GigRadar = () => {
               {/* Platform Logo - Visible on mobile and desktop */}
               <div className="flex items-center gap-2">
                 <img src={hiveLogo} alt="The Hive" className="w-8 h-8 rounded-full object-cover" />
-                <div className="hidden sm:block">
-                  <p className="font-display font-bold text-sm" style={{ color: "#0F1A35" }}>
-                    THE HIVE
-                  </p>
-                </div>
+                <p className="font-display font-bold text-sm" style={{ color: "#0F1A35" }}>
+                  THE HIVE
+                </p>
               </div>
             </div>
 
@@ -711,7 +709,7 @@ const GigRadar = () => {
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOnline(!isOnline)}
         disabled={locationStatus === "requesting"}
-        className="fixed bottom-8 right-8 px-6 sm:px-7 py-3 sm:py-4 rounded-xl font-bold text-white shadow-2xl flex items-center gap-2 transition-all z-40 text-sm sm:text-base"
+        className="fixed bottom-8 right-8 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-bold text-white shadow-lg flex items-center gap-2 transition-all z-40 text-sm"
         style={{
           background: isOnline ? "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" : "linear-gradient(135deg, #8B6914 0%, #0F1A35 100%)",
           boxShadow: isOnline
@@ -728,12 +726,12 @@ const GigRadar = () => {
               background: "radial-gradient(circle, rgba(255, 251, 242, 0.3) 0%, rgba(255, 251, 242, 0) 70%)",
               animationDelay: "0.15s",
             }}></div>
-            <Lightbulb size={20} style={{ color: "#FFFBF2", zIndex: 10 }} fill="#FFFBF2" />
+            <Lightbulb size={18} style={{ color: "#FFFBF2", zIndex: 10 }} fill="#FFFBF2" />
           </div>
         ) : (
-          <Lightbulb size={20} style={{ color: "#FFFBF2" }} />
+          <Lightbulb size={18} style={{ color: "#FFFBF2" }} />
         )}
-        <span className="hidden sm:inline font-semibold">{isOnline ? "Go Offline" : "Go Online"}</span>
+        <span className="font-semibold">{isOnline ? "Go Offline" : "Go Online"}</span>
         {isOnline && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
       </motion.button>
     </div>
