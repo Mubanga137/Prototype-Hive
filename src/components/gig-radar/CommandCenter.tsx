@@ -105,7 +105,7 @@ export const CommandCenter = ({
   const [mode, setMode] = useState<OperationMode>("pickup");
   const [showOtpKeypad, setShowOtpKeypad] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; eta: string } | null>(null);
-  const [currentZoom, setCurrentZoom] = useState(16);
+  const currentZoomRef = useRef(16);
 
   const riderId = profile?.id ? parseInt(profile.id as string) : 0;
 
@@ -128,22 +128,17 @@ export const CommandCenter = ({
     });
   }, [mapRef, state.status, location, riderLat, riderLng, batch, drawMultiLegRoute]);
 
-  // Track zoom level
+  // Track zoom level (use ref only, don't trigger re-renders)
   useEffect(() => {
     if (!mapRef) return;
-    let timeoutId: NodeJS.Timeout;
     const handleZoom = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setCurrentZoom(mapRef.getZoom());
-      }, 100);
+      currentZoomRef.current = mapRef.getZoom();
     };
     mapRef.on("zoom", handleZoom);
     return () => {
       mapRef.off("zoom", handleZoom);
-      clearTimeout(timeoutId);
     };
-  }, []);
+  }, [mapRef]);
 
   const handlePickupConfirm = async () => {
     await confirmPickup();
@@ -269,26 +264,26 @@ export const CommandCenter = ({
           {/* Zoom Controls + Route Info Pill (Bottom-Left) */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-3">
             {/* Zoom Controls */}
-            <div className="flex gap-1.5 bg-white rounded-full shadow-lg border border-gray-200">
+            <div className="inline-flex bg-white rounded-full shadow-lg border border-gray-200 p-0.5">
               <motion.button
                 onClick={handleZoomIn}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors rounded-full"
+                className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 transition-colors rounded-full"
                 style={{ color: "#B37C1C" }}
                 title="Zoom in"
               >
-                <Plus size={14} />
+                <Plus size={12} />
               </motion.button>
               <motion.button
                 onClick={handleZoomOut}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors rounded-full"
+                className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 transition-colors rounded-full"
                 style={{ color: "#B37C1C" }}
                 title="Zoom out"
               >
-                <Minus size={14} />
+                <Minus size={12} />
               </motion.button>
             </div>
 
@@ -380,8 +375,8 @@ export const CommandCenter = ({
           </div>
 
           {/* Steps List - Mobile Scrollable */}
-          <div className="flex-1 overflow-y-auto px-2 sm:px-3 py-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            <div className="space-y-1">
+          <div className="flex-1 overflow-y-auto px-2 sm:px-3 py-0.5 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className="space-y-0.5">
               {state.steps.map((step, idx) => {
                 const isCurrentStep = idx === state.currentStepIndex;
                 const isCompleted = step.status === "completed";
@@ -409,12 +404,23 @@ export const CommandCenter = ({
                         ) : isFailed ? (
                           <AlertTriangle size={16} style={{ color: "#EF4444" }} />
                         ) : isCurrentStep ? (
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: "#B37C1C" }}
-                          />
+                          step.type === "pickup" ? (
+                            <motion.div
+                              animate={{ scale: [1, 1.1, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              <Store size={16} style={{ color: "#B37C1C" }} />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="w-4 h-4 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: "#B37C1C" }}
+                            >
+                              <span className="text-xs font-bold text-white">{idx}</span>
+                            </motion.div>
+                          )
                         ) : (
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"

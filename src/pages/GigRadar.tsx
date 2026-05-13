@@ -709,7 +709,7 @@ const GigRadar = () => {
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOnline(!isOnline)}
         disabled={locationStatus === "requesting"}
-        className="fixed bottom-4 right-4 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg font-bold text-white shadow-lg flex items-center gap-2 transition-all z-40 text-xs sm:text-sm"
+        className="fixed bottom-20 right-4 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg font-bold text-white shadow-lg flex items-center gap-2 transition-all z-30 text-xs sm:text-sm"
         style={{
           background: isOnline ? "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" : "linear-gradient(135deg, #8B6914 0%, #0F1A35 100%)",
           boxShadow: isOnline
