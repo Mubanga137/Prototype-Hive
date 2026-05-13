@@ -1,15 +1,14 @@
-import { useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet-routing-machine";
-import { haversineDistance, estimateTime } from "@/utils/haversineDistance";
+import { useState } from 'react';
+import { haversineDistance, estimateTime } from '@/utils/haversineDistance';
 
 export interface RouteData {
-  distance: number; // km
-  duration: number; // minutes
-  leg1Distance: number; // Worker to Pickup
-  leg2Distance: number; // Pickup to Customer
+  distance: number;
+  duration: number;
+  leg1Distance: number;
+  leg2Distance: number;
   leg1Duration: number;
   leg2Duration: number;
+  geometry?: GeoJSON.Geometry;
 }
 
 export interface TwoLegRouteParams {
@@ -19,69 +18,45 @@ export interface TwoLegRouteParams {
   pickupLng: number;
   customerLat: number;
   customerLng: number;
-  profile: "driving" | "foot"; // OSRM profile
-  map: L.Map;
+  profile: 'driving' | 'foot';
   onRouteFound?: (data: RouteData) => void;
   onError?: (error: string) => void;
 }
 
-const OSRM_API = "https://router.project-osrm.org";
+const OSRM_API = 'https://router.project-osrm.org';
 
 export function useOSRMTwoLegRouting() {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const routeControlRef = useRef<any>(null);
-  const polylineLayersRef = useRef<L.Polyline[]>([]);
-
-  const clearExistingRoute = (map: L.Map) => {
-    // Remove any existing route control
-    if (routeControlRef.current) {
-      try {
-        routeControlRef.current.remove();
-      } catch (e) {
-        console.warn("Error removing route control:", e);
-      }
-      routeControlRef.current = null;
-    }
-
-    // Remove polylines
-    polylineLayersRef.current.forEach((line) => {
-      try {
-        map.removeLayer(line);
-      } catch (e) {
-        console.warn("Error removing polyline:", e);
-      }
-    });
-    polylineLayersRef.current = [];
-  };
 
   const fetchOSRMRoute = async (
     startLng: number,
     startLat: number,
     endLng: number,
     endLat: number,
-    profile: "driving" | "foot"
+    profile: 'driving' | 'foot'
   ) => {
-    const profilePath = profile === "foot" ? "foot" : "driving";
-    const url = `${OSRM_API}/route/v1/${profilePath}/${startLng},${startLat};${endLng},${endLat}?overview=full`;
+    const profilePath = profile === 'foot' ? 'foot' : 'driving';
+    const url = `${OSRM_API}/route/v1/${profilePath}/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
 
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-      if (data.code !== "Ok" || !data.routes || data.routes.length === 0) {
-        throw new Error("No route found from OSRM");
+      if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        throw new Error('No route found from OSRM');
       }
 
       const route = data.routes[0];
       return {
-        distance: route.distance / 1000, // Convert to km
-        duration: Math.ceil(route.duration / 60), // Convert to minutes
+        distance: route.distance / 1000,
+        duration: Math.ceil(route.duration / 60),
+        geometry: route.geometry,
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "OSRM request failed";
+      const message = err instanceof Error ? err.message : 'OSRM request failed';
       throw new Error(`OSRM routing error: ${message}`);
     }
   };
@@ -95,7 +70,6 @@ export function useOSRMTwoLegRouting() {
       customerLat,
       customerLng,
       profile,
-      map,
       onRouteFound,
       onError,
     } = params;
@@ -104,7 +78,6 @@ export function useOSRMTwoLegRouting() {
     setError(null);
 
     try {
-      // Fetch leg 1: Worker → Pickup
       const leg1 = await fetchOSRMRoute(
         workerLng,
         workerLat,
@@ -113,7 +86,6 @@ export function useOSRMTwoLegRouting() {
         profile
       );
 
-      // Fetch leg 2: Pickup → Customer
       const leg2 = await fetchOSRMRoute(
         pickupLng,
         pickupLat,
@@ -121,56 +93,6 @@ export function useOSRMTwoLegRouting() {
         customerLat,
         profile
       );
-
-      // Clear existing route
-      clearExistingRoute(map);
-
-      // Fetch full geometry for both legs for polyline rendering
-      const leg1Response = await fetch(
-        `${OSRM_API}/route/v1/${profile === "foot" ? "foot" : "driving"}/${workerLng},${workerLat};${pickupLng},${pickupLat}?overview=full&geometries=geojson`
-      );
-      const leg1Data = await leg1Response.json();
-
-      const leg2Response = await fetch(
-        `${OSRM_API}/route/v1/${profile === "foot" ? "foot" : "driving"}/${pickupLng},${pickupLat};${customerLng},${customerLat}?overview=full&geometries=geojson`
-      );
-      const leg2Data = await leg2Response.json();
-
-      // Draw Leg 1 (Navy Blue) - Worker to Pickup
-      if (leg1Data.routes[0].geometry.coordinates) {
-        const leg1Coords = leg1Data.routes[0].geometry.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
-        );
-        const leg1Polyline = L.polyline(leg1Coords, {
-          color: "#0F1A35", // Navy Blue
-          weight: 5,
-          opacity: 0.8,
-          dashArray: "5, 5",
-        }).addTo(map);
-        polylineLayersRef.current.push(leg1Polyline);
-      }
-
-      // Draw Leg 2 (Gold) - Pickup to Customer
-      if (leg2Data.routes[0].geometry.coordinates) {
-        const leg2Coords = leg2Data.routes[0].geometry.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
-        );
-        const leg2Polyline = L.polyline(leg2Coords, {
-          color: "#B37C1C", // Gold
-          weight: 5,
-          opacity: 0.9,
-        }).addTo(map);
-        polylineLayersRef.current.push(leg2Polyline);
-      }
-
-      // Calculate bounds to fit the entire journey
-      const allCoords: L.LatLngExpression[] = [
-        [workerLat, workerLng],
-        [pickupLat, pickupLng],
-        [customerLat, customerLng],
-      ];
-      const bounds = L.latLngBounds(allCoords);
-      map.fitBounds(bounds, { padding: [100, 100] });
 
       const totalDistance = leg1.distance + leg2.distance;
       const totalDuration = leg1.duration + leg2.duration;
@@ -187,23 +109,22 @@ export function useOSRMTwoLegRouting() {
       setRouteData(routeData);
       onRouteFound?.(routeData);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
+      const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
       onError?.(message);
-      console.error("[useOSRMTwoLegRouting] Error:", message);
+      console.error('[useOSRMTwoLegRouting] Error:', message);
 
-      // Fallback to Haversine
       const leg1Dist = haversineDistance(
-        params.workerLat,
-        params.workerLng,
-        params.pickupLat,
-        params.pickupLng
+        workerLat,
+        workerLng,
+        pickupLat,
+        pickupLng
       );
       const leg2Dist = haversineDistance(
-        params.pickupLat,
-        params.pickupLng,
-        params.customerLat,
-        params.customerLng
+        pickupLat,
+        pickupLng,
+        customerLat,
+        customerLng
       );
 
       const fallbackData: RouteData = {
@@ -222,8 +143,7 @@ export function useOSRMTwoLegRouting() {
     }
   };
 
-  const clearRoute = (map: L.Map) => {
-    clearExistingRoute(map);
+  const clearRoute = () => {
     setRouteData(null);
     setError(null);
   };

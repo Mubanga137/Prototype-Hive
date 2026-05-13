@@ -1,89 +1,45 @@
-import L from "leaflet";
+export const createModernUserMarker = (): HTMLElement => {
+  const markerEl = document.createElement('div');
+  markerEl.className = 'modern-user-marker';
+  markerEl.style.width = '56px';
+  markerEl.style.height = '56px';
+  markerEl.style.display = 'flex';
+  markerEl.style.alignItems = 'center';
+  markerEl.style.justifyContent = 'center';
+  markerEl.style.position = 'relative';
 
-/**
- * Creates a professional Google Maps-style user location marker.
- * Features a blue dot with white border and subtle shadow - clean and modern.
- */
-export const createModernUserMarker = (lat: number, lng: number, map: L.Map) => {
-  const userIcon = L.divIcon({
-    className: "modern-user-marker",
-    html: `
-      <div style="
-        position: relative;
-        width: 56px;
-        height: 56px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-        <!-- Outer white ring (professional border) -->
-        <div style="
-          position: absolute;
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          background: white;
-          border: 3px solid #1976D2;
-          box-shadow: 0 2px 8px rgba(25, 118, 210, 0.25);
-        "></div>
-        
-        <!-- Inner blue dot -->
-        <div style="
-          position: relative;
-          z-index: 10;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: #1976D2;
-          box-shadow: 0 0 16px rgba(25, 118, 210, 0.4), inset 0 0 4px rgba(255, 255, 255, 0.3);
-        "></div>
-      </div>
-    `,
-    iconSize: [56, 56],
-    iconAnchor: [28, 28],
-    popupAnchor: [0, -28],
-  });
+  // Outer white ring
+  const ring = document.createElement('div');
+  ring.style.position = 'absolute';
+  ring.style.width = '28px';
+  ring.style.height = '28px';
+  ring.style.borderRadius = '50%';
+  ring.style.background = 'white';
+  ring.style.border = '3px solid #1976D2';
+  ring.style.boxShadow = '0 2px 8px rgba(25, 118, 210, 0.25)';
+  markerEl.appendChild(ring);
 
-  const marker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
-  marker.bindPopup("📍 Your Location");
+  // Inner blue dot
+  const dot = document.createElement('div');
+  dot.style.position = 'relative';
+  dot.style.zIndex = '10';
+  dot.style.width = '16px';
+  dot.style.height = '16px';
+  dot.style.borderRadius = '50%';
+  dot.style.background = '#1976D2';
+  dot.style.boxShadow = '0 0 16px rgba(25, 118, 210, 0.4), inset 0 0 4px rgba(255, 255, 255, 0.3)';
+  markerEl.appendChild(dot);
 
-  return marker;
+  return markerEl;
 };
 
-/**
- * Updates the position of the modern user marker with smooth animation.
- */
-export const updateModernUserMarker = (
-  marker: L.Marker | null,
+export const updateModernUserMarkerPosition = (
+  marker: HTMLElement,
   lat: number,
   lng: number,
-  map: L.Map
-) => {
-  if (!marker) {
-    return createModernUserMarker(lat, lng, map);
-  }
-
-  const startLatLng = marker.getLatLng();
-  const startTime = Date.now();
-  const duration = 600; // ms - smooth but responsive
-
-  const animatePosition = () => {
-    const elapsed = Date.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-
-    // Ease-in-out cubic for smooth motion
-    const easeProgress = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
-
-    const newLat = startLatLng.lat + (lat - startLatLng.lat) * easeProgress;
-    const newLng = startLatLng.lng + (lng - startLatLng.lng) * easeProgress;
-
-    marker.setLatLng([newLat, newLng]);
-
-    if (progress < 1) {
-      requestAnimationFrame(animatePosition);
-    }
-  };
-
-  animatePosition();
-  return marker;
+  duration: number = 600
+): void => {
+  // MapLibre Markers handle position updates automatically
+  // This is kept for API compatibility with the old code
+  marker.style.transition = `all ${duration}ms ease-in-out`;
 };

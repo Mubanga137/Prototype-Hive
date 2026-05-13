@@ -1,45 +1,46 @@
-import L from "leaflet";
+export interface AccuracyCircleGeoJSON {
+  type: 'Feature';
+  geometry: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+  properties: {
+    radius: number;
+  };
+}
 
-export const createAccuracyCircle = (
+export const createAccuracyCircleGeoJSON = (
   lat: number,
   lng: number,
-  accuracyMeters: number,
-  map: L.Map
-): L.Circle => {
-  const circle = L.circle([lat, lng], {
-    radius: accuracyMeters,
-    color: "#B37C1C",
-    fillColor: "#B37C1C",
-    fillOpacity: 0.08,
-    weight: 1.5,
-    opacity: 0.4,
-    dashArray: "4, 4",
-  }).addTo(map);
-
-  return circle;
+  accuracyMeters: number
+): AccuracyCircleGeoJSON => {
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [lng, lat],
+    },
+    properties: {
+      radius: Math.max(accuracyMeters, 300),
+    },
+  };
 };
 
-export const updateAccuracyCircle = (
-  circle: L.Circle | null,
-  lat: number,
-  lng: number,
-  accuracyMeters: number,
-  map: L.Map
-): L.Circle => {
-  if (!circle) {
-    return createAccuracyCircle(lat, lng, accuracyMeters, map);
-  }
-
-  circle.setLatLng([lat, lng]);
-  const realRadius = Math.max(accuracyMeters, 300);
-  const cappedRadius = Math.min(realRadius, 1000);
-  circle.setRadius(cappedRadius);
-
-  return circle;
-};
-
-export const removeAccuracyCircle = (circle: L.Circle | null) => {
-  if (circle) {
-    circle.remove();
-  }
-};
+// For rendering circles in MapLibre, we need to use a layer with paint properties
+export const getAccuracyCircleLayerConfig = () => ({
+  id: 'accuracy-circle',
+  type: 'circle' as const,
+  source: 'accuracy-circle-source',
+  paint: {
+    'circle-radius': {
+      type: 'exponential' as const,
+      stops: [[0, 0], [20, 10000]],
+      base: 2,
+    },
+    'circle-color': '#B37C1C',
+    'circle-opacity': 0.08,
+    'circle-stroke-color': '#B37C1C',
+    'circle-stroke-width': 1.5,
+    'circle-stroke-opacity': 0.4,
+  },
+});

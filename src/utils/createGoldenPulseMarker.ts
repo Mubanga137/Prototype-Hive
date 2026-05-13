@@ -1,106 +1,57 @@
-import L from "leaflet";
+export interface GoldenPulseMarkerOptions {
+  size?: number;
+  animationDuration?: number;
+}
 
-/**
- * Creates a custom Leaflet marker with a golden pulse dot effect.
- * Shows a 10px solid gold center dot surrounded by a 30px translucent outer ring
- * with a CSS ping animation for breathing/sonar effect.
- */
-export const createGoldenPulseMarker = (lat: number, lng: number, map: L.Map) => {
-  const pulseIcon = L.divIcon({
-    className: "golden-pulse-marker",
-    html: `
-      <div style="
-        position: relative;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-        <!-- Outer pulsing ring -->
-        <div style="
-          position: absolute;
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
-          background: rgba(179, 124, 28, 0.4);
-          backdrop-filter: blur(4px);
-          animation: goldenPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-        "></div>
-        
-        <!-- Solid gold center dot -->
-        <div style="
-          position: relative;
-          z-index: 10;
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: #B37C1C;
-          box-shadow: 0 0 12px rgba(179, 124, 28, 0.8);
-        "></div>
-      </div>
-    `,
-    iconSize: [60, 60],
-    iconAnchor: [30, 30],
-    popupAnchor: [0, -30],
-  });
-
-  const marker = L.marker([lat, lng], { icon: pulseIcon }).addTo(map);
-  marker.bindPopup("📍 Your Location");
-
-  return marker;
-};
-
-/**
- * Updates the position of a golden pulse marker with smooth animation.
- * Call this when location changes to reposition the marker smoothly.
- */
-export const updateGoldenPulseMarker = (
-  marker: L.Marker | null,
+export const createGoldenPulseMarker = (
   lat: number,
   lng: number,
-  map: L.Map
+  options: GoldenPulseMarkerOptions = {}
 ) => {
-  if (!marker) {
-    return createGoldenPulseMarker(lat, lng, map);
-  }
+  const { size = 60, animationDuration = 2000 } = options;
 
-  const startLatLng = marker.getLatLng();
-  const startTime = Date.now();
-  const duration = 800; // ms
+  const markerEl = document.createElement('div');
+  markerEl.style.position = 'relative';
+  markerEl.style.width = `${size}px`;
+  markerEl.style.height = `${size}px`;
+  markerEl.style.display = 'flex';
+  markerEl.style.alignItems = 'center';
+  markerEl.style.justifyContent = 'center';
 
-  const animatePosition = () => {
-    const elapsed = Date.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
+  // Outer pulsing ring
+  const outer = document.createElement('div');
+  outer.style.position = 'absolute';
+  outer.style.width = `${size / 2}px`;
+  outer.style.height = `${size / 2}px`;
+  outer.style.borderRadius = '50%';
+  outer.style.background = 'rgba(179, 124, 28, 0.4)';
+  outer.style.backdropFilter = 'blur(4px)';
+  outer.style.animation = `goldenPing ${animationDuration}ms cubic-bezier(0, 0, 0.2, 1) infinite`;
+  markerEl.appendChild(outer);
 
-    const easeProgress = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+  // Solid gold center dot
+  const center = document.createElement('div');
+  center.style.position = 'relative';
+  center.style.zIndex = '10';
+  center.style.width = `${size / 6}px`;
+  center.style.height = `${size / 6}px`;
+  center.style.borderRadius = '50%';
+  center.style.background = '#B37C1C';
+  center.style.boxShadow = '0 0 12px rgba(179, 124, 28, 0.8)';
+  markerEl.appendChild(center);
 
-    const newLat = startLatLng.lat + (lat - startLatLng.lat) * easeProgress;
-    const newLng = startLatLng.lng + (lng - startLatLng.lng) * easeProgress;
+  injectGoldenPingAnimation();
 
-    marker.setLatLng([newLat, newLng]);
-
-    if (progress < 1) {
-      requestAnimationFrame(animatePosition);
-    }
-  };
-
-  animatePosition();
-  return marker;
+  return markerEl;
 };
 
-/**
- * Inject the CSS animation for the golden ping effect.
- * Call this once when your component mounts.
- */
 export const injectGoldenPingAnimation = () => {
-  // Check if already injected
-  if (document.getElementById("golden-ping-animation")) {
+  if (document.getElementById('golden-ping-animation')) {
     return;
   }
 
-  const style = document.createElement("style");
-  style.id = "golden-ping-animation";
+  const style = document.createElement('style');
+  style.id = 'golden-ping-animation';
   style.textContent = `
     @keyframes goldenPing {
       0% {
@@ -120,8 +71,10 @@ export const injectGoldenPingAnimation = () => {
       }
     }
 
-    .golden-pulse-marker {
-      filter: drop-shadow(0 2px 8px rgba(179, 124, 28, 0.3));
+    .mapboxgl-popup-content {
+      background: #FFFBF2;
+      color: #0F1A35;
+      border-radius: 8px;
     }
   `;
 

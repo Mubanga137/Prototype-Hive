@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
-import { MapPin } from "lucide-react";
+import { useEffect, useState } from 'react';
+import Map, { Marker, Popup } from 'react-map-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface DestinationMapProps {
   dropoffLat?: number | null;
@@ -9,13 +8,6 @@ interface DestinationMapProps {
   deliveryAddress?: string | null;
   orderId?: number | null;
 }
-
-const goldMarkerIcon = new L.Icon({
-  iconUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 48'%3E%3Cpath fill='%23D4A574' d='M16 0C7.16 0 0 7.16 0 16c0 9.6 16 32 16 32s16-22.4 16-32c0-8.84-7.16-16-16-16z'/%3E%3Ccircle cx='16' cy='14' r='5' fill='%23fff'/%3E%3C/svg%3E",
-  iconSize: [32, 48],
-  iconAnchor: [16, 48],
-  popupAnchor: [0, -48],
-});
 
 const DestinationMap = ({
   dropoffLat,
@@ -34,40 +26,60 @@ const DestinationMap = ({
   if (!isMounted) {
     return (
       <div className="w-full h-full rounded-lg bg-gray-100 flex items-center justify-center">
-        <p style={{ color: "#666" }}>Loading map...</p>
+        <p style={{ color: '#666' }}>Loading map...</p>
       </div>
     );
   }
 
   return (
     <div className="w-full h-full rounded-lg overflow-hidden relative" style={{ zIndex: 10 }}>
-      <MapContainer
-        center={[lat, lng]}
-        zoom={16}
-        style={{
-          height: "100%",
-          width: "100%",
-          zIndex: 10,
+      <Map
+        initialViewState={{
+          longitude: lng,
+          latitude: lat,
+          zoom: 16,
         }}
+        style={{ width: '100%', height: '100%' }}
+        mapStyle="https://api.maptiler.com/maps/streets-v2/style.json?key=R4RryNvt4ZjuLtSmPYr4"
         dragging={true}
-        touchZoom={true}
-        scrollWheelZoom={true}
-        zoomControl={false}
+        touchPitch={true}
+        dragPan={true}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap contributors'
-          maxZoom={19}
-        />
-        <Marker position={[lat, lng]} icon={goldMarkerIcon}>
-          <Popup>
-            <div className="text-xs max-w-xs">
+        <Marker longitude={lng} latitude={lat} anchor="bottom">
+          <div
+            style={{
+              width: '32px',
+              height: '48px',
+              background: '#D4A574',
+              borderRadius: '50% 50% 50% 0',
+              border: '2px solid #FFF8EE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              boxShadow: '0 2px 8px rgba(212, 165, 116, 0.3)',
+              transform: 'rotate(-45deg)',
+            }}
+          >
+            📍
+          </div>
+          <Popup
+            offset={[0, -48]}
+            maxWidth={220}
+            className="rounded-lg"
+            style={{
+              backgroundColor: '#FFFBF2',
+              borderRadius: '8px',
+              overflow: 'hidden',
+            }}
+          >
+            <div className="text-xs max-w-xs p-2">
               {orderId && <p className="font-semibold">Order #{orderId}</p>}
               {deliveryAddress && <p className="text-gray-700 mb-1">{deliveryAddress}</p>}
             </div>
           </Popup>
         </Marker>
-      </MapContainer>
+      </Map>
     </div>
   );
 };
