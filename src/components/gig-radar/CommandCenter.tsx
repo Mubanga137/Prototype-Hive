@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MapPin, Phone, Navigation, CheckCircle2, AlertTriangle, Plus, Minus, Package, Truck, Clock } from "lucide-react";
+import { X, MapPin, Phone, Navigation, CheckCircle2, AlertTriangle, Plus, Minus, Package, Truck, Clock, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBatchRoutingStateMachine } from "@/hooks/gig-radar/useBatchRoutingStateMachine";
 import { useMultiLegRouting } from "@/hooks/gig-radar/useMultiLegRouting";
@@ -77,13 +77,16 @@ const DropoffMarker = ({ lat, lng, index }: { lat: number; lng: number; index: n
 
 const MapController = ({ riderLat, riderLng, mode }: { riderLat: number; riderLng: number; mode: OperationMode }) => {
   const map = useMap();
+  const lastModeRef = useRef<OperationMode | null>(null);
 
   useEffect(() => {
-    if (map) {
-      const offsetLat = riderLat + (mode === "delivery" ? 0.002 : 0);
-      map.flyTo([offsetLat, riderLng], map.getZoom(), { duration: 0.5 });
-    }
-  }, [map, riderLat, riderLng, mode]);
+    if (!map || mode === lastModeRef.current) return;
+    lastModeRef.current = mode;
+
+    // Only pan on mode change, don't flyTo to avoid zoom oscillation
+    const offsetLat = riderLat + (mode === "delivery" ? 0.002 : 0);
+    map.panTo([offsetLat, riderLng], { animate: true });
+  }, [mode]);
 
   return null;
 };
@@ -102,7 +105,7 @@ export const CommandCenter = ({
   const [mode, setMode] = useState<OperationMode>("pickup");
   const [showOtpKeypad, setShowOtpKeypad] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; eta: string } | null>(null);
-  const [currentZoom, setCurrentZoom] = useState(16);
+  const currentZoomRef = useRef(16);
 
   const riderId = profile?.id ? parseInt(profile.id as string) : 0;
 
@@ -125,10 +128,12 @@ export const CommandCenter = ({
     });
   }, [mapRef, state.status, location, riderLat, riderLng, batch, drawMultiLegRoute]);
 
-  // Track zoom level
+  // Track zoom level (use ref only, don't trigger re-renders)
   useEffect(() => {
     if (!mapRef) return;
-    const handleZoom = () => setCurrentZoom(mapRef.getZoom());
+    const handleZoom = () => {
+      currentZoomRef.current = mapRef.getZoom();
+    };
     mapRef.on("zoom", handleZoom);
     return () => {
       mapRef.off("zoom", handleZoom);
@@ -259,27 +264,26 @@ export const CommandCenter = ({
           {/* Zoom Controls + Route Info Pill (Bottom-Left) */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-3">
             {/* Zoom Controls */}
-            <div className="flex flex-col gap-1 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+            <div className="inline-flex bg-white rounded-full shadow-lg border border-gray-200 p-0.5">
               <motion.button
                 onClick={handleZoomIn}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 hover:bg-gray-100 transition-colors"
+                className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 transition-colors rounded-full"
                 style={{ color: "#B37C1C" }}
                 title="Zoom in"
               >
-                <Plus size={16} />
+                <Plus size={12} />
               </motion.button>
-              <div className="w-4 h-px" style={{ backgroundColor: "#E8DCC8" }} />
               <motion.button
                 onClick={handleZoomOut}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-1.5 hover:bg-gray-100 transition-colors"
+                className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 transition-colors rounded-full"
                 style={{ color: "#B37C1C" }}
                 title="Zoom out"
               >
-                <Minus size={16} />
+                <Minus size={12} />
               </motion.button>
             </div>
 
@@ -331,48 +335,48 @@ export const CommandCenter = ({
           }}
         >
           {/* Header */}
-          <div className="px-4 sm:px-6 py-4 border-b" style={{ borderColor: "#D4A574" }}>
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{
-                    background: "linear-gradient(135deg, #B37C1C 0%, #8B6914 100%)",
-                  }}
-                >
-                  {mode === "pickup" ? (
-                    <Package size={16} className="text-white" />
-                  ) : mode === "delivery" ? (
-                    <Truck size={16} className="text-white" />
-                  ) : (
-                    <CheckCircle2 size={16} className="text-white" />
-                  )}
+          <div className="px-2 sm:px-3 py-1 border-b" style={{ borderColor: "#D4A574" }}>
+            {/* Store/Order Pills - Slim and compact */}
+            <div className="flex gap-1.5 flex-wrap mb-1">
+              {mode === "pickup" && (
+                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border" style={{ backgroundColor: "rgba(179, 124, 28, 0.1)", borderColor: "#B37C1C", color: "#B37C1C" }}>
+                  <Store size={11} />
+                  <span className="whitespace-nowrap">{batch.pickupSmeNam}</span>
                 </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold" style={{ color: "#0F1A35" }}>
-                    {mode === "pickup" && "Pickup"}
-                    {mode === "delivery" && "Delivery"}
-                    {mode === "complete" && "Done"}
-                  </h3>
-                  <p className="text-xs mt-0.5" style={{ color: "#0F1A35/60" }}>
-                    Step {state.currentStepIndex + 1} of {state.steps.length - 1}
-                  </p>
+              )}
+
+              {mode === "delivery" && state.currentStep?.type === "dropoff" && (
+                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold border" style={{ backgroundColor: "rgba(179, 124, 28, 0.1)", borderColor: "#B37C1C", color: "#B37C1C" }}>
+                  <Package size={11} />
+                  <span className="whitespace-nowrap">Order #{state.currentStep.orderId}</span>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Mode Badge - Gold and Black gradient */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
-              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#FFFBF2" }} />
-              <span>
-                {mode === "pickup" ? "PICKUP" : "DELIVERY"}
-              </span>
+            {/* Title and Step */}
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: "rgba(179, 124, 28, 0.15)" }}
+              >
+                <Store size={12} style={{ color: "#B37C1C" }} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xs font-bold leading-tight" style={{ color: "#0F1A35" }}>
+                  {mode === "pickup" && "Pickup"}
+                  {mode === "delivery" && "Delivery"}
+                  {mode === "complete" && "Done"}
+                </h3>
+                <p className="text-xs leading-tight" style={{ color: "#0F1A35/60" }}>
+                  Step {state.currentStepIndex + 1} of {state.steps.length - 1}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Steps List - Mobile Scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            <div className="space-y-2">
+          <div className="flex-1 overflow-y-auto px-2 sm:px-3 py-0.5 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className="space-y-0.5">
               {state.steps.map((step, idx) => {
                 const isCurrentStep = idx === state.currentStepIndex;
                 const isCompleted = step.status === "completed";
@@ -385,7 +389,7 @@ export const CommandCenter = ({
                     key={step.stepId}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="p-3 sm:p-4 rounded-lg transition-all border"
+                    className="p-2 sm:p-2.5 rounded-lg transition-all border"
                     style={{
                       backgroundColor: isCurrentStep ? "rgba(179, 124, 28, 0.12)" : isCompleted ? "rgba(34, 197, 94, 0.08)" : "#FFFFFF",
                       borderColor: isCurrentStep ? "#B37C1C" : isCompleted ? "#22C55E" : isFailed ? "#EF4444" : "#D4A574",
@@ -400,12 +404,23 @@ export const CommandCenter = ({
                         ) : isFailed ? (
                           <AlertTriangle size={16} style={{ color: "#EF4444" }} />
                         ) : isCurrentStep ? (
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: "#B37C1C" }}
-                          />
+                          step.type === "pickup" ? (
+                            <motion.div
+                              animate={{ scale: [1, 1.1, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              <Store size={16} style={{ color: "#B37C1C" }} />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="w-4 h-4 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: "#B37C1C" }}
+                            >
+                              <span className="text-xs font-bold text-white">{idx}</span>
+                            </motion.div>
+                          )
                         ) : (
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -420,25 +435,25 @@ export const CommandCenter = ({
                       <div className="flex-1 min-w-0">
                         {step.type === "pickup" ? (
                           <>
-                            <p className="font-bold text-sm" style={{ color: isCurrentStep ? "#B37C1C" : "#0F1A35" }}>
+                            <p className="font-bold text-xs" style={{ color: isCurrentStep ? "#B37C1C" : "#0F1A35" }}>
                               {batch.pickupSmeNam}
                             </p>
-                            <p className="text-xs mt-1" style={{ color: "#0F1A35/60" }}>
+                            <p className="text-xs mt-0.5" style={{ color: "#0F1A35/60" }}>
                               Collect {batch.orderCount} item{batch.orderCount !== 1 ? "s" : ""}
                             </p>
                           </>
                         ) : (
                           <>
-                            <p className="font-bold text-sm" style={{ color: isCurrentStep ? "#B37C1C" : "#0F1A35" }}>
+                            <p className="font-bold text-xs" style={{ color: isCurrentStep ? "#B37C1C" : "#0F1A35" }}>
                               {step.customerName}
                             </p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <Phone size={12} style={{ color: "#0F1A35/60" }} />
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Phone size={11} style={{ color: "#0F1A35/60" }} />
                               <p className="text-xs" style={{ color: "#0F1A35/60" }}>
                                 {step.customerPhone}
                               </p>
                             </div>
-                            <p className="text-xs mt-1" style={{ color: "#0F1A35/60" }}>
+                            <p className="text-xs mt-0.5" style={{ color: "#0F1A35/60" }}>
                               Order #{step.orderId}
                             </p>
                           </>
@@ -452,12 +467,12 @@ export const CommandCenter = ({
           </div>
 
           {/* Action Footer */}
-          <div className="px-4 sm:px-6 py-4 border-t" style={{ borderColor: "#D4A574" }}>
+          <div className="px-2 sm:px-3 py-1 border-t space-y-1 relative z-50" style={{ borderColor: "#D4A574" }}>
             <AnimatePresence mode="wait">
               {isComplete ? (
                 <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="text-center p-3 sm:p-4 rounded-lg mb-3 border" style={{ backgroundColor: "rgba(34, 197, 94, 0.08)", borderColor: "#22C55E" }}>
-                    <p className="text-base sm:text-lg font-bold" style={{ color: "#16A34A" }}>
+                  <div className="text-center p-2.5 sm:p-3 rounded-lg border" style={{ backgroundColor: "rgba(34, 197, 94, 0.08)", borderColor: "#22C55E" }}>
+                    <p className="text-sm font-bold" style={{ color: "#16A34A" }}>
                       All Done!
                     </p>
                     <p className="text-xs mt-1" style={{ color: "#16A34A/70" }}>
@@ -468,7 +483,7 @@ export const CommandCenter = ({
                     onClick={onClose}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
+                    className="w-full py-1.5 rounded-lg font-bold text-white text-xs"
                     style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Return to Map
@@ -476,14 +491,14 @@ export const CommandCenter = ({
                 </motion.div>
               ) : state.currentStep.type === "pickup" && state.currentStep.status === "pending" ? (
                 <motion.div key="pickup-action" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <p className="text-xs sm:text-sm mb-3" style={{ color: "#0F1A35/70" }}>
+                  <p className="text-xs mb-2" style={{ color: "#0F1A35/70" }}>
                     Arrive at {batch.pickupSmeNam} and collect all items.
                   </p>
                   <motion.button
                     onClick={handlePickupConfirm}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
+                    className="w-full py-1.5 rounded-lg font-bold text-white text-xs"
                     style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Confirm Pickup
@@ -491,11 +506,11 @@ export const CommandCenter = ({
                 </motion.div>
               ) : state.currentStep.type === "dropoff" && state.currentStep.status === "pending" ? (
                 <motion.div key="delivery-action" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="rounded-lg p-2.5 sm:p-3 mb-3 border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
-                    <p className="text-xs font-bold" style={{ color: "#FFFBF2/70" }}>
+                  <div className="rounded-lg p-1.5 border text-xs" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+                    <p className="font-bold" style={{ color: "#FFFBF2/70" }}>
                       Delivery #{state.currentStepIndex}
                     </p>
-                    <p className="text-sm font-bold mt-1" style={{ color: "#FFFBF2" }}>
+                    <p className="font-bold" style={{ color: "#FFFBF2" }}>
                       {state.currentStep.customerName}
                     </p>
                   </div>
@@ -503,7 +518,7 @@ export const CommandCenter = ({
                     onClick={() => setShowOtpKeypad(true)}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
+                    className="w-full py-1.5 rounded-lg font-bold text-white text-xs"
                     style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Verify OTP
