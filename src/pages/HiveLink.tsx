@@ -64,12 +64,12 @@ const HiveLink = () => {
       if (item.sme_id) {
         const { data: sme } = await supabase
           .from("sme_stores")
-          .select("brand_name, logo_url, is_verified")
+          .select("brand_name, logo_url")
           .eq("id", item.sme_id)
           .maybeSingle();
 
         if (sme) {
-          setSmeData(sme as SMEProfile);
+          setSmeData({ ...sme, is_verified: false } as SMEProfile);
         }
       }
 

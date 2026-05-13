@@ -10,7 +10,7 @@ import { useOrderClustering } from "@/hooks/gig-radar/useOrderClustering";
 import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
 import { BountyCard } from "@/components/gig-radar/BountyCard";
-import { ActiveNavigationModal } from "@/components/gig-radar/ActiveNavigationModal";
+import { CommandCenter } from "@/components/gig-radar/CommandCenter";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -690,10 +690,10 @@ const GigRadar = () => {
         </div>
       </div>
 
-      {/* Active Navigation Modal */}
+      {/* Command Center (Full-Screen Navigation) */}
       <AnimatePresence>
         {showActiveNav && selectedBatch && location && (
-          <ActiveNavigationModal
+          <CommandCenter
             batch={selectedBatch}
             riderLat={location.lat}
             riderLng={location.lng}

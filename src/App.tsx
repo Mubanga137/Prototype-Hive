@@ -37,8 +37,6 @@ import HiveLink from "./pages/HiveLink.tsx";
 import OrderTracking from "./pages/OrderTracking.tsx";
 import TrackOrders from "./pages/customer/TrackOrders.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
-import SupabaseHealthModal from "@/components/SupabaseHealthModal";
-
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -92,7 +90,6 @@ const AppContent = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <HiveBotWidget hidden={hideBot} />
-      <SupabaseHealthModal />
     </>
   );
 };

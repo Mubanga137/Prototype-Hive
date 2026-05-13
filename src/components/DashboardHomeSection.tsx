@@ -127,7 +127,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
     const fetchVendors = async () => {
       const { data: storesData } = await supabase
         .from("sme_stores")
-        .select("id, brand_name, description, owner_user_id, is_verified")
+        .select("id, brand_name, description, owner_user_id")
         .limit(6);
 
       if (storesData && storesData.length > 0) {
@@ -144,7 +144,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           id: store.id,
           store_name: store.brand_name || "Unknown Store",
           description: store.description || "Quality products and services",
-          verified: store.is_verified || false,
+          verified: false,
           product_count: productCounts[store.id] || 0,
           location: "Zambia",
           category: "Multi-category",
