@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MapPin, Phone, Navigation, CheckCircle2, AlertTriangle, Plus, Minus } from "lucide-react";
+import { X, MapPin, Phone, Navigation, CheckCircle2, AlertTriangle, Plus, Minus, Package, Truck, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBatchRoutingStateMachine } from "@/hooks/gig-radar/useBatchRoutingStateMachine";
 import { useMultiLegRouting } from "@/hooks/gig-radar/useMultiLegRouting";
@@ -190,17 +190,18 @@ export const CommandCenter = ({
         className="h-16 border-b flex items-center justify-between px-4 sm:px-6 shrink-0"
         style={{
           backgroundColor: "rgba(255, 251, 242, 0.95)",
-          borderColor: "#E8DCC8",
+          borderColor: "#D4A574",
           boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
         }}
       >
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold" style={{ color: "#0F1A35" }}>
-            🎯 Active Delivery
+          <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: "#0F1A35" }}>
+            <Truck size={20} style={{ color: "#B37C1C" }} />
+            Active Delivery
           </h2>
-          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: mode === "pickup" ? "rgba(34, 197, 94, 0.1)" : "rgba(59, 130, 246, 0.1)" }}>
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: mode === "pickup" ? "#22C55E" : "#3B82F6" }} />
-            <span style={{ color: mode === "pickup" ? "#16A34A" : "#1D4ED8" }}>
+          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#FFFBF2" }} />
+            <span>
               {mode === "pickup" ? "PICKUP" : "DELIVERY"}
             </span>
           </div>
@@ -220,7 +221,7 @@ export const CommandCenter = ({
         className="flex-1 flex overflow-hidden m-2 rounded-2xl"
         style={{
           backgroundColor: "#FFFBF2",
-          border: "3px solid #B37C1C",
+          border: "1px solid #D4A574",
           boxShadow: "0 8px 32px rgba(179, 124, 28, 0.15)",
         }}
       >
@@ -258,44 +259,46 @@ export const CommandCenter = ({
           {/* Zoom Controls + Route Info Pill (Bottom-Left) */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-3">
             {/* Zoom Controls */}
-            <div className="flex flex-col gap-2 bg-white rounded-lg shadow-lg overflow-hidden" style={{ borderTop: "2px solid #B37C1C" }}>
+            <div className="flex flex-col gap-1 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
               <motion.button
                 onClick={handleZoomIn}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-2.5 hover:bg-gray-100 transition-colors"
+                className="p-1.5 hover:bg-gray-100 transition-colors"
                 style={{ color: "#B37C1C" }}
-                title="Zoom in (+ button)"
+                title="Zoom in"
               >
-                <Plus size={20} />
+                <Plus size={16} />
               </motion.button>
-              <div className="w-8 h-px" style={{ backgroundColor: "#E8DCC8" }} />
+              <div className="w-4 h-px" style={{ backgroundColor: "#E8DCC8" }} />
               <motion.button
                 onClick={handleZoomOut}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-2.5 hover:bg-gray-100 transition-colors"
+                className="p-1.5 hover:bg-gray-100 transition-colors"
                 style={{ color: "#B37C1C" }}
-                title="Zoom out (- button)"
+                title="Zoom out"
               >
-                <Minus size={20} />
+                <Minus size={16} />
               </motion.button>
             </div>
 
-            {/* Route Info Pill */}
+            {/* Route Info Pill - Gold and Black Gradient */}
             {routeInfo && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+                className="px-3 py-2 rounded-full shadow-lg flex items-center gap-2 border"
                 style={{
-                  backgroundColor: "#B37C1C",
+                  background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
                   color: "#FFFBF2",
                   backdropFilter: "blur(4px)",
+                  borderColor: "#0F1A35",
+                  borderWidth: "1px",
                 }}
               >
-                <Navigation size={16} />
-                <span className="text-sm font-bold">
+                <Navigation size={13} />
+                <span className="text-xs font-bold">
                   {routeInfo.distance} • {routeInfo.eta}
                 </span>
               </motion.div>
@@ -324,29 +327,45 @@ export const CommandCenter = ({
           className="flex-[0.35] lg:flex-[0.35] overflow-hidden flex flex-col relative"
           style={{
             backgroundColor: "#FFFBF2",
-            borderLeft: "2px solid #B37C1C",
+            borderLeft: "1px solid #D4A574",
           }}
         >
           {/* Header */}
-          <div className="px-4 sm:px-6 py-5 border-b" style={{ borderColor: "#E8DCC8" }}>
+          <div className="px-4 sm:px-6 py-4 border-b" style={{ borderColor: "#D4A574" }}>
             <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="text-xl sm:text-2xl font-bold" style={{ color: "#0F1A35" }}>
-                  {mode === "pickup" && "🎯 Pickup"}
-                  {mode === "delivery" && "📦 Delivery"}
-                  {mode === "complete" && "✅ Done"}
-                </h3>
-                <p className="text-xs mt-1" style={{ color: "#0F1A35/60" }}>
-                  Step {state.currentStepIndex + 1} of {state.steps.length - 1}
-                </p>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{
+                    background: "linear-gradient(135deg, #B37C1C 0%, #8B6914 100%)",
+                  }}
+                >
+                  {mode === "pickup" ? (
+                    <Package size={16} className="text-white" />
+                  ) : mode === "delivery" ? (
+                    <Truck size={16} className="text-white" />
+                  ) : (
+                    <CheckCircle2 size={16} className="text-white" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold" style={{ color: "#0F1A35" }}>
+                    {mode === "pickup" && "Pickup"}
+                    {mode === "delivery" && "Delivery"}
+                    {mode === "complete" && "Done"}
+                  </h3>
+                  <p className="text-xs mt-0.5" style={{ color: "#0F1A35/60" }}>
+                    Step {state.currentStepIndex + 1} of {state.steps.length - 1}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Mode Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold" style={{ backgroundColor: mode === "pickup" ? "rgba(34, 197, 94, 0.1)" : "rgba(59, 130, 246, 0.1)" }}>
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: mode === "pickup" ? "#22C55E" : "#3B82F6" }} />
-              <span style={{ color: mode === "pickup" ? "#16A34A" : "#1D4ED8" }}>
-                {mode === "pickup" ? "PICKUP MODE" : "DELIVERY MODE"}
+            {/* Mode Badge - Gold and Black gradient */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#FFFBF2" }} />
+              <span>
+                {mode === "pickup" ? "PICKUP" : "DELIVERY"}
               </span>
             </div>
           </div>
@@ -366,30 +385,31 @@ export const CommandCenter = ({
                     key={step.stepId}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="p-3 sm:p-4 rounded-xl transition-all"
+                    className="p-3 sm:p-4 rounded-lg transition-all border"
                     style={{
-                      backgroundColor: isCurrentStep ? "rgba(179, 124, 28, 0.1)" : isCompleted ? "rgba(34, 197, 94, 0.1)" : "#FFFFFF",
-                      borderLeft: `4px solid ${isCurrentStep ? "#B37C1C" : isCompleted ? "#22C55E" : isFailed ? "#EF4444" : "#E8DCC8"}`,
+                      backgroundColor: isCurrentStep ? "rgba(179, 124, 28, 0.12)" : isCompleted ? "rgba(34, 197, 94, 0.08)" : "#FFFFFF",
+                      borderColor: isCurrentStep ? "#B37C1C" : isCompleted ? "#22C55E" : isFailed ? "#EF4444" : "#D4A574",
+                      borderWidth: isCurrentStep ? "1px" : "1px",
                     }}
                   >
                     <div className="flex items-start gap-2 sm:gap-3">
                       {/* Step Icon */}
                       <div className="flex-shrink-0 mt-0.5">
                         {isCompleted ? (
-                          <CheckCircle2 size={18} style={{ color: "#22C55E" }} />
+                          <CheckCircle2 size={16} style={{ color: "#22C55E" }} />
                         ) : isFailed ? (
-                          <AlertTriangle size={18} style={{ color: "#EF4444" }} />
+                          <AlertTriangle size={16} style={{ color: "#EF4444" }} />
                         ) : isCurrentStep ? (
                           <motion.div
                             animate={{ scale: [1, 1.2, 1] }}
                             transition={{ duration: 2, repeat: Infinity }}
-                            className="w-4 h-4 rounded-full"
+                            className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: "#B37C1C" }}
                           />
                         ) : (
                           <div
-                            className="w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                            style={{ backgroundColor: "#E8DCC8", color: "#0F1A35" }}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                            style={{ backgroundColor: "#D4A574", color: "#0F1A35" }}
                           >
                             {idx + 1}
                           </div>
@@ -401,7 +421,7 @@ export const CommandCenter = ({
                         {step.type === "pickup" ? (
                           <>
                             <p className="font-bold text-sm" style={{ color: isCurrentStep ? "#B37C1C" : "#0F1A35" }}>
-                              📍 {batch.pickupSmeNam}
+                              {batch.pickupSmeNam}
                             </p>
                             <p className="text-xs mt-1" style={{ color: "#0F1A35/60" }}>
                               Collect {batch.orderCount} item{batch.orderCount !== 1 ? "s" : ""}
@@ -432,13 +452,13 @@ export const CommandCenter = ({
           </div>
 
           {/* Action Footer */}
-          <div className="px-4 sm:px-6 py-4 border-t" style={{ borderColor: "#E8DCC8" }}>
+          <div className="px-4 sm:px-6 py-4 border-t" style={{ borderColor: "#D4A574" }}>
             <AnimatePresence mode="wait">
               {isComplete ? (
                 <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="text-center p-3 sm:p-4 rounded-lg mb-3" style={{ backgroundColor: "rgba(34, 197, 94, 0.1)" }}>
+                  <div className="text-center p-3 sm:p-4 rounded-lg mb-3 border" style={{ backgroundColor: "rgba(34, 197, 94, 0.08)", borderColor: "#22C55E" }}>
                     <p className="text-base sm:text-lg font-bold" style={{ color: "#16A34A" }}>
-                      ✅ All Done!
+                      All Done!
                     </p>
                     <p className="text-xs mt-1" style={{ color: "#16A34A/70" }}>
                       {batch.orderCount} deliveries completed
@@ -449,7 +469,7 @@ export const CommandCenter = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
-                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #8B6914 100%)" }}
+                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Return to Map
                   </motion.button>
@@ -464,19 +484,19 @@ export const CommandCenter = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
-                    style={{ background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)" }}
+                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
-                    ✅ Confirm Pickup
+                    Confirm Pickup
                   </motion.button>
                 </motion.div>
               ) : state.currentStep.type === "dropoff" && state.currentStep.status === "pending" ? (
                 <motion.div key="delivery-action" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="rounded-lg p-2.5 sm:p-3 mb-3" style={{ backgroundColor: "rgba(59, 130, 246, 0.1)" }}>
-                    <p className="text-xs font-bold" style={{ color: "#1D4ED8" }}>
+                  <div className="rounded-lg p-2.5 sm:p-3 mb-3 border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+                    <p className="text-xs font-bold" style={{ color: "#FFFBF2/70" }}>
                       Delivery #{state.currentStepIndex}
                     </p>
-                    <p className="text-sm font-bold mt-1" style={{ color: "#0F1A35" }}>
-                      📦 {state.currentStep.customerName}
+                    <p className="text-sm font-bold mt-1" style={{ color: "#FFFBF2" }}>
+                      {state.currentStep.customerName}
                     </p>
                   </div>
                   <motion.button
@@ -484,9 +504,9 @@ export const CommandCenter = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
-                    style={{ background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)" }}
+                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
-                    🔒 Verify OTP
+                    Verify OTP
                   </motion.button>
                 </motion.div>
               ) : null}
