@@ -259,46 +259,46 @@ export const CommandCenter = ({
           {/* Zoom Controls + Route Info Pill (Bottom-Left) */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-3">
             {/* Zoom Controls */}
-            <div className="flex flex-col gap-2 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+            <div className="flex flex-col gap-1 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
               <motion.button
                 onClick={handleZoomIn}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-2 hover:bg-gray-100 transition-colors"
+                className="p-1.5 hover:bg-gray-100 transition-colors"
                 style={{ color: "#B37C1C" }}
                 title="Zoom in"
               >
-                <Plus size={18} />
+                <Plus size={16} />
               </motion.button>
-              <div className="w-6 h-px" style={{ backgroundColor: "#E8DCC8" }} />
+              <div className="w-4 h-px" style={{ backgroundColor: "#E8DCC8" }} />
               <motion.button
                 onClick={handleZoomOut}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="p-2 hover:bg-gray-100 transition-colors"
+                className="p-1.5 hover:bg-gray-100 transition-colors"
                 style={{ color: "#B37C1C" }}
                 title="Zoom out"
               >
-                <Minus size={18} />
+                <Minus size={16} />
               </motion.button>
             </div>
 
-            {/* Route Info Pill - Gold and Black */}
+            {/* Route Info Pill - Gold and Black Gradient */}
             {routeInfo && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 border"
+                className="px-3 py-2 rounded-full shadow-lg flex items-center gap-2 border"
                 style={{
-                  backgroundColor: "#B37C1C",
+                  background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
                   color: "#FFFBF2",
                   backdropFilter: "blur(4px)",
                   borderColor: "#0F1A35",
                   borderWidth: "1px",
                 }}
               >
-                <Navigation size={14} />
-                <span className="text-sm font-bold">
+                <Navigation size={13} />
+                <span className="text-xs font-bold">
                   {routeInfo.distance} • {routeInfo.eta}
                 </span>
               </motion.div>
@@ -469,7 +469,7 @@ export const CommandCenter = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
-                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #8B6914 100%)" }}
+                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Return to Map
                   </motion.button>
@@ -484,18 +484,18 @@ export const CommandCenter = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
-                    style={{ background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)" }}
+                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Confirm Pickup
                   </motion.button>
                 </motion.div>
               ) : state.currentStep.type === "dropoff" && state.currentStep.status === "pending" ? (
                 <motion.div key="delivery-action" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="rounded-lg p-2.5 sm:p-3 mb-3 border" style={{ backgroundColor: "rgba(59, 130, 246, 0.08)", borderColor: "#3B82F6" }}>
-                    <p className="text-xs font-bold" style={{ color: "#1D4ED8" }}>
+                  <div className="rounded-lg p-2.5 sm:p-3 mb-3 border" style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)", borderColor: "#0F1A35", color: "#FFFBF2" }}>
+                    <p className="text-xs font-bold" style={{ color: "#FFFBF2/70" }}>
                       Delivery #{state.currentStepIndex}
                     </p>
-                    <p className="text-sm font-bold mt-1" style={{ color: "#0F1A35" }}>
+                    <p className="text-sm font-bold mt-1" style={{ color: "#FFFBF2" }}>
                       {state.currentStep.customerName}
                     </p>
                   </div>
@@ -504,7 +504,7 @@ export const CommandCenter = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full py-2.5 sm:py-3 rounded-lg font-bold text-white text-sm sm:text-base"
-                    style={{ background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)" }}
+                    style={{ background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" }}
                   >
                     Verify OTP
                   </motion.button>
