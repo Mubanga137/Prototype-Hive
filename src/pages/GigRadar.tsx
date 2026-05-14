@@ -9,6 +9,9 @@ import { useMixedFleetRole } from "@/hooks/useMixedFleetRole";
 import GigRadarSidebar from "@/components/gig-radar/layout/GigRadarSidebar";
 import { BountyCard } from "@/components/gig-radar/BountyCard";
 import { CommandCenter } from "@/components/gig-radar/CommandCenter";
+import { GoOnlineOverlay } from "@/components/gig-radar/GoOnlineOverlay";
+import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountiesDrawer";
+import { ActiveNavigationHUD } from "@/components/gig-radar/ActiveNavigationHUD";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -62,6 +65,7 @@ const GigRadar = () => {
   const [showActiveNav, setShowActiveNav] = useState(false);
   const [viewMode, setViewMode] = useState<"bounties" | "batches">("batches");
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
+  const [claimedBatch, setClaimedBatch] = useState<BatchedOrder | null>(null);
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
@@ -98,7 +102,7 @@ const GigRadar = () => {
       if (error) throw error;
 
       toast.success(`✨ Batch claimed! ${batch.orderCount} orders in_transit.`);
-      setSelectedBatch(batch);
+      setClaimedBatch(batch);
       setShowActiveNav(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to claim batch";
@@ -314,6 +318,21 @@ const GigRadar = () => {
               )}
             </MapComponent>
 
+            {/* Go Online Status Overlay */}
+            <AnimatePresence>
+              {!showActiveNav && (
+                <GoOnlineOverlay
+                  isOnline={isOnline}
+                  onOnline={() => setIsOnline(true)}
+                  onLocationAcquired={(lat, lng) => {
+                    if (mapRef.current) {
+                      mapRef.current.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
+                    }
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -347,93 +366,51 @@ const GigRadar = () => {
             <div className="h-1 bg-gold/30 mx-auto rounded-full mt-2 w-12" />
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
-              {selectedBounty ? (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display font-bold text-lg" style={{ color: "#0F1A35" }}>
-                      Bounty Details
-                    </h2>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedBounty(null)}
-                      className="p-2 rounded-lg"
-                      style={{ backgroundColor: "#F5F0E8" }}
-                    >
-                      <X size={20} style={{ color: "#0F1A35" }} />
-                    </motion.button>
-                  </div>
-
-                  <BountyCard
-                    bounty={selectedBounty}
-                    routeETA={routeETAMap.get(selectedBounty.id)}
-                    onAccept={() => handleAcceptBounty(selectedBounty.id)}
+            <div className="flex-1 overflow-hidden custom-scrollbar flex flex-col">
+              <AnimatePresence mode="wait">
+                {!isOnline ? (
+                  <motion.div
+                    key="offline"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex-1 flex flex-col items-center justify-center px-4"
+                  >
+                    <div className="text-4xl mb-3">🔌</div>
+                    <p className="font-bold text-sm mb-1" style={{ color: "#0F1A35" }}>
+                      Go online to see bounties
+                    </p>
+                    <p className="text-xs text-center" style={{ color: "#0F1A35/60" }}>
+                      Click the "Go Online" button at the top to start accepting deliveries
+                    </p>
+                  </motion.div>
+                ) : (
+                  <AvailableBountiesDrawer
+                    key="bounties"
+                    batches={batches}
+                    onClaimBatch={handleClaimBatch}
+                    isLoading={isClustering}
                   />
-                </>
-              ) : (
-                <CommandCenter
-                  batches={batches}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                  onClaimBatch={handleClaimBatch}
-                  isLoading={isClustering}
-                  bounties={bounties}
-                />
-              )}
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </div>
       </div>
 
-      {showActiveNav && selectedBatch && (
-        <div className="absolute inset-0 z-50">
-          <ActiveNavigationModal
-            batch={selectedBatch}
+      <AnimatePresence>
+        {showActiveNav && claimedBatch && (
+          <ActiveNavigationHUD
+            batch={claimedBatch}
             onClose={() => {
               setShowActiveNav(false);
-              setSelectedBatch(null);
+              setClaimedBatch(null);
             }}
           />
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };
-
-interface ActiveNavigationModalProps {
-  batch: BatchedOrder;
-  onClose: () => void;
-}
-
-const ActiveNavigationModal: React.FC<ActiveNavigationModalProps> = ({ batch, onClose }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    onClick={onClose}
-    className="w-full h-full bg-black/50 flex items-center justify-center p-4"
-  >
-    <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      onClick={(e) => e.stopPropagation()}
-      className="rounded-2xl p-6 w-full max-w-md"
-      style={{ backgroundColor: "#FFFBF2" }}
-    >
-      <h3 className="font-display font-bold text-xl mb-4" style={{ color: "#0F1A35" }}>
-        📍 Active Navigation
-      </h3>
-      <p className="text-sm mb-6">Batch with {batch.orderCount} orders</p>
-      <button
-        onClick={onClose}
-        className="btn-gold w-full rounded-lg py-3 font-semibold text-white"
-      >
-        Close
-      </button>
-    </motion.div>
-  </motion.div>
-);
 
 export default GigRadar;
