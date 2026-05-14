@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { MapRef } from "react-map-gl";
 import { supabase } from "@/integrations/supabase/client";
-import { animateMarkerToPosition } from "@/utils/smoothMarkerAnimation";
 import { MapPin } from "lucide-react";
+import MapComponent from "./Map/MapComponent";
+import CustomMarker from "./Map/CustomMarker";
 
 interface OrderRadarMapProps {
   orderId: number;
@@ -14,9 +14,8 @@ interface OrderRadarMapProps {
 }
 
 const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }: OrderRadarMapProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const riderMarkerRef = useRef<L.Marker | null>(null);
+  const mapRef = useRef<MapRef>(null);
+  const [workerLocation, setWorkerLocation] = useState<{ lat: number; lng: number } | null>(null);
   const channelRef = useRef<any>(null);
   const isFollowingRef = useRef(true);
   const [isFollowing, setIsFollowing] = useState(true);
@@ -25,105 +24,63 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
   const workerId = runnerId || riderId;
 
   const handleRecenter = () => {
-    const map = mapInstanceRef.current;
-    if (!map || !riderMarkerRef.current) return;
-    isFollowingRef.current = true;
-    setIsFollowing(true);
-    const pos = riderMarkerRef.current.getLatLng();
-    map.flyTo([pos.lat, pos.lng], 15, { animate: true, duration: 0.8 });
+    if (mapRef.current && workerLocation) {
+      isFollowingRef.current = true;
+      setIsFollowing(true);
+      mapRef.current.flyTo({
+        center: [workerLocation.lng, workerLocation.lat],
+        zoom: 15,
+        duration: 800,
+      });
+    }
   };
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!tableName || !workerId) return;
 
-    const center: [number, number] = [customerLat || -15.4167, customerLng || 28.2833];
-    const map = L.map(mapRef.current, {
-      scrollWheelZoom: false,
-      dragging: true,
-      touchZoom: true,
-    }).setView(center, 14);
-    mapInstanceRef.current = map;
+    // Fetch initial location
+    (async () => {
+      const { data } = await supabase
+        .from(tableName as any)
+        .select("latitude, longitude")
+        .eq("id", workerId)
+        .maybeSingle();
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+      if (data && (data as any).latitude && (data as any).longitude) {
+        setWorkerLocation({
+          lat: (data as any).latitude,
+          lng: (data as any).longitude,
+        });
+      }
+    })();
 
-    setTimeout(() => map.invalidateSize(), 200);
+    // Subscribe to realtime updates
+    channelRef.current = supabase
+      .channel(`rider-track-${orderId}`)
+      .on(
+        "postgres_changes" as any,
+        { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${workerId}` },
+        (payload: any) => {
+          const { latitude, longitude } = payload.new;
+          if (latitude && longitude && isFinite(latitude) && isFinite(longitude)) {
+            setWorkerLocation({ lat: latitude, lng: longitude });
 
-    // Disable follow mode on user interaction
-    map.on("dragstart", () => {
-      isFollowingRef.current = false;
-      setIsFollowing(false);
-    });
-
-    map.on("zoomstart", () => {
-      isFollowingRef.current = false;
-      setIsFollowing(false);
-    });
-
-    // Customer marker
-    if (customerLat && customerLng) {
-      const custIcon = L.divIcon({
-        className: "",
-        html: `<div style="width:28px;height:28px;border-radius:50%;background:#1a1a2e;border:3px solid #FFF8EE;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);"><span style="font-size:12px;">📍</span></div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-      });
-      L.marker([customerLat, customerLng], { icon: custIcon }).addTo(map).bindPopup("Your location");
-    }
-
-    const goldIcon = L.divIcon({
-      className: "",
-      html: `<div style="width:36px;height:36px;border-radius:50%;background:#B37C1C;border:3px solid #FFF8EE;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(179,124,28,0.45);"><span style="font-size:16px;">🚴</span></div>`,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
-    });
-
-    if (tableName && workerId) {
-      (async () => {
-        const { data } = await supabase
-          .from(tableName as any)
-          .select("latitude, longitude")
-          .eq("id", workerId)
-          .maybeSingle();
-        if (data && (data as any).latitude && (data as any).longitude) {
-          const pos: [number, number] = [(data as any).latitude, (data as any).longitude];
-          riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
-          map.panTo(pos, { animate: true });
-        }
-      })();
-
-      channelRef.current = supabase
-        .channel(`rider-track-${orderId}`)
-        .on(
-          "postgres_changes" as any,
-          { event: "UPDATE", schema: "public", table: tableName, filter: `id=eq.${workerId}` },
-          (payload: any) => {
-            const { latitude, longitude } = payload.new;
-            if (latitude && longitude && isFinite(latitude) && isFinite(longitude)) {
-              const pos: [number, number] = [latitude, longitude];
-              if (riderMarkerRef.current) {
-                animateMarkerToPosition(riderMarkerRef.current, latitude, longitude, { duration: 800 });
-              } else {
-                riderMarkerRef.current = L.marker(pos, { icon: goldIcon }).addTo(map).bindPopup("Your rider is here");
-              }
-              // Only pan to position if follow mode is enabled
-              if (isFollowingRef.current) {
-                map.setView(pos, 15, { animate: true, duration: 0.3 });
-              }
+            // Only pan to position if follow mode is enabled
+            if (isFollowingRef.current && mapRef.current) {
+              mapRef.current.easeTo({
+                center: [longitude, latitude],
+                duration: 300,
+              });
             }
           }
-        )
-        .subscribe();
-    }
+        }
+      )
+      .subscribe();
 
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
-      map.remove();
-      mapInstanceRef.current = null;
-      riderMarkerRef.current = null;
     };
-  }, [orderId, runnerId, riderId, customerLat, customerLng, tableName, workerId]);
+  }, [orderId, tableName, workerId]);
 
   return (
     <div
@@ -136,14 +93,18 @@ const OrderRadarMap = ({ orderId, runnerId, riderId, customerLat, customerLng }:
         touchAction: "none",
       }}
     >
-      <div
-        ref={mapRef}
-        className="w-full h-64 md:h-80"
-        style={{
-          position: "relative",
-          touchAction: "none",
-        }}
-      />
+      <div className="w-full h-64 md:h-80 relative">
+        <MapComponent
+          ref={mapRef}
+          initialLat={customerLat || -15.4167}
+          initialLng={customerLng || 28.2833}
+          initialZoom={14}
+        >
+          {customerLat && customerLng && <CustomMarker lng={customerLng} lat={customerLat} label="📍 You" />}
+          {workerLocation && <CustomMarker lng={workerLocation.lng} lat={workerLocation.lat} isPulsing={true} label="🚴 Rider" />}
+        </MapComponent>
+      </div>
+
       {/* Recenter button */}
       <button
         onClick={handleRecenter}

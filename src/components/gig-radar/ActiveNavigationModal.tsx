@@ -3,12 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBatchRoutingStateMachine } from "@/hooks/gig-radar/useBatchRoutingStateMachine";
-import { useMultiLegRouting } from "@/hooks/gig-radar/useMultiLegRouting";
 import { RouteProgressStepper } from "./RouteProgressStepper";
 import { OtpVerificationKeypad } from "./OtpVerificationKeypad";
 import { BatchedOrder } from "@/utils/orderClustering";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
 
 interface ActiveNavigationModalProps {
   batch: BatchedOrder;
@@ -16,14 +13,6 @@ interface ActiveNavigationModalProps {
   riderLng: number;
   onClose?: () => void;
 }
-
-const MapUpdater = ({ riderLat, riderLng }: { riderLat: number; riderLng: number }) => {
-  const map = useMap();
-  useEffect(() => {
-    map.setView([riderLat, riderLng], 14);
-  }, [map, riderLat, riderLng]);
-  return null;
-};
 
 export const ActiveNavigationModal = ({
   batch,
@@ -34,8 +23,6 @@ export const ActiveNavigationModal = ({
   const { profile } = useAuth();
   const { state, initializeBatch, confirmPickup, verifyOTP, failOrder } =
     useBatchRoutingStateMachine();
-  const { drawMultiLegRoute } = useMultiLegRouting();
-  const [mapRef, setMapRef] = useState<L.Map | null>(null);
   const [showOtpKeypad, setShowOtpKeypad] = useState(false);
 
   const riderId = profile?.id ? parseInt(profile.id as string) : 0;
@@ -111,19 +98,8 @@ export const ActiveNavigationModal = ({
         {/* Main Content: Map + Stepper */}
         <div className="flex-1 overflow-y-auto flex gap-4 p-4">
           {/* Map */}
-          <div className="flex-1 rounded-2xl overflow-hidden border-2" style={{ borderColor: "#D4A574" }}>
-            <MapContainer
-              center={[riderLat, riderLng]}
-              zoom={14}
-              style={{ height: "100%", width: "100%" }}
-              ref={setMapRef}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution="© OpenStreetMap"
-              />
-              <MapUpdater riderLat={riderLat} riderLng={riderLng} />
-            </MapContainer>
+          <div className="flex-1 rounded-2xl overflow-hidden border-2 bg-gray-100 flex items-center justify-center" style={{ borderColor: "#D4A574" }}>
+            <p style={{ color: "#666" }}>Map view goes here</p>
           </div>
 
           {/* Stepper */}

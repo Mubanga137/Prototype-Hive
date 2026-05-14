@@ -3,12 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, Phone, Navigation, CheckCircle2, AlertTriangle, Plus, Minus, Package, Truck, Clock, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBatchRoutingStateMachine } from "@/hooks/gig-radar/useBatchRoutingStateMachine";
-import { useMultiLegRouting } from "@/hooks/gig-radar/useMultiLegRouting";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
 import { OtpVerificationKeypad } from "./OtpVerificationKeypad";
 import { BatchedOrder } from "@/utils/orderClustering";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
-import L from "leaflet";
 import { toast } from "sonner";
 
 interface CommandCenterProps {
@@ -20,77 +17,6 @@ interface CommandCenterProps {
 
 type OperationMode = "pickup" | "delivery" | "complete";
 
-const UserMarker = ({ lat, lng }: { lat: number; lng: number }) => {
-  return (
-    <Marker
-      position={[lat, lng]}
-      icon={L.divIcon({
-        className: "user-location-marker",
-        html: `
-          <div class="relative flex items-center justify-center" style="width: 48px; height: 48px;">
-            <div class="absolute w-full h-full rounded-full border-2 border-white" style="background: linear-gradient(135deg, #B37C1C 0%, #8B6914 100%); box-shadow: 0 0 20px rgba(179, 124, 28, 0.8);"></div>
-            <div class="absolute w-3 h-3 bg-white rounded-full" style="box-shadow: 0 0 12px rgba(179, 124, 28, 0.8); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-          </div>
-        `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
-      })}
-    />
-  );
-};
-
-const PickupLocationMarker = ({ lat, lng }: { lat: number; lng: number }) => {
-  return (
-    <Marker
-      position={[lat, lng]}
-      icon={L.divIcon({
-        className: "pickup-marker",
-        html: `
-          <div class="flex items-center justify-center w-12 h-12 rounded-full border-2 border-white" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); box-shadow: 0 0 20px rgba(5, 150, 105, 0.6);">
-            <span class="text-white font-bold text-lg">📦</span>
-          </div>
-        `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
-      })}
-    />
-  );
-};
-
-const DropoffMarker = ({ lat, lng, index }: { lat: number; lng: number; index: number }) => {
-  return (
-    <Marker
-      position={[lat, lng]}
-      icon={L.divIcon({
-        className: "dropoff-marker",
-        html: `
-          <div class="flex items-center justify-center w-12 h-12 rounded-full border-2 border-white" style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);">
-            <span class="text-white font-bold text-sm">${index}</span>
-          </div>
-        `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
-      })}
-    />
-  );
-};
-
-const MapController = ({ riderLat, riderLng, mode }: { riderLat: number; riderLng: number; mode: OperationMode }) => {
-  const map = useMap();
-  const lastModeRef = useRef<OperationMode | null>(null);
-
-  useEffect(() => {
-    if (!map || mode === lastModeRef.current) return;
-    lastModeRef.current = mode;
-
-    // Only pan on mode change, don't flyTo to avoid zoom oscillation
-    const offsetLat = riderLat + (mode === "delivery" ? 0.002 : 0);
-    map.panTo([offsetLat, riderLng], { animate: true });
-  }, [mode]);
-
-  return null;
-};
-
 export const CommandCenter = ({
   batch,
   riderLat,
@@ -99,13 +25,10 @@ export const CommandCenter = ({
 }: CommandCenterProps) => {
   const { profile } = useAuth();
   const { state, initializeBatch, confirmPickup, verifyOTP, failOrder } = useBatchRoutingStateMachine();
-  const { drawMultiLegRoute } = useMultiLegRouting();
   const { location } = useLocationService();
-  const [mapRef, setMapRef] = useState<L.Map | null>(null);
   const [mode, setMode] = useState<OperationMode>("pickup");
   const [showOtpKeypad, setShowOtpKeypad] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; eta: string } | null>(null);
-  const currentZoomRef = useRef(16);
 
   const riderId = profile?.id ? parseInt(profile.id as string) : 0;
 
@@ -116,29 +39,6 @@ export const CommandCenter = ({
     }
   }, []);
 
-  // Draw route
-  useEffect(() => {
-    if (!mapRef || state.status === "idle") return;
-
-    const currentLoc = location || { lat: riderLat, lng: riderLng };
-    drawMultiLegRoute(batch, currentLoc.lat, currentLoc.lng, mapRef, (data) => {
-      const distanceKm = (data.totalDistance / 1000).toFixed(1);
-      const etaMin = Math.ceil(data.totalDuration / 60);
-      setRouteInfo({ distance: `${distanceKm} km`, eta: `${etaMin} min` });
-    });
-  }, [mapRef, state.status, location, riderLat, riderLng, batch, drawMultiLegRoute]);
-
-  // Track zoom level (use ref only, don't trigger re-renders)
-  useEffect(() => {
-    if (!mapRef) return;
-    const handleZoom = () => {
-      currentZoomRef.current = mapRef.getZoom();
-    };
-    mapRef.on("zoom", handleZoom);
-    return () => {
-      mapRef.off("zoom", handleZoom);
-    };
-  }, [mapRef]);
 
   const handlePickupConfirm = async () => {
     await confirmPickup();
@@ -164,17 +64,6 @@ export const CommandCenter = ({
     return success;
   };
 
-  const handleZoomIn = () => {
-    if (mapRef && currentZoom < 20) {
-      mapRef.setZoom(currentZoom + 1);
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (mapRef && currentZoom > 2) {
-      mapRef.setZoom(currentZoom - 1);
-    }
-  };
 
   if (!state.currentStep) {
     return null;
@@ -232,34 +121,9 @@ export const CommandCenter = ({
       >
         {/* LEFT: Map Panel */}
         <div className="flex-[0.65] lg:flex-[0.65] relative overflow-hidden flex flex-col" style={{ backgroundColor: "#F5F0E8" }}>
-          <MapContainer
-            center={[riderLat, riderLng]}
-            zoom={16}
-            style={{ height: "100%", width: "100%", flex: 1 }}
-            ref={setMapRef}
-            className="z-10"
-            zoomControl={false}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="© OpenStreetMap"
-            />
-            <MapController riderLat={riderLat} riderLng={riderLng} mode={mode} />
-
-            {/* User marker */}
-            <UserMarker lat={riderLat} lng={riderLng} />
-
-            {/* Pickup marker (pickup mode) */}
-            {mode === "pickup" && batch.pickupLoc && (
-              <PickupLocationMarker lat={batch.pickupLoc.lat} lng={batch.pickupLoc.lng} />
-            )}
-
-            {/* Dropoff markers (delivery mode) */}
-            {mode === "delivery" &&
-              batch.dropoffs.map((dropoff, idx) => (
-                <DropoffMarker key={`dropoff-${idx}`} lat={dropoff.loc.lat} lng={dropoff.loc.lng} index={idx + 1} />
-              ))}
-          </MapContainer>
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <p style={{ color: "#666" }}>Map view goes here</p>
+          </div>
 
           {/* Zoom Controls + Route Info Pill (Bottom-Left) */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-3">
