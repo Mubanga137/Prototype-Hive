@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { MapRef } from "react-map-gl";
+import { MapRef, Source, Layer } from "react-map-gl";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationService } from "@/hooks/gig-radar/useLocationService";
@@ -19,12 +19,13 @@ import hiveLogo from "@/assets/hive-logo.jpeg";
 import { BatchedOrder } from "@/utils/orderClustering";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import MapComponent from "@/components/Map/MapComponent";
-import CustomMarker from "@/components/Map/CustomMarker";
+import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
+import WorkerMarker from "@/components/Map/WorkerMarker";
+import DestinationMarker from "@/components/Map/DestinationMarker";
+import { mapboxRoutingService } from "@/services/mapboxRoutingService";
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
 const DEFAULT_ZOOM = 14;
-const OSRM_API = "https://router.project-osrm.org";
 
 interface SimulatedBounty {
   id: string;
@@ -41,14 +42,6 @@ interface SimulatedBounty {
   customer_lng?: number;
   routeETA?: string;
   routeDistance?: string;
-}
-
-interface RouteData {
-  routes: Array<{
-    geometry: { coordinates: [number, number][] };
-    distance: number;
-    duration: number;
-  }>;
 }
 
 const GigRadar = () => {
@@ -135,7 +128,7 @@ const GigRadar = () => {
     };
   });
 
-  // Fetch OSRM route when bounty is selected
+  // Fetch Mapbox route when bounty is selected
   useEffect(() => {
     if (!selectedBounty || !location) {
       setRouteGeometry(null);
@@ -144,54 +137,75 @@ const GigRadar = () => {
 
     const fetchRoute = async () => {
       try {
-        const profile = isRider ? "driving" : "foot";
         const sme_lat = selectedBounty.sme_lat || selectedBounty.lat;
         const sme_lng = selectedBounty.sme_lng || selectedBounty.lng;
         const customer_lat = selectedBounty.customer_lat || selectedBounty.lat;
         const customer_lng = selectedBounty.customer_lng || selectedBounty.lng;
 
         // Leg 1: Worker to pickup
-        const leg1Url = `${OSRM_API}/route/v1/${profile}/${location.lng},${location.lat};${sme_lng},${sme_lat}?overview=full&geometries=geojson`;
-        const leg1Response = await fetch(leg1Url);
-        const leg1Data: RouteData = await leg1Response.json();
-
-        if (!leg1Data.routes || leg1Data.routes.length === 0) throw new Error("No route found for leg 1");
+        const leg1Route = await mapboxRoutingService.getRoute(location.lng, location.lat, sme_lng, sme_lat);
+        if (!leg1Route) throw new Error("No route found for leg 1");
 
         // Leg 2: Pickup to customer
-        const leg2Url = `${OSRM_API}/route/v1/${profile}/${sme_lng},${sme_lat};${customer_lng},${customer_lat}?overview=full&geometries=geojson`;
-        const leg2Response = await fetch(leg2Url);
-        const leg2Data: RouteData = await leg2Response.json();
+        const leg2Route = await mapboxRoutingService.getRoute(sme_lng, sme_lat, customer_lng, customer_lat);
+        if (!leg2Route) throw new Error("No route found for leg 2");
 
-        if (!leg2Data.routes || leg2Data.routes.length === 0) throw new Error("No route found for leg 2");
-
-        // Combine geometries
+        // Combine coordinates
         const totalCoords = [
-          ...leg1Data.routes[0].geometry.coordinates,
-          ...leg2Data.routes[0].geometry.coordinates.slice(1),
+          ...leg1Route.coordinates,
+          ...leg2Route.coordinates.slice(1),
         ];
 
-        const totalDistance = ((leg1Data.routes[0].distance + leg2Data.routes[0].distance) / 1000).toFixed(1);
-        const totalDuration = Math.round((leg1Data.routes[0].duration + leg2Data.routes[0].duration) / 60);
+        const leg1Duration = parseInt(leg1Route.eta.split(" ")[0]);
+        const leg2Duration = parseInt(leg2Route.eta.split(" ")[0]);
+        const totalDuration = leg1Duration + leg2Duration;
+        const leg1Distance = parseFloat(leg1Route.distance.split(" ")[0]);
+        const leg2Distance = parseFloat(leg2Route.distance.split(" ")[0]);
+        const totalDistance = (leg1Distance + leg2Distance).toFixed(1);
 
         setRouteGeometry(totalCoords as [number, number][]);
-        setRouteETAMap(new Map([[selectedBounty.id, { eta: `${totalDuration}m`, distance: `${totalDistance}km` }]]));
+        setRouteETAMap(new Map([[selectedBounty.id, { eta: `⏱️ ETA: ${totalDuration}m`, distance: `📏 ${totalDistance}km` }]]));
       } catch (error) {
-        console.warn("[GigRadar] OSRM route error:", error);
+        console.warn("[GigRadar] Mapbox route error:", error);
         toast.error("Failed to fetch route");
       }
     };
 
     fetchRoute();
-  }, [selectedBounty, location, isRider]);
+  }, [selectedBounty, location]);
+
+  // Smart auto-zoom when route is resolved
+  useEffect(() => {
+    if (mapRef.current && routeGeometry && routeGeometry.length > 0) {
+      const bounds = routeGeometry.reduce((acc, [lng, lat]) => {
+        return {
+          minLng: Math.min(acc.minLng, lng),
+          maxLng: Math.max(acc.maxLng, lng),
+          minLat: Math.min(acc.minLat, lat),
+          maxLat: Math.max(acc.maxLat, lat),
+        };
+      }, {
+        minLng: routeGeometry[0][0],
+        maxLng: routeGeometry[0][0],
+        minLat: routeGeometry[0][1],
+        maxLat: routeGeometry[0][1],
+      });
+
+      mapRef.current.fitBounds(
+        [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]],
+        { padding: 50, duration: 800 }
+      );
+    }
+  }, [routeGeometry]);
 
   useEffect(() => {
-    if (mapRef.current && location && isOnline) {
+    if (mapRef.current && location && isOnline && !routeGeometry) {
       mapRef.current.easeTo({
         center: [location.lng, location.lat],
         duration: 1000,
       });
     }
-  }, [location, isOnline]);
+  }, [location, isOnline, routeGeometry]);
 
   // Lock map camera to user location during in-app navigation
   useEffect(() => {
@@ -240,53 +254,50 @@ const GigRadar = () => {
         <div className="flex-1 flex flex-col w-full h-screen overflow-hidden">
           {/* Top 70% - Map */}
           <div className="h-[70vh] relative overflow-hidden flex-shrink-0">
-            <MapComponent
+            <MapboxMapComponent
               ref={mapRef}
               initialLat={mapCenter.lat}
               initialLng={mapCenter.lng}
               initialZoom={16}
             >
-              {location && isOnline && <CustomMarker lng={location.lng} lat={location.lat} label="You" />}
+              {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
 
               {/* Destination marker */}
               {claimedBatch.dropoffs[0] && (
-                <CustomMarker
+                <DestinationMarker
                   lng={claimedBatch.dropoffs[0].lng || 28.3228}
                   lat={claimedBatch.dropoffs[0].lat || -15.3875}
                   label={claimedBatch.dropoffs[0].customer}
+                  type="dropoff"
                 />
               )}
 
-              {/* Route polyline (gold color) */}
-              {location && claimedBatch.dropoffs[0] && (
-                <source
-                  key="mission-route"
+              {/* Route polyline (gold color via Mapbox) */}
+              {routeGeometry && routeGeometry.length > 0 && (
+                <Source
                   id="mission-route"
                   type="geojson"
                   data={{
                     type: "Feature",
                     geometry: {
                       type: "LineString",
-                      coordinates: [
-                        [location.lng, location.lat],
-                        [claimedBatch.dropoffs[0].lng || 28.3228, claimedBatch.dropoffs[0].lat || -15.3875],
-                      ],
+                      coordinates: routeGeometry,
                     },
                     properties: {},
                   }}
                 >
-                  <layer
+                  <Layer
                     id="mission-route-layer"
                     type="line"
                     paint={{
                       "line-color": "#B37C1C",
-                      "line-width": 6,
+                      "line-width": 5,
                       "line-opacity": 0.8,
                     }}
                   />
-                </source>
+                </Source>
               )}
-            </MapComponent>
+            </MapboxMapComponent>
 
             {/* Minimal Controls - only center map button */}
             <motion.button
@@ -404,13 +415,13 @@ const GigRadar = () => {
               className="flex-[0.6] lg:flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2"
               style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}
             >
-              <MapComponent
+              <MapboxMapComponent
                 ref={mapRef}
                 initialLat={mapCenter.lat}
                 initialLng={mapCenter.lng}
                 initialZoom={DEFAULT_ZOOM}
               >
-                {location && isOnline && <CustomMarker lng={location.lng} lat={location.lat} label="You" />}
+                {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
 
                 {bounties.map((bounty) => (
                   <motion.div
@@ -421,16 +432,16 @@ const GigRadar = () => {
                     }}
                     className="cursor-pointer"
                   >
-                    <CustomMarker lng={bounty.lng} lat={bounty.lat} isPulsing={false} />
+                    <DestinationMarker lng={bounty.lng} lat={bounty.lat} type="dropoff" />
                   </motion.div>
                 ))}
 
                 {routeGeometry && (
-                  <source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
-                    <layer id="route-layer" type="line" paint={{ "line-color": "#0F1A35", "line-width": 5 }} />
-                  </source>
+                  <Source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
+                    <Layer id="route-layer" type="line" paint={{ "line-color": "#B37C1C", "line-width": 5 }} />
+                  </Source>
                 )}
-              </MapComponent>
+              </MapboxMapComponent>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
