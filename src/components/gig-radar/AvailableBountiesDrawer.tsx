@@ -1,6 +1,5 @@
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BountyCardEnhanced } from "./BountyCardEnhanced";
 import { BatchedOrder } from "@/utils/orderClustering";
 
@@ -16,25 +15,6 @@ export const AvailableBountiesDrawer = ({
   isLoading = false,
 }: AvailableBountiesDrawerProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(batches.length > 1);
-
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-    }
-  };
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 400;
-      const newScroll = scrollContainerRef.current.scrollLeft + (direction === "left" ? -scrollAmount : scrollAmount);
-      scrollContainerRef.current.scrollTo({ left: newScroll, behavior: "smooth" });
-      setTimeout(checkScroll, 300);
-    }
-  };
 
   return (
     <motion.div
@@ -44,21 +24,17 @@ export const AvailableBountiesDrawer = ({
       className="flex flex-col h-full"
     >
       {/* Header */}
-      <div className="px-4 sm:px-6 py-4 border-b" style={{ borderColor: "#D4A574" }}>
-        <h2 className="text-base font-bold flex items-center gap-2 mb-1" style={{ color: "#0F1A35" }}>
-          <span className="text-lg">📍</span>
-          (Use the gold location pin)
-        </h2>
-        <h3 className="text-xl font-bold" style={{ color: "#0F1A35" }}>
+      <div className="px-4 sm:px-6 py-2 border-b" style={{ borderColor: "#D4A574" }}>
+        <h3 className="text-lg font-bold" style={{ color: "#0F1A35" }}>
           Available Bounties
         </h3>
-        <p className="text-xs mt-1" style={{ color: "#0F1A35/60" }}>
+        <p className="text-xs mt-0.5" style={{ color: "#0F1A35/60" }}>
           {batches.length} bounty batch{batches.length !== 1 ? "es" : ""} near you
         </p>
       </div>
 
       {/* Scrollable Cards Container */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <motion.div
@@ -82,58 +58,22 @@ export const AvailableBountiesDrawer = ({
             </p>
           </div>
         ) : (
-          <div className="relative flex-1 flex flex-col min-h-0">
-            {/* Navigation Arrows */}
-            {canScrollLeft && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                onClick={() => scroll("left")}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                style={{
-                  backgroundColor: "#FFFBF2",
-                  border: "1px solid #D4A574",
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronLeft size={20} style={{ color: "#B37C1C" }} />
-              </motion.button>
-            )}
-
-            {canScrollRight && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                onClick={() => scroll("right")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                style={{
-                  backgroundColor: "#FFFBF2",
-                  border: "1px solid #D4A574",
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronRight size={20} style={{ color: "#B37C1C" }} />
-              </motion.button>
-            )}
-
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Scrollable Content */}
             <div
               ref={scrollContainerRef}
-              onScroll={checkScroll}
-              className="flex-1 overflow-x-auto overflow-y-hidden px-4 sm:px-6 py-4 flex gap-4 snap-x snap-mandatory scrollbar-hide"
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-4"
               style={{
                 scrollBehavior: "smooth",
               }}
             >
               {batches.map((batch) => (
-                <div key={batch.batchId} className="snap-start">
-                  <div
-                    onClick={() => onClaimBatch(batch)}
-                  >
-                    <BountyCardEnhanced batch={batch} />
-                  </div>
+                <div
+                  key={batch.batchId}
+                  onClick={() => onClaimBatch(batch)}
+                  className="cursor-pointer"
+                >
+                  <BountyCardEnhanced batch={batch} />
                 </div>
               ))}
             </div>
