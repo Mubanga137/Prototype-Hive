@@ -12,6 +12,7 @@ import { CommandCenter } from "@/components/gig-radar/CommandCenter";
 import { GoOnlineOverlay } from "@/components/gig-radar/GoOnlineOverlay";
 import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountiesDrawer";
 import { EnhancedMissionHUD } from "@/components/gig-radar/EnhancedMissionHUD";
+import { MissionControlPanel } from "@/components/gig-radar/MissionControlPanel";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -66,6 +67,7 @@ const GigRadar = () => {
   const [viewMode, setViewMode] = useState<"bounties" | "batches">("batches");
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [claimedBatch, setClaimedBatch] = useState<BatchedOrder | null>(null);
+  const [isInAppNavigating, setIsInAppNavigating] = useState(false);
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
@@ -191,6 +193,23 @@ const GigRadar = () => {
     }
   }, [location, isOnline]);
 
+  // Lock map camera to user location during in-app navigation
+  useEffect(() => {
+    if (isInAppNavigating && mapRef.current && location) {
+      const interval = setInterval(() => {
+        if (mapRef.current && location) {
+          mapRef.current.easeTo({
+            center: [location.lng, location.lat],
+            duration: 500,
+            zoom: 17,
+          });
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isInAppNavigating, location]);
+
   const handleAcceptBounty = (bountyId: string) => {
     acceptGig(bountyId);
     setSelectedBounty(null);
@@ -216,125 +235,66 @@ const GigRadar = () => {
     <div className="relative w-full h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#FFFBF2" }}>
       <HoneycombBackground />
 
-      <div className="flex flex-1 w-full relative z-30" style={{ minHeight: 0 }}>
-        <GigRadarSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
-
-        <div className="flex-1 flex flex-col relative z-10" style={{ minHeight: 0 }}>
-          <header
-            className="h-16 border-b flex items-center justify-between px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
-            style={{
-              backgroundColor: "rgba(255, 251, 242, 0.85)",
-              borderColor: "hsl(38,40%,85%)",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg transition-all"
-                style={{ backgroundColor: "#F5F0E8" }}
-              >
-                <Menu size={20} style={{ color: "#0F1A35" }} />
-              </motion.button>
-
-              <div className="flex items-center gap-2">
-                <img src={hiveLogo} alt="The Hive" className="w-8 h-8 rounded-full object-cover" />
-                <p className="font-display font-bold text-sm" style={{ color: "#0F1A35" }}>
-                  THE HIVE
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <GoOnlineOverlay
-                isOnline={isOnline}
-                onOnline={() => setIsOnline(true)}
-                onLocationAcquired={(lat, lng) => {
-                  if (mapRef.current) {
-                    mapRef.current.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
-                  }
-                }}
-              />
-
-              <div className="hidden sm:block text-right">
-                <p
-                  className="text-sm font-bold tracking-tight"
-                  style={{
-                    background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }}
-                >
-                  {profile?.full_name || user?.email?.split("@")[0] || "Worker"}
-                </p>
-              </div>
-              <motion.div
-                className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border-2 relative"
-                style={{
-                  borderColor: "#B37C1C",
-                  background: "linear-gradient(135deg, #FFFBF2 0%, #F5F0E8 100%)",
-                  boxShadow: "0 4px 12px rgba(179, 124, 28, 0.25), inset 0 1px 3px rgba(255, 255, 255, 0.6)",
-                }}
-                whileHover={{ scale: 1.05 }}
-              >
-                {profile?.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.full_name || "User"}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="#B37C1C" strokeWidth="2">
-                    <circle cx="12" cy="8" r="4" />
-                    <path d="M 12 12 C 16 12 18 15 18 20 L 6 20 C 6 15 8 12 12 12" />
-                  </svg>
-                )}
-              </motion.div>
-            </div>
-          </header>
-
-          <div
-            className="flex-[0.6] lg:flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2"
-            style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}
-          >
+      {/* 70/30 SPLIT LAYOUT WHEN ACTIVE MISSION */}
+      {showActiveNav && claimedBatch ? (
+        <div className="flex-1 flex flex-col w-full h-screen overflow-hidden">
+          {/* Top 70% - Map */}
+          <div className="h-[70vh] relative overflow-hidden flex-shrink-0">
             <MapComponent
               ref={mapRef}
               initialLat={mapCenter.lat}
               initialLng={mapCenter.lng}
-              initialZoom={DEFAULT_ZOOM}
+              initialZoom={16}
             >
               {location && isOnline && <CustomMarker lng={location.lng} lat={location.lat} label="You" />}
 
-              {bounties.map((bounty) => (
-                <motion.div
-                  key={bounty.id}
-                  onClick={() => {
-                    setSelectedBounty(bounty);
-                    mapRef.current?.flyTo({ center: [bounty.lng, bounty.lat], zoom: 16, duration: 800 });
-                  }}
-                  className="cursor-pointer"
-                >
-                  <CustomMarker lng={bounty.lng} lat={bounty.lat} isPulsing={false} />
-                </motion.div>
-              ))}
+              {/* Destination marker */}
+              {claimedBatch.dropoffs[0] && (
+                <CustomMarker
+                  lng={claimedBatch.dropoffs[0].lng || 28.3228}
+                  lat={claimedBatch.dropoffs[0].lat || -15.3875}
+                  label={claimedBatch.dropoffs[0].customer}
+                />
+              )}
 
-              {routeGeometry && (
-                <source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
-                  <layer id="route-layer" type="line" paint={{ "line-color": "#0F1A35", "line-width": 5 }} />
+              {/* Route polyline (gold color) */}
+              {location && claimedBatch.dropoffs[0] && (
+                <source
+                  key="mission-route"
+                  id="mission-route"
+                  type="geojson"
+                  data={{
+                    type: "Feature",
+                    geometry: {
+                      type: "LineString",
+                      coordinates: [
+                        [location.lng, location.lat],
+                        [claimedBatch.dropoffs[0].lng || 28.3228, claimedBatch.dropoffs[0].lat || -15.3875],
+                      ],
+                    },
+                    properties: {},
+                  }}
+                >
+                  <layer
+                    id="mission-route-layer"
+                    type="line"
+                    paint={{
+                      "line-color": "#B37C1C",
+                      "line-width": 6,
+                      "line-opacity": 0.8,
+                    }}
+                  />
                 </source>
               )}
             </MapComponent>
 
-
+            {/* Minimal Controls - only center map button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 if (location && mapRef.current) {
-                  mapRef.current.flyTo({ center: [location.lng, location.lat], zoom: 15, duration: 800 });
+                  mapRef.current.flyTo({ center: [location.lng, location.lat], zoom: 17, duration: 800 });
                 }
               }}
               className="absolute top-4 right-4 z-20 w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
@@ -344,70 +304,199 @@ const GigRadar = () => {
             </motion.button>
           </div>
 
-          <motion.div
-            ref={bottomSheetRef}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-            layout
-            animate={{
-              height: sheetExpanded ? "100%" : "auto",
-            }}
-            transition={{ type: "spring", damping: 28, stiffness: 260 }}
-            className="flex-[0.4] lg:flex-[0.4] relative rounded-t-2xl sm:rounded-t-3xl overflow-hidden shadow-2xl flex flex-col"
-            style={{
-              backgroundColor: "#FFFBF2",
-            }}
-          >
-            {/* Drag Handle */}
-            <div className="h-1 bg-gold/30 mx-auto rounded-full mt-2 w-12" />
-
-            {/* Content */}
-            <div className="flex-1 overflow-hidden custom-scrollbar flex flex-col">
-              <AnimatePresence mode="wait">
-                {!isOnline ? (
-                  <motion.div
-                    key="offline"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex-1 flex flex-col items-center justify-center px-4"
-                  >
-                    <div className="text-4xl mb-3">🔌</div>
-                    <p className="font-bold text-sm mb-1" style={{ color: "#0F1A35" }}>
-                      Go online to see bounties
-                    </p>
-                    <p className="text-xs text-center" style={{ color: "#0F1A35/60" }}>
-                      Click the "Go Online" button at the top to start accepting deliveries
-                    </p>
-                  </motion.div>
-                ) : (
-                  <AvailableBountiesDrawer
-                    key="bounties"
-                    batches={batches}
-                    onClaimBatch={handleClaimBatch}
-                    isLoading={isClustering}
-                  />
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {showActiveNav && claimedBatch && (
-          <EnhancedMissionHUD
+          {/* Bottom 30% - Mission Control Panel */}
+          <MissionControlPanel
             batch={claimedBatch}
-            mapRef={mapRef}
-            currentLat={location?.lat || LUSAKA_CENTER.lat}
-            currentLng={location?.lng || LUSAKA_CENTER.lng}
             onClose={() => {
               setShowActiveNav(false);
               setClaimedBatch(null);
+              setIsInAppNavigating(false);
             }}
+            currentLat={location?.lat || LUSAKA_CENTER.lat}
+            currentLng={location?.lng || LUSAKA_CENTER.lng}
+            isInAppNavigating={isInAppNavigating}
+            onNavigateToggle={setIsInAppNavigating}
           />
-        )}
-      </AnimatePresence>
+        </div>
+      ) : (
+        /* NORMAL MODE - Standard 60/40 layout */
+        <div className="flex flex-1 w-full relative z-30" style={{ minHeight: 0 }}>
+          <GigRadarSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole={userRole} />
+
+          <div className="flex-1 flex flex-col relative z-10" style={{ minHeight: 0 }}>
+            <header
+              className="h-16 border-b flex items-center justify-between px-4 sm:px-6 shrink-0 backdrop-blur-sm sticky top-0 z-20"
+              style={{
+                backgroundColor: "rgba(255, 251, 242, 0.85)",
+                borderColor: "hsl(38,40%,85%)",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2 rounded-lg transition-all"
+                  style={{ backgroundColor: "#F5F0E8" }}
+                >
+                  <Menu size={20} style={{ color: "#0F1A35" }} />
+                </motion.button>
+
+                <div className="flex items-center gap-2">
+                  <img src={hiveLogo} alt="The Hive" className="w-8 h-8 rounded-full object-cover" />
+                  <p className="font-display font-bold text-sm" style={{ color: "#0F1A35" }}>
+                    THE HIVE
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <GoOnlineOverlay
+                  isOnline={isOnline}
+                  onOnline={() => setIsOnline(true)}
+                  onLocationAcquired={(lat, lng) => {
+                    if (mapRef.current) {
+                      mapRef.current.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
+                    }
+                  }}
+                />
+
+                <div className="hidden sm:block text-right">
+                  <p
+                    className="text-sm font-bold tracking-tight"
+                    style={{
+                      background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    {profile?.full_name || user?.email?.split("@")[0] || "Worker"}
+                  </p>
+                </div>
+                <motion.div
+                  className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border-2 relative"
+                  style={{
+                    borderColor: "#B37C1C",
+                    background: "linear-gradient(135deg, #FFFBF2 0%, #F5F0E8 100%)",
+                    boxShadow: "0 4px 12px rgba(179, 124, 28, 0.25), inset 0 1px 3px rgba(255, 255, 255, 0.6)",
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  {profile?.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={profile.full_name || "User"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="#B37C1C" strokeWidth="2">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M 12 12 C 16 12 18 15 18 20 L 6 20 C 6 15 8 12 12 12" />
+                    </svg>
+                  )}
+                </motion.div>
+              </div>
+            </header>
+
+            <div
+              className="flex-[0.6] lg:flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2"
+              style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}
+            >
+              <MapComponent
+                ref={mapRef}
+                initialLat={mapCenter.lat}
+                initialLng={mapCenter.lng}
+                initialZoom={DEFAULT_ZOOM}
+              >
+                {location && isOnline && <CustomMarker lng={location.lng} lat={location.lat} label="You" />}
+
+                {bounties.map((bounty) => (
+                  <motion.div
+                    key={bounty.id}
+                    onClick={() => {
+                      setSelectedBounty(bounty);
+                      mapRef.current?.flyTo({ center: [bounty.lng, bounty.lat], zoom: 16, duration: 800 });
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <CustomMarker lng={bounty.lng} lat={bounty.lat} isPulsing={false} />
+                  </motion.div>
+                ))}
+
+                {routeGeometry && (
+                  <source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
+                    <layer id="route-layer" type="line" paint={{ "line-color": "#0F1A35", "line-width": 5 }} />
+                  </source>
+                )}
+              </MapComponent>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (location && mapRef.current) {
+                    mapRef.current.flyTo({ center: [location.lng, location.lat], zoom: 15, duration: 800 });
+                  }
+                }}
+                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
+                style={{ backgroundColor: "#FFFBF2", color: "#0F1A35" }}
+              >
+                <MapPin size={20} />
+              </motion.button>
+            </div>
+
+            <motion.div
+              ref={bottomSheetRef}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              layout
+              animate={{
+                height: sheetExpanded ? "100%" : "auto",
+              }}
+              transition={{ type: "spring", damping: 28, stiffness: 260 }}
+              className="flex-[0.4] lg:flex-[0.4] relative rounded-t-2xl sm:rounded-t-3xl overflow-hidden shadow-2xl flex flex-col"
+              style={{
+                backgroundColor: "#FFFBF2",
+              }}
+            >
+              {/* Drag Handle */}
+              <div className="h-1 bg-gold/30 mx-auto rounded-full mt-2 w-12" />
+
+              {/* Content */}
+              <div className="flex-1 overflow-hidden custom-scrollbar flex flex-col">
+                <AnimatePresence mode="wait">
+                  {!isOnline ? (
+                    <motion.div
+                      key="offline"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex-1 flex flex-col items-center justify-center px-4"
+                    >
+                      <div className="text-4xl mb-3">🔌</div>
+                      <p className="font-bold text-sm mb-1" style={{ color: "#0F1A35" }}>
+                        Go online to see bounties
+                      </p>
+                      <p className="text-xs text-center" style={{ color: "#0F1A35/60" }}>
+                        Click the "Go Online" button at the top to start accepting deliveries
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <AvailableBountiesDrawer
+                      key="bounties"
+                      batches={batches}
+                      onClaimBatch={handleClaimBatch}
+                      isLoading={isClustering}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
