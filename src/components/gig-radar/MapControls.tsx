@@ -1,31 +1,33 @@
-import { useEffect } from "react";
-import L from "leaflet";
 import { ZoomIn, ZoomOut, Navigation2 } from "lucide-react";
 import type { Location } from "@/types/gig-radar";
+import { MapRef } from "react-map-gl";
+import { useRef } from "react";
 
 interface MapControlsProps {
-  mapRef: React.RefObject<L.Map | null>;
+  mapRef: React.RefObject<MapRef | null>;
   userLocation: Location | null;
 }
 
 export const MapControls = ({ mapRef, userLocation }: MapControlsProps) => {
   const handleZoomIn = () => {
     if (mapRef.current) {
-      mapRef.current.zoomIn();
+      const currentZoom = mapRef.current.getZoom?.();
+      if (currentZoom) mapRef.current.zoomIn?.();
     }
   };
 
   const handleZoomOut = () => {
     if (mapRef.current) {
-      mapRef.current.zoomOut();
+      mapRef.current.zoomOut?.();
     }
   };
 
   const handleCenterMap = () => {
     if (mapRef.current && userLocation) {
-      mapRef.current.flyTo([userLocation.lat, userLocation.lng], 14, {
-        animate: true,
-        duration: 1.5,
+      mapRef.current.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        zoom: 14,
+        duration: 1500,
       });
     }
   };

@@ -121,34 +121,9 @@ export const CommandCenter = ({
       >
         {/* LEFT: Map Panel */}
         <div className="flex-[0.65] lg:flex-[0.65] relative overflow-hidden flex flex-col" style={{ backgroundColor: "#F5F0E8" }}>
-          <MapContainer
-            center={[riderLat, riderLng]}
-            zoom={16}
-            style={{ height: "100%", width: "100%", flex: 1 }}
-            ref={setMapRef}
-            className="z-10"
-            zoomControl={false}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="© OpenStreetMap"
-            />
-            <MapController riderLat={riderLat} riderLng={riderLng} mode={mode} />
-
-            {/* User marker */}
-            <UserMarker lat={riderLat} lng={riderLng} />
-
-            {/* Pickup marker (pickup mode) */}
-            {mode === "pickup" && batch.pickupLoc && (
-              <PickupLocationMarker lat={batch.pickupLoc.lat} lng={batch.pickupLoc.lng} />
-            )}
-
-            {/* Dropoff markers (delivery mode) */}
-            {mode === "delivery" &&
-              batch.dropoffs.map((dropoff, idx) => (
-                <DropoffMarker key={`dropoff-${idx}`} lat={dropoff.loc.lat} lng={dropoff.loc.lng} index={idx + 1} />
-              ))}
-          </MapContainer>
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <p style={{ color: "#666" }}>Map view goes here</p>
+          </div>
 
           {/* Zoom Controls + Route Info Pill (Bottom-Left) */}
           <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-3">
