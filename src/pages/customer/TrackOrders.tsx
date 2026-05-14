@@ -3,14 +3,15 @@ import { motion } from "framer-motion";
 import { MapPin, Truck, CheckCircle2, Clock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import MapComponent from "@/components/Map/MapComponent";
-import CustomMarker from "@/components/Map/CustomMarker";
-import { MapRef } from "react-map-gl";
+import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
+import WorkerMarker from "@/components/Map/WorkerMarker";
+import DestinationMarker from "@/components/Map/DestinationMarker";
+import { MapRef, Source, Layer } from "react-map-gl";
 import { toast } from "sonner";
+import { mapboxRoutingService } from "@/services/mapboxRoutingService";
 
 const statusSteps = ["pending", "processing", "in_transit", "out_for_delivery", "delivered"];
 const stepLabels = ["Order Placed", "Confirmed", "Shipped", "Out for Delivery", "Delivered"];
-const OSRM_API = "https://router.project-osrm.org";
 
 interface Order {
   id: number;
@@ -25,13 +26,6 @@ interface Order {
   current_long?: number;
 }
 
-interface RouteData {
-  routes: Array<{
-    distance: number;
-    duration: number;
-  }>;
-}
-
 const TrackOrders = () => {
   const { user } = useAuth();
   const mapRef = useRef<MapRef>(null);
@@ -41,6 +35,8 @@ const TrackOrders = () => {
   const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [revealedCodes, setRevealedCodes] = useState<Set<number>>(new Set());
   const [routeMetrics, setRouteMetrics] = useState<Map<number, { distance: string; eta: string }>>(new Map());
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [routeGeometries, setRouteGeometries] = useState<Map<number, [number, number][]>>(new Map());
   const courierLocationsRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
 
   useEffect(() => {
@@ -135,24 +131,27 @@ const TrackOrders = () => {
     };
   }, [orders]);
 
-  // Fetch OSRM metrics for active orders
+  // Fetch Mapbox route metrics for active orders
   useEffect(() => {
     const fetchRouteMetrics = async () => {
       const metricsMap = new Map<number, { distance: string; eta: string }>();
+      const geometriesMap = new Map<number, [number, number][]>();
 
       for (const order of orders) {
         if ((order.status === "in_transit" || order.status === "out_for_delivery") && customerCoords && order.runner_id) {
           const courierLocation = courierLocationsRef.current.get(order.runner_id);
           if (courierLocation) {
             try {
-              const url = `${OSRM_API}/route/v1/driving/${courierLocation.lng},${courierLocation.lat};${customerCoords.lng},${customerCoords.lat}`;
-              const response = await fetch(url);
-              const data: RouteData = await response.json();
+              const route = await mapboxRoutingService.getRoute(
+                courierLocation.lng,
+                courierLocation.lat,
+                customerCoords.lng,
+                customerCoords.lat
+              );
 
-              if (data.routes && data.routes.length > 0) {
-                const distance = (data.routes[0].distance / 1000).toFixed(1);
-                const eta = Math.round(data.routes[0].duration / 60);
-                metricsMap.set(order.id, { distance: `${distance}km`, eta: `${eta}m` });
+              if (route) {
+                metricsMap.set(order.id, { distance: route.distance, eta: `⏱️ ETA: ${route.eta}` });
+                geometriesMap.set(order.id, route.coordinates);
               }
             } catch (err) {
               console.warn(`[TrackOrders] Failed to fetch metrics for order ${order.id}:`, err);
@@ -162,6 +161,7 @@ const TrackOrders = () => {
       }
 
       setRouteMetrics(metricsMap);
+      setRouteGeometries(geometriesMap);
     };
 
     const interval = setInterval(fetchRouteMetrics, 10000);
@@ -220,14 +220,14 @@ const TrackOrders = () => {
         ) : orders.length === 0 ? (
           <div className="w-full space-y-6">
             <div className="w-full h-[70vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#f0f0f0" }}>
-              <MapComponent
+              <MapboxMapComponent
                 ref={mapRef}
                 initialLat={customerCoords?.lat || -15.4167}
                 initialLng={customerCoords?.lng || 28.2833}
                 initialZoom={13}
               >
-                {customerCoords && <CustomMarker lng={customerCoords.lng} lat={customerCoords.lat} label="You" />}
-              </MapComponent>
+                {customerCoords && <DestinationMarker lng={customerCoords.lng} lat={customerCoords.lat} label="You" type="dropoff" />}
+              </MapboxMapComponent>
             </div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full">
@@ -278,15 +278,41 @@ const TrackOrders = () => {
                   {isInTransit && (
                     <>
                       <div className="w-full h-[70vh] rounded-2xl overflow-hidden shadow-lg relative" style={{ backgroundColor: "#f0f0f0" }}>
-                        <MapComponent
+                        <MapboxMapComponent
                           ref={mapRef}
                           initialLat={customerCoords?.lat || -15.4167}
                           initialLng={customerCoords?.lng || 28.2833}
                           initialZoom={14}
                         >
-                          {customerCoords && <CustomMarker lng={customerCoords.lng} lat={customerCoords.lat} label="Destination" />}
-                          {courierLocation && <CustomMarker lng={courierLocation.lng} lat={courierLocation.lat} isPulsing={true} label="Courier" />}
-                        </MapComponent>
+                          {customerCoords && <DestinationMarker lng={customerCoords.lng} lat={customerCoords.lat} label="Destination" type="dropoff" />}
+                          {courierLocation && <WorkerMarker lng={courierLocation.lng} lat={courierLocation.lat} label="Courier" />}
+
+                          {/* Route polyline from Mapbox */}
+                          {routeGeometries.get(order.id) && routeGeometries.get(order.id)!.length > 0 && (
+                            <Source
+                              id={`route-${order.id}`}
+                              type="geojson"
+                              data={{
+                                type: "Feature",
+                                geometry: {
+                                  type: "LineString",
+                                  coordinates: routeGeometries.get(order.id)!,
+                                },
+                                properties: {},
+                              }}
+                            >
+                              <Layer
+                                id={`route-layer-${order.id}`}
+                                type="line"
+                                paint={{
+                                  "line-color": "#B37C1C",
+                                  "line-width": 5,
+                                  "line-opacity": 0.8,
+                                }}
+                              />
+                            </Source>
+                          )}
+                        </MapboxMapComponent>
 
                         {/* Glassmorphic HUD */}
                         <div
