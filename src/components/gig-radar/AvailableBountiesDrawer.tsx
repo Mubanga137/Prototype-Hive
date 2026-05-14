@@ -1,6 +1,5 @@
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BountyCardEnhanced } from "./BountyCardEnhanced";
 import { BatchedOrder } from "@/utils/orderClustering";
 
@@ -16,25 +15,6 @@ export const AvailableBountiesDrawer = ({
   isLoading = false,
 }: AvailableBountiesDrawerProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(batches.length > 1);
-
-  const checkScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-    }
-  };
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 400;
-      const newScroll = scrollContainerRef.current.scrollLeft + (direction === "left" ? -scrollAmount : scrollAmount);
-      scrollContainerRef.current.scrollTo({ left: newScroll, behavior: "smooth" });
-      setTimeout(checkScroll, 300);
-    }
-  };
 
   return (
     <motion.div
@@ -78,58 +58,22 @@ export const AvailableBountiesDrawer = ({
             </p>
           </div>
         ) : (
-          <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Navigation Arrows */}
-            {canScrollLeft && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                onClick={() => scroll("left")}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                style={{
-                  backgroundColor: "#FFFBF2",
-                  border: "1px solid #D4A574",
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronLeft size={20} style={{ color: "#B37C1C" }} />
-              </motion.button>
-            )}
-
-            {canScrollRight && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                onClick={() => scroll("right")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                style={{
-                  backgroundColor: "#FFFBF2",
-                  border: "1px solid #D4A574",
-                }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronRight size={20} style={{ color: "#B37C1C" }} />
-              </motion.button>
-            )}
-
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Scrollable Content */}
             <div
               ref={scrollContainerRef}
-              onScroll={checkScroll}
-              className="flex-1 overflow-x-auto overflow-y-auto px-4 sm:px-6 py-4 flex flex-wrap content-start gap-4"
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-4"
               style={{
                 scrollBehavior: "smooth",
               }}
             >
               {batches.map((batch) => (
-                <div key={batch.batchId} className="w-full sm:w-1/2 lg:w-1/3">
-                  <div
-                    onClick={() => onClaimBatch(batch)}
-                  >
-                    <BountyCardEnhanced batch={batch} />
-                  </div>
+                <div
+                  key={batch.batchId}
+                  onClick={() => onClaimBatch(batch)}
+                  className="cursor-pointer"
+                >
+                  <BountyCardEnhanced batch={batch} />
                 </div>
               ))}
             </div>
