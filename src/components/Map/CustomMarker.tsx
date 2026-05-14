@@ -1,5 +1,6 @@
 import React from 'react';
 import { Marker } from 'react-map-gl';
+import { motion } from 'framer-motion';
 
 interface CustomMarkerProps {
   lng: number;
@@ -17,6 +18,14 @@ export const CustomMarker: React.FC<CustomMarkerProps> = ({
   return (
     <Marker longitude={lng} latitude={lat} anchor="center">
       <div className="relative flex items-center justify-center">
+        {isPulsing && (
+          <motion.div
+            className="absolute w-12 h-12 rounded-full"
+            animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            style={{ backgroundColor: "rgba(179, 124, 28, 0.3)" }}
+          />
+        )}
         <svg
           width="32"
           height="40"

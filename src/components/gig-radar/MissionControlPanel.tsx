@@ -12,6 +12,7 @@ interface MissionControlPanelProps {
   currentLng: number;
   isInAppNavigating: boolean;
   onNavigateToggle: (state: boolean) => void;
+  onPickupConfirmed?: (pickupLat: number, pickupLng: number) => void;
 }
 
 interface ActiveStep {
@@ -30,11 +31,13 @@ export const MissionControlPanel = ({
   currentLng,
   isInAppNavigating,
   onNavigateToggle,
+  onPickupConfirmed,
 }: MissionControlPanelProps) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [showOtpKeypad, setShowOtpKeypad] = useState(false);
   const [activeStep, setActiveStep] = useState<ActiveStep | null>(null);
+  const [pickupConfirmed, setPickupConfirmed] = useState(false);
 
   // Initialize active step
   useEffect(() => {
@@ -152,7 +155,7 @@ export const MissionControlPanel = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-2"
+              className="space-y-3"
             >
               {/* Step Type Badge */}
               <div className="flex items-center gap-2">
@@ -169,6 +172,26 @@ export const MissionControlPanel = ({
               <h3 className="text-lg font-bold" style={{ color: "#0F1A35" }}>
                 {activeStep.location}
               </h3>
+
+              {/* Order Details (after pickup confirmed) */}
+              {pickupConfirmed && activeStep.type === "pickup" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: "rgba(179, 124, 28, 0.1)", borderColor: "#D4A574", borderWidth: "1px" }}
+                >
+                  <p className="text-xs font-bold" style={{ color: "#0F1A35" }}>
+                    📦 Order Details
+                  </p>
+                  <p className="text-sm font-bold mt-1" style={{ color: "#B37C1C" }}>
+                    Order #{batch.batchId?.slice(0, 8).toUpperCase() || "12345"}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "#0F1A35/70" }}>
+                    {batch.orderCount} item{batch.orderCount !== 1 ? "s" : ""} ready for pickup
+                  </p>
+                </motion.div>
+              )}
 
               {/* Customer Phone (if dropoff) */}
               {activeStep.customerPhone && (
@@ -194,11 +217,16 @@ export const MissionControlPanel = ({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              if (activeStep?.type === "pickup") {
-                setCurrentStepIndex(1);
-                toast.success("✅ Pickup confirmed!");
-              } else {
+              if (activeStep?.type === "pickup" && !pickupConfirmed) {
+                setPickupConfirmed(true);
+                onPickupConfirmed?.(batch.pickupLat || -15.3875, batch.pickupLng || 28.3228);
+                toast.success("✅ Pickup confirmed! Route mapped.");
+              } else if (activeStep?.type === "dropoff") {
                 setShowOtpKeypad(true);
+              } else if (pickupConfirmed && activeStep?.type === "pickup") {
+                setCurrentStepIndex(1);
+                setPickupConfirmed(false);
+                toast.success("Moving to deliveries...");
               }
             }}
             className="w-full py-3 rounded-xl font-bold text-base transition-all text-white flex items-center justify-center gap-2"
@@ -208,7 +236,9 @@ export const MissionControlPanel = ({
             }}
           >
             <ShieldCheck size={18} />
-            {getActionButtonLabel()}
+            {pickupConfirmed && activeStep?.type === "pickup"
+              ? "✅ PICKUP CONFIRMED"
+              : getActionButtonLabel()}
           </motion.button>
 
           {/* Navigation Toggle */}
