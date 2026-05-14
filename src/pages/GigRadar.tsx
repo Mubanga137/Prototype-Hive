@@ -415,13 +415,13 @@ const GigRadar = () => {
               className="flex-[0.6] lg:flex-[0.6] relative overflow-hidden rounded-b-2xl sm:rounded-b-3xl mx-1 sm:mx-2 mb-1 sm:mb-2"
               style={{ backgroundColor: "#f0f0f0", minHeight: 0 }}
             >
-              <MapComponent
+              <MapboxMapComponent
                 ref={mapRef}
                 initialLat={mapCenter.lat}
                 initialLng={mapCenter.lng}
                 initialZoom={DEFAULT_ZOOM}
               >
-                {location && isOnline && <CustomMarker lng={location.lng} lat={location.lat} label="You" />}
+                {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
 
                 {bounties.map((bounty) => (
                   <motion.div
@@ -432,16 +432,16 @@ const GigRadar = () => {
                     }}
                     className="cursor-pointer"
                   >
-                    <CustomMarker lng={bounty.lng} lat={bounty.lat} isPulsing={false} />
+                    <DestinationMarker lng={bounty.lng} lat={bounty.lat} type="dropoff" />
                   </motion.div>
                 ))}
 
                 {routeGeometry && (
-                  <source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
-                    <layer id="route-layer" type="line" paint={{ "line-color": "#0F1A35", "line-width": 5 }} />
-                  </source>
+                  <Source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
+                    <Layer id="route-layer" type="line" paint={{ "line-color": "#B37C1C", "line-width": 5 }} />
+                  </Source>
                 )}
-              </MapComponent>
+              </MapboxMapComponent>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
