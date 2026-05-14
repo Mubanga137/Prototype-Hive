@@ -1,5 +1,6 @@
 import React, { useCallback, forwardRef } from 'react';
 import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl';
+import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 interface MapComponentProps {
@@ -25,6 +26,7 @@ const MapComponentImpl = forwardRef<MapRef, MapComponentProps>(({
     <div className="w-full h-full overflow-hidden">
       <Map
         ref={mapRef}
+        mapLib={maplibregl}
         initialViewState={{
           longitude: initialLng,
           latitude: initialLat,
