@@ -11,7 +11,7 @@ import { BountyCard } from "@/components/gig-radar/BountyCard";
 import { CommandCenter } from "@/components/gig-radar/CommandCenter";
 import { GoOnlineOverlay } from "@/components/gig-radar/GoOnlineOverlay";
 import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountiesDrawer";
-import { ActiveNavigationHUD } from "@/components/gig-radar/ActiveNavigationHUD";
+import { EnhancedMissionHUD } from "@/components/gig-radar/EnhancedMissionHUD";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -400,8 +400,11 @@ const GigRadar = () => {
 
       <AnimatePresence>
         {showActiveNav && claimedBatch && (
-          <ActiveNavigationHUD
+          <EnhancedMissionHUD
             batch={claimedBatch}
+            mapRef={mapRef}
+            currentLat={location?.lat || LUSAKA_CENTER.lat}
+            currentLng={location?.lng || LUSAKA_CENTER.lng}
             onClose={() => {
               setShowActiveNav(false);
               setClaimedBatch(null);
