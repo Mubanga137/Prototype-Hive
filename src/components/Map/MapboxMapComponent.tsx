@@ -1,5 +1,6 @@
 import React, { useCallback, forwardRef } from 'react';
 import Map, { NavigationControl, GeolocateControl, MapRef } from 'react-map-gl';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface MapboxMapComponentProps {
@@ -11,6 +12,7 @@ interface MapboxMapComponentProps {
 }
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidGhlLWhpdmUiLCJhIjoiY21wNXdidmV5MDFlYzJwc2wydzZ1NXoyYSJ9.ImuunrlyiRHMEfwO8TaQnQ';
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
   initialLng = 0,
