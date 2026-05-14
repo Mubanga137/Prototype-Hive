@@ -248,6 +248,16 @@ const GigRadar = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              <GoOnlineOverlay
+                isOnline={isOnline}
+                onOnline={() => setIsOnline(true)}
+                onLocationAcquired={(lat, lng) => {
+                  if (mapRef.current) {
+                    mapRef.current.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
+                  }
+                }}
+              />
+
               <div className="hidden sm:block text-right">
                 <p
                   className="text-sm font-bold tracking-tight"
@@ -318,20 +328,6 @@ const GigRadar = () => {
               )}
             </MapComponent>
 
-            {/* Go Online Status Overlay */}
-            <AnimatePresence>
-              {!showActiveNav && (
-                <GoOnlineOverlay
-                  isOnline={isOnline}
-                  onOnline={() => setIsOnline(true)}
-                  onLocationAcquired={(lat, lng) => {
-                    if (mapRef.current) {
-                      mapRef.current.flyTo({ center: [lng, lat], zoom: 15, duration: 800 });
-                    }
-                  }}
-                />
-              )}
-            </AnimatePresence>
 
             <motion.button
               whileHover={{ scale: 1.05 }}

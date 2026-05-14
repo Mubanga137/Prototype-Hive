@@ -44,21 +44,17 @@ export const AvailableBountiesDrawer = ({
       className="flex flex-col h-full"
     >
       {/* Header */}
-      <div className="px-4 sm:px-6 py-4 border-b" style={{ borderColor: "#D4A574" }}>
-        <h2 className="text-base font-bold flex items-center gap-2 mb-1" style={{ color: "#0F1A35" }}>
-          <span className="text-lg">📍</span>
-          (Use the gold location pin)
-        </h2>
-        <h3 className="text-xl font-bold" style={{ color: "#0F1A35" }}>
+      <div className="px-4 sm:px-6 py-2 border-b" style={{ borderColor: "#D4A574" }}>
+        <h3 className="text-lg font-bold" style={{ color: "#0F1A35" }}>
           Available Bounties
         </h3>
-        <p className="text-xs mt-1" style={{ color: "#0F1A35/60" }}>
+        <p className="text-xs mt-0.5" style={{ color: "#0F1A35/60" }}>
           {batches.length} bounty batch{batches.length !== 1 ? "es" : ""} near you
         </p>
       </div>
 
       {/* Scrollable Cards Container */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <motion.div
@@ -82,7 +78,7 @@ export const AvailableBountiesDrawer = ({
             </p>
           </div>
         ) : (
-          <div className="relative flex-1 flex flex-col min-h-0">
+          <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Navigation Arrows */}
             {canScrollLeft && (
               <motion.button
@@ -122,13 +118,13 @@ export const AvailableBountiesDrawer = ({
             <div
               ref={scrollContainerRef}
               onScroll={checkScroll}
-              className="flex-1 overflow-x-auto overflow-y-hidden px-4 sm:px-6 py-4 flex gap-4 snap-x snap-mandatory scrollbar-hide"
+              className="flex-1 overflow-x-auto overflow-y-auto px-4 sm:px-6 py-4 flex flex-wrap content-start gap-4"
               style={{
                 scrollBehavior: "smooth",
               }}
             >
               {batches.map((batch) => (
-                <div key={batch.batchId} className="snap-start">
+                <div key={batch.batchId} className="w-full sm:w-1/2 lg:w-1/3">
                   <div
                     onClick={() => onClaimBatch(batch)}
                   >

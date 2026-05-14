@@ -1,5 +1,6 @@
 import React from 'react';
 import { Marker } from 'react-map-gl';
+import { MapPin } from 'lucide-react';
 
 interface CustomMarkerProps {
   lng: number;
@@ -17,11 +18,8 @@ export const CustomMarker: React.FC<CustomMarkerProps> = ({
   return (
     <Marker longitude={lng} latitude={lat} anchor="center">
       <div className="relative flex items-center justify-center">
-        {isPulsing && (
-          <div className="absolute w-12 h-12 bg-[#B37C1C]/20 rounded-full animate-ping" />
-        )}
-        <div className="w-8 h-8 bg-[#B37C1C] rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-          <div className="w-2 h-2 bg-white rounded-full" />
+        <div className="w-8 h-8 flex items-center justify-center">
+          <MapPin size={32} color="#B37C1C" fill="#B37C1C" />
         </div>
       </div>
       {label && (
