@@ -87,20 +87,26 @@ export function useOrderClustering() {
         3: "Premium Goods Store",
       };
 
-      for (const batch of clustered) {
-        const smeId = batch.pickupSmeId;
-        const { data: smeData, error: smeNameError } = await supabase
-          .from("sme_stores")
-          .select("brand_name")
-          .eq("id", smeId)
-          .maybeSingle();
+      // Get unique SME IDs to batch query
+      const uniqueSmeIds = [...new Set(clustered.map((b) => b.pickupSmeId))];
+      const smeNamesMap = new Map<number, string>();
 
-        if (!smeNameError && smeData?.brand_name) {
-          batch.pickupSmeNam = smeData.brand_name;
-        } else {
-          // Use dummy name if query fails
-          batch.pickupSmeNam = dummySmeNames[smeId] || `Store ${smeId}`;
+      if (uniqueSmeIds.length > 0) {
+        const { data: smeData, error: smeError } = await supabase
+          .from("sme_stores")
+          .select("id, brand_name")
+          .in("id", uniqueSmeIds);
+
+        if (!smeError && smeData) {
+          smeData.forEach((sme: any) => {
+            smeNamesMap.set(sme.id, sme.brand_name);
+          });
         }
+      }
+
+      // Assign SME names to batches
+      for (const batch of clustered) {
+        batch.pickupSmeNam = smeNamesMap.get(batch.pickupSmeId) || dummySmeNames[batch.pickupSmeId] || `Store ${batch.pickupSmeId}`;
       }
 
       console.log("[useOrderClustering] Successfully clustered and hydrated batches");

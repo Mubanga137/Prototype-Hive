@@ -17,20 +17,38 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     fetch: async (url: string, options?: RequestInit) => {
       try {
-        const response = await fetch(url, {
-          ...options,
-          // Add timeout to fail faster on unreachable endpoints
-          signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined,
-        });
-        return response;
+        // Use 15 second timeout for Supabase queries (more generous than 10s)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          throw fetchError;
+        }
       } catch (error: any) {
         // Log detailed error info for debugging
-        console.error("[Supabase Fetch Error]", {
+        const errorInfo = {
           url,
-          error: error?.message,
-          type: error?.name,
+          message: error?.message,
+          name: error?.name,
+          code: error?.code,
           timestamp: new Date().toISOString(),
-        });
+        };
+
+        // Only log timeouts and auth errors, not every error
+        if (error?.name === "AbortError" || error?.message?.includes("timeout")) {
+          console.warn("[Supabase] Request timeout:", errorInfo);
+        } else if (error?.status === 401 || error?.status === 403) {
+          console.warn("[Supabase] Auth error:", errorInfo);
+        }
+
         throw error;
       }
     },
