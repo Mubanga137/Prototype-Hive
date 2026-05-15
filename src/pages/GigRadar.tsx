@@ -14,7 +14,6 @@ import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountie
 import { EnhancedMissionHUD } from "@/components/gig-radar/EnhancedMissionHUD";
 import { MissionControlPanel } from "@/components/gig-radar/MissionControlPanel";
 import { TopNavigationHUD } from "@/components/gig-radar/TopNavigationHUD";
-import { TopNavigationHUD } from "@/components/gig-radar/TopNavigationHUD";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -24,6 +23,7 @@ import { toast } from "sonner";
 import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
 import ChevronMarker from "@/components/Map/ChevronMarker";
 import DestinationMarker from "@/components/Map/DestinationMarker";
+import WorkerMarker from "@/components/Map/WorkerMarker";
 import { mapboxRoutingService, Leg } from "@/services/mapboxRoutingService";
 import { optimizeRoutePath, formatCoordinatesForMapbox } from "@/utils/routeOptimizationV2";
 
