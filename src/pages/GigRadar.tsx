@@ -14,6 +14,7 @@ import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountie
 import { EnhancedMissionHUD } from "@/components/gig-radar/EnhancedMissionHUD";
 import { MissionControlPanel } from "@/components/gig-radar/MissionControlPanel";
 import { TopNavigationHUD } from "@/components/gig-radar/TopNavigationHUD";
+import { TopNavigationHUD } from "@/components/gig-radar/TopNavigationHUD";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -24,6 +25,7 @@ import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
 import ChevronMarker from "@/components/Map/ChevronMarker";
 import DestinationMarker from "@/components/Map/DestinationMarker";
 import { mapboxRoutingService, Leg } from "@/services/mapboxRoutingService";
+import { optimizeRoutePath, formatCoordinatesForMapbox } from "@/utils/routeOptimizationV2";
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
 const DEFAULT_ZOOM = 14;
@@ -184,43 +186,37 @@ const GigRadar = () => {
 
     const fetchRoute = async () => {
       try {
-        // Pickup location from batch
         const pickupLat = claimedBatch.pickupLoc?.lat || LUSAKA_CENTER.lat;
         const pickupLng = claimedBatch.pickupLoc?.lng || LUSAKA_CENTER.lng;
 
-        // Destination (first dropoff)
-        const dropoffLat = claimedBatch.dropoffs[0]?.loc.lat || LUSAKA_CENTER.lat;
-        const dropoffLng = claimedBatch.dropoffs[0]?.loc.lng || LUSAKA_CENTER.lng;
-
-        // Leg 1: Worker to pickup (with turn-by-turn steps)
-        const leg1Route = await mapboxRoutingService.getFullRoute(location.lng, location.lat, pickupLng, pickupLat);
-
-        // Check if request was cancelled
-        if (controller.signal.aborted) return;
-
-        if (!leg1Route) throw new Error("No route found for leg 1");
-
-        // Leg 2: Pickup to customer
-        const leg2Route = await mapboxRoutingService.getFullRoute(pickupLng, pickupLat, dropoffLng, dropoffLat);
+        // Build optimized waypoint sequence using nearest-neighbor for multi-dropoff batches
+        const optimizedCoords = optimizeRoutePath(
+          { lat: location.lat, lng: location.lng },
+          [{ id: "pickup", lat: pickupLat, lng: pickupLng }],
+          claimedBatch.dropoffs.map((d, idx) => ({
+            id: d.orderId || `dropoff-${idx}`,
+            lat: d.loc.lat,
+            lng: d.loc.lng,
+          }))
+        );
 
         // Check if request was cancelled
         if (controller.signal.aborted) return;
 
-        if (!leg2Route) throw new Error("No route found for leg 2");
+        // Fetch single combined route from Mapbox with all waypoints (String of Pearls)
+        const fullRoute = await mapboxRoutingService.getMultiWaypointRoute(optimizedCoords);
 
-        // Combine coordinates
-        const totalCoords = [
-          ...leg1Route.coordinates,
-          ...leg2Route.coordinates.slice(1),
-        ];
+        // Check if request was cancelled
+        if (controller.signal.aborted) return;
 
-        // Extract leg data for MissionControlPanel ETA display
-        const allLegs = [...leg1Route.legs, ...leg2Route.legs];
-        setLegData(allLegs);
+        if (!fullRoute) throw new Error("No route found");
 
-        // Extract first turn-by-turn instruction from leg 1
-        if (leg1Route.legs[0]?.steps && leg1Route.legs[0].steps.length > 0) {
-          const firstStep = leg1Route.legs[0].steps[0];
+        setRouteGeometry(fullRoute.coordinates as [number, number][]);
+        setLegData(fullRoute.legs);
+
+        // Extract first turn-by-turn instruction
+        if (fullRoute.legs[0]?.steps && fullRoute.legs[0].steps.length > 0) {
+          const firstStep = fullRoute.legs[0].steps[0];
           const stepName = firstStep.name || "Continue";
           const stepDistance = Math.round(firstStep.distance);
           let instruction = `${stepName}`;
@@ -230,11 +226,13 @@ const GigRadar = () => {
           setNextInstruction(instruction);
         }
 
-        const totalDuration = leg1Route.durationSeconds + leg2Route.durationSeconds;
-        const totalMinutes = Math.ceil(totalDuration / 60);
+        const totalMinutes = Math.ceil(fullRoute.durationSeconds / 60);
+        const totalDistanceKm = (fullRoute.distance / 1000).toFixed(1);
 
-        setRouteGeometry(totalCoords as [number, number][]);
-        setRouteETAMap(new Map([[claimedBatch.clusterId, { eta: `⏱️ ETA: ${totalMinutes}m`, distance: `📏 ${(totalDuration / 1000).toFixed(1)}km` }]]));
+        setRouteETAMap(new Map([[claimedBatch.clusterId, {
+          eta: `⏱️ ETA: ${totalMinutes}m`,
+          distance: `📏 ${totalDistanceKm}km`
+        }]]));
       } catch (error: any) {
         // Don't show error for aborted requests
         if (error?.name === "AbortError") {
@@ -286,7 +284,7 @@ const GigRadar = () => {
     }
   }, [location, isOnline, routeGeometry]);
 
-  // Lock map camera to user location during in-app navigation
+  // Lock map camera to user location during in-app navigation with 3D perspective
   useEffect(() => {
     if (isInAppNavigating && mapRef.current && location) {
       const interval = setInterval(() => {
@@ -295,6 +293,8 @@ const GigRadar = () => {
             center: [location.lng, location.lat],
             duration: 500,
             zoom: 17,
+            pitch: 60,
+            bearing: userBearing,
           });
         }
       }, 1000);
@@ -358,15 +358,16 @@ const GigRadar = () => {
                 />
               )}
 
-              {/* Destination marker - first dropoff */}
-              {claimedBatch.dropoffs[0] && (
+              {/* Destination markers - all dropoffs in batch */}
+              {claimedBatch.dropoffs.map((dropoff, idx) => (
                 <DestinationMarker
-                  lng={claimedBatch.dropoffs[0].loc.lng}
-                  lat={claimedBatch.dropoffs[0].loc.lat}
-                  label={claimedBatch.dropoffs[0].customer}
+                  key={dropoff.orderId || `dropoff-${idx}`}
+                  lng={dropoff.loc.lng}
+                  lat={dropoff.loc.lat}
+                  label={`${idx + 1}. ${dropoff.customer}`}
                   type="dropoff"
                 />
-              )}
+              ))}
 
               {/* Route polyline (gold color via Mapbox) */}
               {routeGeometry && routeGeometry.length > 0 && (
@@ -411,6 +412,16 @@ const GigRadar = () => {
             </motion.button>
           </div>
 
+          {/* Top Navigation HUD - Dynamic turn-by-turn */}
+          {isInAppNavigating && nextInstruction && (
+            <TopNavigationHUD
+              nextInstruction={nextInstruction}
+              distance={nextInstruction.includes('-') ? nextInstruction.split(' - ')[1] || "calculating..." : "calculating..."}
+              soundEnabled={false}
+              onBackClick={() => setIsInAppNavigating(false)}
+            />
+          )}
+
           {/* Bottom 30% - Mission Control Panel */}
           <MissionControlPanel
             batch={claimedBatch}
@@ -423,6 +434,7 @@ const GigRadar = () => {
             currentLng={location?.lng || LUSAKA_CENTER.lng}
             isInAppNavigating={isInAppNavigating}
             onNavigateToggle={setIsInAppNavigating}
+            legData={legData}
           />
         </div>
       ) : (
