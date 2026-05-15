@@ -13,6 +13,7 @@ interface MissionControlPanelProps {
   isInAppNavigating: boolean;
   onNavigateToggle: (state: boolean) => void;
   onPickupConfirmed?: (pickupLat: number, pickupLng: number) => void;
+  legData?: Array<{ duration: number; distance: number }>; // Mapbox leg data
 }
 
 interface ActiveStep {
@@ -32,6 +33,7 @@ export const MissionControlPanel = ({
   isInAppNavigating,
   onNavigateToggle,
   onPickupConfirmed,
+  legData,
 }: MissionControlPanelProps) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -39,26 +41,50 @@ export const MissionControlPanel = ({
   const [activeStep, setActiveStep] = useState<ActiveStep | null>(null);
   const [pickupConfirmed, setPickupConfirmed] = useState(false);
 
-  // Initialize active step
+  // Initialize active step with Mapbox leg data when available
   useEffect(() => {
     const step = batch.dropoffs[currentStepIndex];
     if (currentStepIndex === 0) {
+      let distance = "calculating...";
+      let estimatedTime: string | undefined;
+
+      if (legData && legData[0]) {
+        const leg = legData[0];
+        const distanceKm = (leg.distance / 1000).toFixed(1);
+        const minutes = Math.ceil(leg.duration / 60);
+        distance = `⏱️ ${minutes} mins (${distanceKm} km) to Pickup`;
+        estimatedTime = `${minutes} min`;
+      }
+
       setActiveStep({
         type: "pickup",
         location: batch.pickupSmeNam || "Pickup Location",
-        distance: "calculating...",
+        distance,
+        estimatedTime,
       });
     } else if (step) {
+      let distance = `${(Math.random() * 3 + 0.5).toFixed(1)} km`;
+      let estimatedTime: string | undefined;
+
+      // Use leg data if available (leg 1 is pickup->first dropoff, etc)
+      if (legData && legData[1]) {
+        const leg = legData[1];
+        const distanceKm = (leg.distance / 1000).toFixed(1);
+        const minutes = Math.ceil(leg.duration / 60);
+        distance = `⏱️ ${minutes} mins (${distanceKm} km) to Dropoff`;
+        estimatedTime = `${minutes} min`;
+      }
+
       setActiveStep({
         type: "dropoff",
         location: step.customer,
         customerName: step.customer,
         customerPhone: step.phone,
-        distance: `${(Math.random() * 3 + 0.5).toFixed(1)} km`,
-        estimatedTime: `${Math.floor(Math.random() * 15 + 5)} min`,
+        distance,
+        estimatedTime,
       });
     }
-  }, [currentStepIndex, batch]);
+  }, [currentStepIndex, batch, legData]);
 
   const handleVerifyOtp = async (otp: string): Promise<boolean> => {
     if (otp === "0000" || otp.length === 4) {
