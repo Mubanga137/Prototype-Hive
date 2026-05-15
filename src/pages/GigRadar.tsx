@@ -14,7 +14,7 @@ import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountie
 import { EnhancedMissionHUD } from "@/components/gig-radar/EnhancedMissionHUD";
 import { MissionControlPanel } from "@/components/gig-radar/MissionControlPanel";
 import { TopNavigationHUD } from "@/components/gig-radar/TopNavigationHUD";
-import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
+import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints, ShieldCheck } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
 import { BatchedOrder } from "@/utils/orderClustering";
@@ -328,8 +328,184 @@ const GigRadar = () => {
     <div className="relative w-full h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#FFFBF2" }}>
       <HoneycombBackground />
 
-      {/* 70/30 SPLIT LAYOUT WHEN ACTIVE MISSION */}
-      {showActiveNav && claimedBatch ? (
+      {/* FULL-SCREEN IMMERSIVE NAVIGATION MODE */}
+      {showActiveNav && claimedBatch && isInAppNavigating ? (
+        <div className="fixed inset-0 w-screen h-screen z-50 flex flex-col">
+          {/* Full-screen map - completely immersive */}
+          <MapboxMapComponent
+            ref={mapRef}
+            initialLat={mapCenter.lat}
+            initialLng={mapCenter.lng}
+            initialZoom={17.5}
+            style="navigation-night-v1"
+            pitch={65}
+            bearing={userBearing}
+          >
+            {location && isOnline && (
+              <ChevronMarker
+                lng={location.lng}
+                lat={location.lat}
+                bearing={userBearing}
+                label={undefined}
+              />
+            )}
+
+            {/* Pickup marker */}
+            {claimedBatch.pickupLoc && (
+              <DestinationMarker
+                lng={claimedBatch.pickupLoc.lng}
+                lat={claimedBatch.pickupLoc.lat}
+                label={claimedBatch.pickupSmeNam}
+                type="pickup"
+              />
+            )}
+
+            {/* All dropoff markers */}
+            {claimedBatch.dropoffs.map((dropoff, idx) => (
+              <DestinationMarker
+                key={dropoff.orderId || `dropoff-${idx}`}
+                lng={dropoff.loc.lng}
+                lat={dropoff.loc.lat}
+                label={`${idx + 1}. ${dropoff.customer}`}
+                type="dropoff"
+              />
+            ))}
+
+            {/* Route polyline */}
+            {routeGeometry && routeGeometry.length > 0 && (
+              <Source
+                id="mission-route"
+                type="geojson"
+                data={{
+                  type: "Feature",
+                  geometry: {
+                    type: "LineString",
+                    coordinates: routeGeometry,
+                  },
+                  properties: {},
+                }}
+              >
+                <Layer
+                  id="mission-route-layer"
+                  type="line"
+                  paint={{
+                    "line-color": "#B37C1C",
+                    "line-width": 5,
+                    "line-opacity": 0.9,
+                  }}
+                />
+              </Source>
+            )}
+          </MapboxMapComponent>
+
+          {/* Top-Left Turn Instruction HUD */}
+          {nextInstruction && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute top-6 left-4 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-4"
+              style={{
+                backgroundColor: 'rgba(20, 20, 30, 0.85)',
+                borderColor: 'rgba(179, 124, 28, 0.6)',
+                maxWidth: '320px',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <ChevronRight size={24} style={{ color: '#B37C1C', flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-base font-bold leading-tight mb-1 truncate"
+                    style={{ color: '#FFFBF2' }}
+                  >
+                    {nextInstruction.split(' - ')[0] || nextInstruction}
+                  </p>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: '#B37C1C' }}
+                  >
+                    {nextInstruction.includes('-') ? nextInstruction.split(' - ')[1] || '...' : '...'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Bottom Bar - ETA, Progress & Controls */}
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            className="absolute bottom-0 left-0 right-0 z-60 rounded-t-3xl backdrop-blur-xl border-t shadow-2xl p-4 pb-8"
+            style={{
+              backgroundColor: 'rgba(255, 251, 242, 0.95)',
+              borderColor: '#B37C1C',
+              maxWidth: '100vw',
+            }}
+          >
+            {/* ETA & Distance Display */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)' }}>
+                  <Car size={16} style={{ color: '#FFFBF2' }} />
+                </div>
+                <div>
+                  {legData && legData[0] && (
+                    <>
+                      <p className="text-lg font-bold" style={{ color: '#0F1A35' }}>
+                        {Math.ceil((legData[0].duration || 0) / 60)} min
+                      </p>
+                      <p className="text-xs" style={{ color: '#0F1A35/60' }}>
+                        {((legData[0].distance || 0) / 1000).toFixed(1)} km remaining
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Exit Navigation Button */}
+              <motion.button
+                onClick={() => {
+                  setIsInAppNavigating(false);
+                  setShowActiveNav(false);
+                  setClaimedBatch(null);
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-3 rounded-full transition-all flex-shrink-0"
+                style={{ backgroundColor: '#F5F0E8' }}
+              >
+                <X size={20} style={{ color: '#0F1A35' }} />
+              </motion.button>
+            </div>
+
+            {/* Progress Track */}
+            <div className="mb-4 h-1 rounded-full" style={{ backgroundColor: '#E8E0D0' }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: '#B37C1C' }}
+                initial={{ width: 0 }}
+                animate={{ width: '45%' }}
+                transition={{ duration: 3, ease: 'easeOut' }}
+              />
+            </div>
+
+            {/* Main Action Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+              style={{
+                backgroundColor: '#B37C1C',
+                color: '#FFFBF2',
+                boxShadow: '0 8px 24px rgba(179, 124, 28, 0.4)',
+              }}
+            >
+              <ShieldCheck size={20} />
+              🔒 Verify Hand-Off OTP
+            </motion.button>
+          </motion.div>
+        </div>
+      ) : showActiveNav && claimedBatch ? (
+        /* NON-IMMERSIVE ACTIVE MISSION VIEW (pre-navigation) */
         <div className="flex-1 flex flex-col w-full h-screen overflow-hidden">
           {/* Top 70% - Map */}
           <div className="h-[70vh] relative overflow-hidden flex-shrink-0">
@@ -348,7 +524,7 @@ const GigRadar = () => {
                 />
               )}
 
-              {/* Pickup marker - from SME location */}
+              {/* Pickup marker */}
               {claimedBatch.pickupLoc && (
                 <DestinationMarker
                   lng={claimedBatch.pickupLoc.lng}
@@ -358,7 +534,7 @@ const GigRadar = () => {
                 />
               )}
 
-              {/* Destination markers - all dropoffs in batch */}
+              {/* All dropoff markers */}
               {claimedBatch.dropoffs.map((dropoff, idx) => (
                 <DestinationMarker
                   key={dropoff.orderId || `dropoff-${idx}`}
@@ -369,7 +545,7 @@ const GigRadar = () => {
                 />
               ))}
 
-              {/* Route polyline (gold color via Mapbox) */}
+              {/* Route polyline */}
               {routeGeometry && routeGeometry.length > 0 && (
                 <Source
                   id="mission-route"
@@ -396,7 +572,7 @@ const GigRadar = () => {
               )}
             </MapboxMapComponent>
 
-            {/* Minimal Controls - only center map button */}
+            {/* Center map button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -411,16 +587,6 @@ const GigRadar = () => {
               <MapPin size={20} />
             </motion.button>
           </div>
-
-          {/* Top Navigation HUD - Dynamic turn-by-turn */}
-          {isInAppNavigating && nextInstruction && (
-            <TopNavigationHUD
-              nextInstruction={nextInstruction}
-              distance={nextInstruction.includes('-') ? nextInstruction.split(' - ')[1] || "calculating..." : "calculating..."}
-              soundEnabled={false}
-              onBackClick={() => setIsInAppNavigating(false)}
-            />
-          )}
 
           {/* Bottom 30% - Mission Control Panel */}
           <MissionControlPanel

@@ -9,6 +9,9 @@ interface MapboxMapComponentProps {
   initialZoom?: number;
   children?: React.ReactNode;
   onMapLoad?: () => void;
+  style?: 'mapbox://styles/mapbox/streets-v12' | 'mapbox://styles/mapbox/navigation-night-v1' | string;
+  pitch?: number;
+  bearing?: number;
 }
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidGhlLWhpdmUiLCJhIjoiY21wNXdidmV5MDFlYzJwc2wydzZ1NXoyYSJ9.ImuunrlyiRHMEfwO8TaQnQ';
@@ -20,6 +23,9 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
   initialZoom = 12,
   children,
   onMapLoad,
+  style = 'mapbox://styles/mapbox/streets-v12',
+  pitch = 0,
+  bearing = 0,
 }, mapRef) => {
   const handleMapLoad = useCallback(() => {
     onMapLoad?.();
@@ -33,9 +39,11 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
           longitude: initialLng,
           latitude: initialLat,
           zoom: initialZoom,
+          pitch,
+          bearing,
         }}
         style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/navigation-night-v1"
+        mapStyle={style}
         accessToken={MAPBOX_TOKEN}
         touchPitch={true}
         dragPan={true}
