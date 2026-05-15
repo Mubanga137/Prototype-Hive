@@ -128,26 +128,29 @@ const GigRadar = () => {
     };
   });
 
-  // Fetch Mapbox route when bounty is selected
+  // Fetch Mapbox route when batch is claimed
   useEffect(() => {
-    if (!selectedBounty || !location) {
+    if (!claimedBatch || !location) {
       setRouteGeometry(null);
       return;
     }
 
     const fetchRoute = async () => {
       try {
-        const sme_lat = selectedBounty.sme_lat || selectedBounty.lat;
-        const sme_lng = selectedBounty.sme_lng || selectedBounty.lng;
-        const customer_lat = selectedBounty.customer_lat || selectedBounty.lat;
-        const customer_lng = selectedBounty.customer_lng || selectedBounty.lng;
+        // Pickup location from batch
+        const pickupLat = claimedBatch.pickupLoc?.lat || LUSAKA_CENTER.lat;
+        const pickupLng = claimedBatch.pickupLoc?.lng || LUSAKA_CENTER.lng;
+
+        // Destination (first dropoff)
+        const dropoffLat = claimedBatch.dropoffs[0]?.loc.lat || LUSAKA_CENTER.lat;
+        const dropoffLng = claimedBatch.dropoffs[0]?.loc.lng || LUSAKA_CENTER.lng;
 
         // Leg 1: Worker to pickup
-        const leg1Route = await mapboxRoutingService.getRoute(location.lng, location.lat, sme_lng, sme_lat);
+        const leg1Route = await mapboxRoutingService.getRoute(location.lng, location.lat, pickupLng, pickupLat);
         if (!leg1Route) throw new Error("No route found for leg 1");
 
         // Leg 2: Pickup to customer
-        const leg2Route = await mapboxRoutingService.getRoute(sme_lng, sme_lat, customer_lng, customer_lat);
+        const leg2Route = await mapboxRoutingService.getRoute(pickupLng, pickupLat, dropoffLng, dropoffLat);
         if (!leg2Route) throw new Error("No route found for leg 2");
 
         // Combine coordinates
@@ -164,7 +167,7 @@ const GigRadar = () => {
         const totalDistance = (leg1Distance + leg2Distance).toFixed(1);
 
         setRouteGeometry(totalCoords as [number, number][]);
-        setRouteETAMap(new Map([[selectedBounty.id, { eta: `⏱️ ETA: ${totalDuration}m`, distance: `📏 ${totalDistance}km` }]]));
+        setRouteETAMap(new Map([[claimedBatch.clusterId, { eta: `⏱️ ETA: ${totalDuration}m`, distance: `📏 ${totalDistance}km` }]]));
       } catch (error) {
         console.warn("[GigRadar] Mapbox route error:", error);
         toast.error("Failed to fetch route");
@@ -172,7 +175,7 @@ const GigRadar = () => {
     };
 
     fetchRoute();
-  }, [selectedBounty, location]);
+  }, [claimedBatch, location]);
 
   // Smart auto-zoom when route is resolved
   useEffect(() => {
@@ -262,11 +265,21 @@ const GigRadar = () => {
             >
               {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
 
-              {/* Destination marker */}
+              {/* Pickup marker - from SME location */}
+              {claimedBatch.pickupLoc && (
+                <DestinationMarker
+                  lng={claimedBatch.pickupLoc.lng}
+                  lat={claimedBatch.pickupLoc.lat}
+                  label={claimedBatch.pickupSmeNam}
+                  type="pickup"
+                />
+              )}
+
+              {/* Destination marker - first dropoff */}
               {claimedBatch.dropoffs[0] && (
                 <DestinationMarker
-                  lng={claimedBatch.dropoffs[0].lng || 28.3228}
-                  lat={claimedBatch.dropoffs[0].lat || -15.3875}
+                  lng={claimedBatch.dropoffs[0].loc.lng}
+                  lat={claimedBatch.dropoffs[0].loc.lat}
                   label={claimedBatch.dropoffs[0].customer}
                   type="dropoff"
                 />
@@ -422,25 +435,6 @@ const GigRadar = () => {
                 initialZoom={DEFAULT_ZOOM}
               >
                 {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
-
-                {bounties.map((bounty) => (
-                  <motion.div
-                    key={bounty.id}
-                    onClick={() => {
-                      setSelectedBounty(bounty);
-                      mapRef.current?.flyTo({ center: [bounty.lng, bounty.lat], zoom: 16, duration: 800 });
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <DestinationMarker lng={bounty.lng} lat={bounty.lat} type="dropoff" />
-                  </motion.div>
-                ))}
-
-                {routeGeometry && (
-                  <Source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
-                    <Layer id="route-layer" type="line" paint={{ "line-color": "#B37C1C", "line-width": 5 }} />
-                  </Source>
-                )}
               </MapboxMapComponent>
 
               <motion.button
