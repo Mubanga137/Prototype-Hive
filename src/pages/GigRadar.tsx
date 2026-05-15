@@ -29,6 +29,37 @@ import { optimizeRoutePath, formatCoordinatesForMapbox } from "@/utils/routeOpti
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
 const DEFAULT_ZOOM = 14;
+const STEP_PROXIMITY_THRESHOLD = 200; // meters - auto-advance when within 200m
+
+// Helper: Calculate distance between two points (Haversine formula in meters)
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Helper: Get maneuver icon based on turn type
+function getManeuverIcon(maneuverType: string): string {
+  const typeMap: { [key: string]: string } = {
+    'turn': '↙️',
+    'left': '←',
+    'right': '→',
+    'straight': '↑',
+    'merge': '⤵️',
+    'onto': '→',
+    'uturn': '↩️',
+    'continue': '↑',
+  };
+  return typeMap[maneuverType?.toLowerCase() || 'straight'] || '↑';
+}
 
 interface SimulatedBounty {
   id: string;
@@ -68,6 +99,11 @@ const GigRadar = () => {
   const [userBearing, setUserBearing] = useState(0); // 0-360 degrees
   const [legData, setLegData] = useState<Leg[]>([]); // Mapbox leg data for ETA display
   const [nextInstruction, setNextInstruction] = useState(""); // Turn-by-turn instruction
+  const [currentStepIndex, setCurrentStepIndex] = useState(0); // Track which turn instruction we're on
+  const [distanceTraveled, setDistanceTraveled] = useState(0); // Distance traveled in meters
+  const [totalRouteDistance, setTotalRouteDistance] = useState(0); // Total route distance in meters
+  const [isRecenterActive, setIsRecenterActive] = useState(true); // Auto-recenter flag
+  const [routeSteps, setRouteSteps] = useState<any[]>([]); // All turn-by-turn steps from route
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
@@ -76,22 +112,48 @@ const GigRadar = () => {
   const mapCenter = location || LUSAKA_CENTER;
   const userRole = user?.role || "gig_worker";
 
-  // Track device heading/bearing for chevron rotation
+  // Track device heading/bearing for chevron rotation and camera bearing
   useEffect(() => {
     if (!isInAppNavigating) return;
 
+    // Start with current bearing
+    if (mapRef.current && userBearing) {
+      mapRef.current.setBearing(userBearing);
+    }
+
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        // Update bearing from device compass
         if (position.coords.heading !== null && position.coords.heading !== undefined) {
-          setUserBearing(position.coords.heading);
+          const newHeading = position.coords.heading;
+          setUserBearing(newHeading);
+
+          // Immediately update map bearing
+          if (mapRef.current) {
+            mapRef.current.setBearing(newHeading);
+          }
         }
       },
-      (error) => console.warn("[GigRadar] Heading watch error:", error),
-      { enableHighAccuracy: true, maximumAge: 1000 }
+      (error) => {
+        console.warn("[GigRadar] Geolocation heading error:", error);
+        // Fallback: try device orientation API
+        if (window.DeviceOrientationEvent) {
+          window.addEventListener('deviceorientation', (event) => {
+            if (event.alpha !== null && event.alpha !== undefined) {
+              const heading = (360 - event.alpha) % 360;
+              setUserBearing(heading);
+              if (mapRef.current) {
+                mapRef.current.setBearing(heading);
+              }
+            }
+          });
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 250 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isInAppNavigating]);
+  }, [isInAppNavigating, userBearing]);
 
   useEffect(() => {
     if (isOnline && location) {
@@ -213,13 +275,21 @@ const GigRadar = () => {
 
         setRouteGeometry(fullRoute.coordinates as [number, number][]);
         setLegData(fullRoute.legs);
+        setTotalRouteDistance(fullRoute.distance); // Store total distance in meters
+        setDistanceTraveled(0); // Reset progress
+        setCurrentStepIndex(0); // Reset step tracker
 
-        // Extract first turn-by-turn instruction
-        if (fullRoute.legs[0]?.steps && fullRoute.legs[0].steps.length > 0) {
-          const firstStep = fullRoute.legs[0].steps[0];
+        // Extract ALL steps from first leg for turn-by-turn tracking
+        const allSteps = fullRoute.legs[0]?.steps || [];
+        setRouteSteps(allSteps);
+
+        // Extract and display first instruction
+        if (allSteps.length > 0) {
+          const firstStep = allSteps[0];
+          const maneuverIcon = getManeuverIcon(firstStep.maneuver?.type || 'continue');
           const stepName = firstStep.name || "Continue";
           const stepDistance = Math.round(firstStep.distance);
-          let instruction = `${stepName}`;
+          let instruction = `${maneuverIcon} ${stepName}`;
           if (stepDistance > 0) {
             instruction += ` - ${stepDistance > 1000 ? (stepDistance / 1000).toFixed(1) + ' km' : stepDistance + 'm'}`;
           }
@@ -286,22 +356,30 @@ const GigRadar = () => {
 
   // Lock map camera to user location during in-app navigation with 3D perspective
   useEffect(() => {
-    if (isInAppNavigating && mapRef.current && location) {
-      const interval = setInterval(() => {
-        if (mapRef.current && location) {
-          mapRef.current.easeTo({
-            center: [location.lng, location.lat],
-            duration: 500,
-            zoom: 17,
-            pitch: 60,
-            bearing: userBearing,
-          });
-        }
-      }, 1000);
+    if (!isInAppNavigating || !mapRef.current || !location) return;
 
-      return () => clearInterval(interval);
-    }
-  }, [isInAppNavigating, location]);
+    // Force immediate 3D mode
+    mapRef.current.setPitch(65);
+    mapRef.current.setZoom(17.5);
+
+    // Update camera position and bearing on every location/bearing change
+    mapRef.current.easeTo({
+      center: [location.lng, location.lat],
+      bearing: userBearing,
+      zoom: 17.5,
+      pitch: 65,
+      duration: 500,
+    });
+
+    // Continuously lock pitch if user tries to change it
+    const pitchLockInterval = setInterval(() => {
+      if (mapRef.current && mapRef.current.getPitch() < 60) {
+        mapRef.current.setPitch(65);
+      }
+    }, 150);
+
+    return () => clearInterval(pitchLockInterval);
+  }, [isInAppNavigating, location, userBearing]);
 
   const handleAcceptBounty = (bountyId: string) => {
     acceptGig(bountyId);
@@ -337,9 +415,10 @@ const GigRadar = () => {
             initialLat={mapCenter.lat}
             initialLng={mapCenter.lng}
             initialZoom={17.5}
-            style="navigation-night-v1"
+            style="mapbox://styles/mapbox/navigation-night-v1"
             pitch={65}
             bearing={userBearing}
+            disableControls={true}
           >
             {location && isOnline && (
               <ChevronMarker
@@ -398,63 +477,73 @@ const GigRadar = () => {
             )}
           </MapboxMapComponent>
 
-          {/* Top-Left Turn Instruction HUD */}
+          {/* Top-Left Turn Instruction HUD - Yango/Uber Style */}
           {nextInstruction && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute top-6 left-4 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-4"
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="absolute top-8 left-6 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-5 hover:shadow-3xl transition-shadow"
               style={{
-                backgroundColor: 'rgba(20, 20, 30, 0.85)',
-                borderColor: 'rgba(179, 124, 28, 0.6)',
-                maxWidth: '320px',
+                backgroundColor: 'rgba(10, 10, 20, 0.92)',
+                borderColor: 'rgba(179, 124, 28, 0.7)',
+                maxWidth: '340px',
               }}
             >
-              <div className="flex items-start gap-3">
-                <ChevronRight size={24} style={{ color: '#B37C1C', flexShrink: 0 }} />
+              <div className="flex items-start gap-4">
+                <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(179, 124, 28, 0.3)' }}>
+                  <ChevronRight size={28} style={{ color: '#B37C1C' }} />
+                </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-base font-bold leading-tight mb-1 truncate"
+                    className="text-lg font-bold leading-tight mb-2"
                     style={{ color: '#FFFBF2' }}
                   >
                     {nextInstruction.split(' - ')[0] || nextInstruction}
                   </p>
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: '#B37C1C' }}
-                  >
-                    {nextInstruction.includes('-') ? nextInstruction.split(' - ')[1] || '...' : '...'}
-                  </p>
+                  {nextInstruction.includes('-') && (
+                    <p
+                      className="text-sm font-semibold tracking-wide"
+                      style={{ color: '#B37C1C' }}
+                    >
+                      {nextInstruction.split(' - ')[1] || '...'}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Bottom Bar - ETA, Progress & Controls */}
+          {/* Bottom Bar - ETA, Progress & Controls (Yango/Uber Style) */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
-            className="absolute bottom-0 left-0 right-0 z-60 rounded-t-3xl backdrop-blur-xl border-t shadow-2xl p-4 pb-8"
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute bottom-0 left-0 right-0 z-60 rounded-t-3xl backdrop-blur-xl border-t shadow-2xl"
             style={{
-              backgroundColor: 'rgba(255, 251, 242, 0.95)',
+              backgroundColor: 'rgba(255, 251, 242, 0.98)',
               borderColor: '#B37C1C',
               maxWidth: '100vw',
+              paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+              paddingTop: '1.25rem',
+              paddingLeft: '1.25rem',
+              paddingRight: '1.25rem',
             }}
           >
-            {/* ETA & Distance Display */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)' }}>
-                  <Car size={16} style={{ color: '#FFFBF2' }} />
+            {/* Top Row: ETA & Exit Button */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg" style={{ background: 'linear-gradient(135deg, #B37C1C 0%, #8B5A1A 100%)' }}>
+                  <Car size={20} style={{ color: '#FFFBF2' }} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   {legData && legData[0] && (
                     <>
-                      <p className="text-lg font-bold" style={{ color: '#0F1A35' }}>
-                        {Math.ceil((legData[0].duration || 0) / 60)} min
+                      <p className="text-2xl font-black leading-none" style={{ color: '#0F1A35' }}>
+                        {Math.ceil((legData[0].duration || 0) / 60)} <span className="text-lg font-bold opacity-70">min</span>
                       </p>
-                      <p className="text-xs" style={{ color: '#0F1A35/60' }}>
-                        {((legData[0].distance || 0) / 1000).toFixed(1)} km remaining
+                      <p className="text-sm font-semibold mt-1" style={{ color: '#0F1A35/70' }}>
+                        {((legData[0].distance || 0) / 1000).toFixed(1)} km
                       </p>
                     </>
                   )}
@@ -468,40 +557,65 @@ const GigRadar = () => {
                   setShowActiveNav(false);
                   setClaimedBatch(null);
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-3 rounded-full transition-all flex-shrink-0"
-                style={{ backgroundColor: '#F5F0E8' }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="p-3 rounded-full transition-all flex-shrink-0 hover:shadow-lg"
+                style={{
+                  backgroundColor: '#F5F0E8',
+                  border: '2px solid #E8DCC8',
+                }}
               >
-                <X size={20} style={{ color: '#0F1A35' }} />
+                <X size={22} style={{ color: '#0F1A35' }} strokeWidth={3} />
               </motion.button>
             </div>
 
-            {/* Progress Track */}
-            <div className="mb-4 h-1 rounded-full" style={{ backgroundColor: '#E8E0D0' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: '#B37C1C' }}
-                initial={{ width: 0 }}
-                animate={{ width: '45%' }}
-                transition={{ duration: 3, ease: 'easeOut' }}
-              />
+            {/* Progress Track with Mini-Car Animation */}
+            <div className="mb-5">
+              <div className="h-2 rounded-full" style={{ backgroundColor: '#E8E0D0' }}>
+                <motion.div
+                  className="h-full rounded-full flex items-center justify-end pr-1"
+                  style={{ backgroundColor: '#B37C1C' }}
+                  initial={{ width: 0 }}
+                  animate={{ width: '45%' }}
+                  transition={{ duration: 3.5, ease: 'easeOut' }}
+                >
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#FFFBF2', boxShadow: '0 2px 8px rgba(179, 124, 28, 0.6)' }} />
+                </motion.div>
+              </div>
             </div>
 
-            {/* Main Action Button */}
+            {/* Main Action Button - Gold Emphasis */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+              whileHover={{ scale: 1.02, boxShadow: '0 12px 32px rgba(179, 124, 28, 0.5)' }}
+              whileTap={{ scale: 0.96 }}
+              className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 mb-3"
               style={{
                 backgroundColor: '#B37C1C',
                 color: '#FFFBF2',
                 boxShadow: '0 8px 24px rgba(179, 124, 28, 0.4)',
+                letterSpacing: '0.5px',
               }}
             >
-              <ShieldCheck size={20} />
+              <ShieldCheck size={22} strokeWidth={2.5} />
               🔒 Verify Hand-Off OTP
             </motion.button>
+
+            {/* Secondary Cancel Link */}
+            <div className="text-center">
+              <button
+                onClick={() => {
+                  setIsInAppNavigating(false);
+                  setShowActiveNav(false);
+                  setClaimedBatch(null);
+                }}
+                className="text-sm font-semibold transition-colors"
+                style={{ color: '#0F1A35/60' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0F1A35'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#0F1A35/60'}
+              >
+                Cancel Navigation
+              </button>
+            </div>
           </motion.div>
         </div>
       ) : showActiveNav && claimedBatch ? (
