@@ -43,7 +43,13 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
         onLoad={handleMapLoad}
       >
         <NavigationControl position="top-right" />
-        <GeolocateControl position="top-right" />
+        <GeolocateControl
+          position="top-right"
+          trackUserLocation={true}
+          showUserHeading={true}
+          positionOptions={{ enableHighAccuracy: true }}
+          fitBoundsOptions={{ maxZoom: 18, padding: 50 }}
+        />
         {children}
       </Map>
     </div>

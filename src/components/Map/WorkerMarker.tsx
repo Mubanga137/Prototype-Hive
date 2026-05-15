@@ -16,20 +16,28 @@ export const WorkerMarker: React.FC<WorkerMarkerProps> = ({
     <Marker longitude={lng} latitude={lat} anchor="bottom">
       <div className="relative flex flex-col items-center">
         <svg
-          width="36"
-          height="48"
-          viewBox="0 0 36 48"
+          width="40"
+          height="54"
+          viewBox="0 0 40 54"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
+          style={{ filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25))' }}
         >
+          <defs>
+            <linearGradient id="teardropGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#D4A574" />
+              <stop offset="100%" stopColor="#8B5A1C" />
+            </linearGradient>
+          </defs>
           <path
-            d="M18 0C9.16 0 2 7.16 2 16c0 10 16 32 16 32s16-22 16-32c0-8.84-7.16-16-16-16z"
-            fill="#B37C1C"
+            d="M20 2C10.06 2 2 10.06 2 20c0 11 18 32 18 32s18-21 18-32c0-9.94-8.06-18-18-18z"
+            fill="url(#teardropGrad)"
           />
-          <circle cx="18" cy="16" r="6" fill="white" />
+          <circle cx="20" cy="18" r="7" fill="white" />
+          <circle cx="20" cy="18" r="4" fill="#B37C1C" />
         </svg>
         {label && (
-          <div className="absolute -bottom-8 bg-[#B37C1C] text-[#FFFBF2] px-2 py-1 rounded text-xs font-semibold whitespace-nowrap">
+          <div className="absolute -bottom-7 bg-[#B37C1C] text-[#FFFBF2] px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shadow-md border border-[#8B5A1C]">
             {label}
           </div>
         )}

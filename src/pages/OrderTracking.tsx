@@ -8,8 +8,10 @@ import { toast } from "sonner";
 import { useLocationPermission } from "@/hooks/useLocationPermission";
 import GPSOffModal from "@/components/modals/GPSOffModal";
 import MapComponent from "@/components/Map/MapComponent";
-import CustomMarker from "@/components/Map/CustomMarker";
-import { MapRef } from "react-map-gl";
+import WorkerMarker from "@/components/Map/WorkerMarker";
+import DestinationMarker from "@/components/Map/DestinationMarker";
+import { MapRef, Source, Layer } from "react-map-gl";
+import { mapboxRoutingService } from "@/services/mapboxRoutingService";
 
 type Order = Database["public"]["Tables"]["orders"]["Row"];
 type Runner = Database["public"]["Tables"]["runners"]["Row"];
@@ -20,14 +22,6 @@ interface OrderWithDetails extends Order {
   runner?: Runner | null;
 }
 
-interface RouteData {
-  routes: Array<{
-    distance: number;
-    duration: number;
-  }>;
-}
-
-const OSRM_API = "https://router.project-osrm.org";
 
 const OrderTracking = () => {
   const { order_id } = useParams<{ order_id: string }>();
@@ -143,7 +137,7 @@ const OrderTracking = () => {
     }
   }, [isPermissionDenied]);
 
-  // Fetch OSRM route when riderLocation or order changes
+  // Fetch Mapbox route when riderLocation or order changes
   useEffect(() => {
     if (!order?.node || !riderLocation) {
       setRouteGeometry(null);
@@ -152,20 +146,20 @@ const OrderTracking = () => {
 
     const fetchRoute = async () => {
       try {
-        const url = `${OSRM_API}/route/v1/driving/${riderLocation.long},${riderLocation.lat};${order.node!.long},${order.node!.lat}?overview=full&geometries=geojson`;
-        const response = await fetch(url);
-        const data: RouteData = await response.json();
+        const routeMetrics = await mapboxRoutingService.getRoute(
+          riderLocation.long,
+          riderLocation.lat,
+          order.node!.long,
+          order.node!.lat
+        );
 
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const minutes = Math.ceil(route.duration / 60);
-          const km = (route.distance / 1000).toFixed(1);
-
-          setEta(`⏱️ Arriving in ${minutes} min${minutes !== 1 ? "s" : ""}`);
-          setDistance(`Distance: ${km} km`);
+        if (routeMetrics) {
+          setEta(`⏱️ Arriving in ${routeMetrics.eta}`);
+          setDistance(`📏 Distance: ${routeMetrics.distance}`);
+          setRouteGeometry(routeMetrics.coordinates);
         }
       } catch (err) {
-        console.warn("[OrderTracking] OSRM route error:", err);
+        console.warn("[OrderTracking] Mapbox route error:", err);
       }
     };
 
@@ -214,13 +208,13 @@ const OrderTracking = () => {
           initialLng={riderLocation?.long || order.node.long || 28.2833}
           initialZoom={14}
         >
-          {riderLocation && <CustomMarker lng={riderLocation.long} lat={riderLocation.lat} isPulsing={true} label="🛵 Rider" />}
-          {order.node && <CustomMarker lng={order.node.long} lat={order.node.lat} isPulsing={false} label="🏠 Destination" />}
+          {riderLocation && <WorkerMarker lng={riderLocation.long} lat={riderLocation.lat} label="🛵 Rider" />}
+          {order.node && <DestinationMarker lng={order.node.long} lat={order.node.lat} label="🏠 Destination" />}
 
           {routeGeometry && (
-            <source key="route-source" id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
-              <layer id="route-layer" type="line" paint={{ "line-color": "#B37C1C", "line-width": 4, "line-opacity": 0.8 }} />
-            </source>
+            <Source id="route-source" type="geojson" data={{ type: "Feature", geometry: { type: "LineString", coordinates: routeGeometry }, properties: {} }}>
+              <Layer id="route-layer" type="line" paint={{ "line-color": "#B37C1C", "line-width": 5, "line-opacity": 0.8 }} />
+            </Source>
           )}
         </MapComponent>
 

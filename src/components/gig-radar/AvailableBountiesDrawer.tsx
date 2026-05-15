@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { BountyCardEnhanced } from "./BountyCardEnhanced";
 import { BatchedOrder } from "@/utils/orderClustering";
 
@@ -67,15 +67,20 @@ export const AvailableBountiesDrawer = ({
                 scrollBehavior: "smooth",
               }}
             >
-              {batches.map((batch) => (
-                <div
-                  key={batch.batchId}
-                  onClick={() => onClaimBatch(batch)}
-                  className="cursor-pointer"
-                >
-                  <BountyCardEnhanced batch={batch} />
-                </div>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {batches.map((batch) => (
+                  <motion.div
+                    key={batch.batchId}
+                    onClick={() => onClaimBatch(batch)}
+                    className="cursor-pointer"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <BountyCardEnhanced batch={batch} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           </div>
         )}
