@@ -17,36 +17,60 @@ export const ChevronMarker: React.FC<ChevronMarkerProps> = ({
   return (
     <Marker longitude={lng} latitude={lat} anchor="center">
       <div className="relative flex flex-col items-center">
+        {/* Glow ring backdrop for night-mode visibility */}
+        <div
+          style={{
+            position: 'absolute',
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(179, 124, 28, 0.4) 0%, rgba(179, 124, 28, 0.1) 70%, rgba(179, 124, 28, 0) 100%)',
+            animation: 'pulse 2s ease-in-out infinite',
+            zIndex: -1,
+          }}
+        />
+
         {/* Chevron/Arrow pointer - rotates with bearing */}
         <svg
-          width="40"
-          height="40"
+          width="48"
+          height="48"
           viewBox="0 0 40 40"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           style={{
-            filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35))',
+            filter: 'drop-shadow(0 0 12px rgba(179, 124, 28, 0.8)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))',
             transform: `rotate(${bearing}deg)`,
             transformOrigin: 'center',
-            transition: 'transform 0.3s ease-out',
+            transition: 'transform 0.2s ease-out',
+            zIndex: 1,
           }}
         >
           <defs>
             <linearGradient id="chevronGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#B37C1C" />
+              <stop offset="0%" stopColor="#D4A574" />
+              <stop offset="50%" stopColor="#B37C1C" />
               <stop offset="100%" stopColor="#8B5A1C" />
             </linearGradient>
+            <filter id="glowEffect" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
-          {/* Chevron/Arrowhead shape pointing up */}
+
+          {/* Elongated triangle/chevron pointing up (velocity indicator) */}
           <path
-            d="M 20 4 L 32 18 L 26 18 L 20 11 L 14 18 L 8 18 Z"
+            d="M 20 2 L 36 22 L 28 22 L 20 8 L 12 22 L 4 22 Z"
             fill="url(#chevronGrad)"
             stroke="#FFFBF2"
-            strokeWidth="1.5"
+            strokeWidth="2"
+            filter="url(#glowEffect)"
           />
-          {/* Inner white circle for contrast */}
-          <circle cx="20" cy="24" r="6" fill="#FFFBF2" />
-          <circle cx="20" cy="24" r="3" fill="#B37C1C" />
+
+          {/* Center dot for anchor point visibility */}
+          <circle cx="20" cy="26" r="5" fill="#FFFBF2" stroke="#B37C1C" strokeWidth="1.5" />
         </svg>
 
         {label && (

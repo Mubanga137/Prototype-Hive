@@ -340,6 +340,7 @@ const GigRadar = () => {
             style="navigation-night-v1"
             pitch={65}
             bearing={userBearing}
+            disableControls={true}
           >
             {location && isOnline && (
               <ChevronMarker
@@ -398,63 +399,73 @@ const GigRadar = () => {
             )}
           </MapboxMapComponent>
 
-          {/* Top-Left Turn Instruction HUD */}
+          {/* Top-Left Turn Instruction HUD - Yango/Uber Style */}
           {nextInstruction && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute top-6 left-4 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-4"
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="absolute top-8 left-6 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-5 hover:shadow-3xl transition-shadow"
               style={{
-                backgroundColor: 'rgba(20, 20, 30, 0.85)',
-                borderColor: 'rgba(179, 124, 28, 0.6)',
-                maxWidth: '320px',
+                backgroundColor: 'rgba(10, 10, 20, 0.92)',
+                borderColor: 'rgba(179, 124, 28, 0.7)',
+                maxWidth: '340px',
               }}
             >
-              <div className="flex items-start gap-3">
-                <ChevronRight size={24} style={{ color: '#B37C1C', flexShrink: 0 }} />
+              <div className="flex items-start gap-4">
+                <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(179, 124, 28, 0.3)' }}>
+                  <ChevronRight size={28} style={{ color: '#B37C1C' }} />
+                </div>
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-base font-bold leading-tight mb-1 truncate"
+                    className="text-lg font-bold leading-tight mb-2"
                     style={{ color: '#FFFBF2' }}
                   >
                     {nextInstruction.split(' - ')[0] || nextInstruction}
                   </p>
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: '#B37C1C' }}
-                  >
-                    {nextInstruction.includes('-') ? nextInstruction.split(' - ')[1] || '...' : '...'}
-                  </p>
+                  {nextInstruction.includes('-') && (
+                    <p
+                      className="text-sm font-semibold tracking-wide"
+                      style={{ color: '#B37C1C' }}
+                    >
+                      {nextInstruction.split(' - ')[1] || '...'}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Bottom Bar - ETA, Progress & Controls */}
+          {/* Bottom Bar - ETA, Progress & Controls (Yango/Uber Style) */}
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
-            className="absolute bottom-0 left-0 right-0 z-60 rounded-t-3xl backdrop-blur-xl border-t shadow-2xl p-4 pb-8"
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute bottom-0 left-0 right-0 z-60 rounded-t-3xl backdrop-blur-xl border-t shadow-2xl"
             style={{
-              backgroundColor: 'rgba(255, 251, 242, 0.95)',
+              backgroundColor: 'rgba(255, 251, 242, 0.98)',
               borderColor: '#B37C1C',
               maxWidth: '100vw',
+              paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))',
+              paddingTop: '1.25rem',
+              paddingLeft: '1.25rem',
+              paddingRight: '1.25rem',
             }}
           >
-            {/* ETA & Distance Display */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)' }}>
-                  <Car size={16} style={{ color: '#FFFBF2' }} />
+            {/* Top Row: ETA & Exit Button */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg" style={{ background: 'linear-gradient(135deg, #B37C1C 0%, #8B5A1A 100%)' }}>
+                  <Car size={20} style={{ color: '#FFFBF2' }} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   {legData && legData[0] && (
                     <>
-                      <p className="text-lg font-bold" style={{ color: '#0F1A35' }}>
-                        {Math.ceil((legData[0].duration || 0) / 60)} min
+                      <p className="text-2xl font-black leading-none" style={{ color: '#0F1A35' }}>
+                        {Math.ceil((legData[0].duration || 0) / 60)} <span className="text-lg font-bold opacity-70">min</span>
                       </p>
-                      <p className="text-xs" style={{ color: '#0F1A35/60' }}>
-                        {((legData[0].distance || 0) / 1000).toFixed(1)} km remaining
+                      <p className="text-sm font-semibold mt-1" style={{ color: '#0F1A35/70' }}>
+                        {((legData[0].distance || 0) / 1000).toFixed(1)} km
                       </p>
                     </>
                   )}
@@ -468,40 +479,65 @@ const GigRadar = () => {
                   setShowActiveNav(false);
                   setClaimedBatch(null);
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-3 rounded-full transition-all flex-shrink-0"
-                style={{ backgroundColor: '#F5F0E8' }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="p-3 rounded-full transition-all flex-shrink-0 hover:shadow-lg"
+                style={{
+                  backgroundColor: '#F5F0E8',
+                  border: '2px solid #E8DCC8',
+                }}
               >
-                <X size={20} style={{ color: '#0F1A35' }} />
+                <X size={22} style={{ color: '#0F1A35' }} strokeWidth={3} />
               </motion.button>
             </div>
 
-            {/* Progress Track */}
-            <div className="mb-4 h-1 rounded-full" style={{ backgroundColor: '#E8E0D0' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: '#B37C1C' }}
-                initial={{ width: 0 }}
-                animate={{ width: '45%' }}
-                transition={{ duration: 3, ease: 'easeOut' }}
-              />
+            {/* Progress Track with Mini-Car Animation */}
+            <div className="mb-5">
+              <div className="h-2 rounded-full" style={{ backgroundColor: '#E8E0D0' }}>
+                <motion.div
+                  className="h-full rounded-full flex items-center justify-end pr-1"
+                  style={{ backgroundColor: '#B37C1C' }}
+                  initial={{ width: 0 }}
+                  animate={{ width: '45%' }}
+                  transition={{ duration: 3.5, ease: 'easeOut' }}
+                >
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#FFFBF2', boxShadow: '0 2px 8px rgba(179, 124, 28, 0.6)' }} />
+                </motion.div>
+              </div>
             </div>
 
-            {/* Main Action Button */}
+            {/* Main Action Button - Gold Emphasis */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-2"
+              whileHover={{ scale: 1.02, boxShadow: '0 12px 32px rgba(179, 124, 28, 0.5)' }}
+              whileTap={{ scale: 0.96 }}
+              className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 mb-3"
               style={{
                 backgroundColor: '#B37C1C',
                 color: '#FFFBF2',
                 boxShadow: '0 8px 24px rgba(179, 124, 28, 0.4)',
+                letterSpacing: '0.5px',
               }}
             >
-              <ShieldCheck size={20} />
+              <ShieldCheck size={22} strokeWidth={2.5} />
               🔒 Verify Hand-Off OTP
             </motion.button>
+
+            {/* Secondary Cancel Link */}
+            <div className="text-center">
+              <button
+                onClick={() => {
+                  setIsInAppNavigating(false);
+                  setShowActiveNav(false);
+                  setClaimedBatch(null);
+                }}
+                className="text-sm font-semibold transition-colors"
+                style={{ color: '#0F1A35/60' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0F1A35'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#0F1A35/60'}
+              >
+                Cancel Navigation
+              </button>
+            </div>
           </motion.div>
         </div>
       ) : showActiveNav && claimedBatch ? (

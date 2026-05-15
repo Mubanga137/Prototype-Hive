@@ -12,6 +12,7 @@ interface MapboxMapComponentProps {
   style?: 'mapbox://styles/mapbox/streets-v12' | 'mapbox://styles/mapbox/navigation-night-v1' | string;
   pitch?: number;
   bearing?: number;
+  disableControls?: boolean;
 }
 
 const MAPBOX_TOKEN = 'pk.eyJ1IjoidGhlLWhpdmUiLCJhIjoiY21wNXdidmV5MDFlYzJwc2wydzZ1NXoyYSJ9.ImuunrlyiRHMEfwO8TaQnQ';
@@ -26,6 +27,7 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
   style = 'mapbox://styles/mapbox/streets-v12',
   pitch = 0,
   bearing = 0,
+  disableControls = false,
 }, mapRef) => {
   const handleMapLoad = useCallback(() => {
     onMapLoad?.();
@@ -45,19 +47,23 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
         style={{ width: '100%', height: '100%' }}
         mapStyle={style}
         accessToken={MAPBOX_TOKEN}
-        touchPitch={true}
-        dragPan={true}
-        doubleClickZoom={true}
+        touchPitch={!disableControls}
+        dragPan={!disableControls}
+        doubleClickZoom={!disableControls}
+        dragRotate={!disableControls}
+        scrollZoom={!disableControls}
         onLoad={handleMapLoad}
       >
-        <NavigationControl position="top-right" />
-        <GeolocateControl
-          position="top-right"
-          trackUserLocation={true}
-          showUserHeading={true}
-          positionOptions={{ enableHighAccuracy: true }}
-          fitBoundsOptions={{ maxZoom: 18, padding: 50 }}
-        />
+        {!disableControls && <NavigationControl position="top-right" />}
+        {!disableControls && (
+          <GeolocateControl
+            position="top-right"
+            trackUserLocation={true}
+            showUserHeading={true}
+            positionOptions={{ enableHighAccuracy: true }}
+            fitBoundsOptions={{ maxZoom: 18, padding: 50 }}
+          />
+        )}
         {children}
       </Map>
     </div>
