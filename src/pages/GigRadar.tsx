@@ -29,6 +29,37 @@ import { optimizeRoutePath, formatCoordinatesForMapbox } from "@/utils/routeOpti
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
 const DEFAULT_ZOOM = 14;
+const STEP_PROXIMITY_THRESHOLD = 200; // meters - auto-advance when within 200m
+
+// Helper: Calculate distance between two points (Haversine formula in meters)
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Helper: Get maneuver icon based on turn type
+function getManeuverIcon(maneuverType: string): string {
+  const typeMap: { [key: string]: string } = {
+    'turn': '↙️',
+    'left': '←',
+    'right': '→',
+    'straight': '↑',
+    'merge': '⤵️',
+    'onto': '→',
+    'uturn': '↩️',
+    'continue': '↑',
+  };
+  return typeMap[maneuverType?.toLowerCase() || 'straight'] || '↑';
+}
 
 interface SimulatedBounty {
   id: string;
@@ -68,6 +99,11 @@ const GigRadar = () => {
   const [userBearing, setUserBearing] = useState(0); // 0-360 degrees
   const [legData, setLegData] = useState<Leg[]>([]); // Mapbox leg data for ETA display
   const [nextInstruction, setNextInstruction] = useState(""); // Turn-by-turn instruction
+  const [currentStepIndex, setCurrentStepIndex] = useState(0); // Track which turn instruction we're on
+  const [distanceTraveled, setDistanceTraveled] = useState(0); // Distance traveled in meters
+  const [totalRouteDistance, setTotalRouteDistance] = useState(0); // Total route distance in meters
+  const [isRecenterActive, setIsRecenterActive] = useState(true); // Auto-recenter flag
+  const [routeSteps, setRouteSteps] = useState<any[]>([]); // All turn-by-turn steps from route
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
@@ -239,13 +275,21 @@ const GigRadar = () => {
 
         setRouteGeometry(fullRoute.coordinates as [number, number][]);
         setLegData(fullRoute.legs);
+        setTotalRouteDistance(fullRoute.distance); // Store total distance in meters
+        setDistanceTraveled(0); // Reset progress
+        setCurrentStepIndex(0); // Reset step tracker
 
-        // Extract first turn-by-turn instruction
-        if (fullRoute.legs[0]?.steps && fullRoute.legs[0].steps.length > 0) {
-          const firstStep = fullRoute.legs[0].steps[0];
+        // Extract ALL steps from first leg for turn-by-turn tracking
+        const allSteps = fullRoute.legs[0]?.steps || [];
+        setRouteSteps(allSteps);
+
+        // Extract and display first instruction
+        if (allSteps.length > 0) {
+          const firstStep = allSteps[0];
+          const maneuverIcon = getManeuverIcon(firstStep.maneuver?.type || 'continue');
           const stepName = firstStep.name || "Continue";
           const stepDistance = Math.round(firstStep.distance);
-          let instruction = `${stepName}`;
+          let instruction = `${maneuverIcon} ${stepName}`;
           if (stepDistance > 0) {
             instruction += ` - ${stepDistance > 1000 ? (stepDistance / 1000).toFixed(1) + ' km' : stepDistance + 'm'}`;
           }
