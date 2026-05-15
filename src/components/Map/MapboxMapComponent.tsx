@@ -3,12 +3,22 @@ import Map, { NavigationControl, GeolocateControl, MapRef } from 'react-map-gl';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
+interface ViewState {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  bearing?: number;
+  pitch?: number;
+}
+
 interface MapboxMapComponentProps {
   initialLng?: number;
   initialLat?: number;
   initialZoom?: number;
   children?: React.ReactNode;
   onMapLoad?: () => void;
+  onMove?: (viewState: ViewState) => void;
+  viewState?: ViewState;
   style?: 'mapbox://styles/mapbox/streets-v12' | 'mapbox://styles/mapbox/navigation-night-v1' | string;
   pitch?: number;
   bearing?: number;
@@ -24,6 +34,8 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
   initialZoom = 12,
   children,
   onMapLoad,
+  onMove,
+  viewState,
   style = 'mapbox://styles/mapbox/streets-v12',
   pitch = 0,
   bearing = 0,
@@ -59,21 +71,30 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
     <div className="w-full h-full overflow-x-hidden">
       <Map
         ref={mapRef}
-        initialViewState={{
-          longitude: initialLng,
-          latitude: initialLat,
-          zoom: initialZoom,
-          pitch: disableControls ? Math.max(pitch, 65) : pitch,
-          bearing,
-        }}
+        {...(viewState ? {
+          longitude: viewState.longitude,
+          latitude: viewState.latitude,
+          zoom: viewState.zoom,
+          bearing: viewState.bearing || 0,
+          pitch: viewState.pitch || 0,
+          onMove: (e) => onMove?.(e.viewState),
+        } : {
+          initialViewState: {
+            longitude: initialLng,
+            latitude: initialLat,
+            zoom: initialZoom,
+            pitch: disableControls ? Math.max(pitch, 65) : pitch,
+            bearing,
+          },
+        })}
         style={{ width: '100%', height: '100%' }}
         mapStyle={style}
         accessToken={MAPBOX_TOKEN}
-        touchPitch={false}
-        dragPan={!disableControls}
-        doubleClickZoom={!disableControls}
-        dragRotate={!disableControls}
-        scrollZoom={!disableControls}
+        touchPitch={!disableControls}
+        dragPan={true}
+        doubleClickZoom={true}
+        dragRotate={true}
+        scrollZoom={true}
         onLoad={handleMapLoad}
       >
         {!disableControls && <NavigationControl position="top-right" />}

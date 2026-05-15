@@ -102,8 +102,16 @@ const GigRadar = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0); // Track which turn instruction we're on
   const [distanceTraveled, setDistanceTraveled] = useState(0); // Distance traveled in meters
   const [totalRouteDistance, setTotalRouteDistance] = useState(0); // Total route distance in meters
-  const [isRecenterActive, setIsRecenterActive] = useState(true); // Auto-recenter flag
+  const [totalRouteDuration, setTotalRouteDuration] = useState(0); // Total route duration in seconds
+  const [isRecenterActive, setIsRecenterActive] = useState(false); // Auto-recenter flag - false = free-pan enabled
   const [routeSteps, setRouteSteps] = useState<any[]>([]); // All turn-by-turn steps from route
+  const [viewState, setViewState] = useState({
+    longitude: LUSAKA_CENTER.lng,
+    latitude: LUSAKA_CENTER.lat,
+    zoom: 17.5,
+    bearing: 0,
+    pitch: 65,
+  });
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
@@ -276,6 +284,7 @@ const GigRadar = () => {
         setRouteGeometry(fullRoute.coordinates as [number, number][]);
         setLegData(fullRoute.legs);
         setTotalRouteDistance(fullRoute.distance); // Store total distance in meters
+        setTotalRouteDuration(fullRoute.durationSeconds); // Store total duration in seconds
         setDistanceTraveled(0); // Reset progress
         setCurrentStepIndex(0); // Reset step tracker
 
@@ -354,32 +363,57 @@ const GigRadar = () => {
     }
   }, [location, isOnline, routeGeometry]);
 
-  // Lock map camera to user location during in-app navigation with 3D perspective
+  // Track distance traveled from route geometry
+  const lastLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
-    if (!isInAppNavigating || !mapRef.current || !location) return;
+    if (!isInAppNavigating || !location) return;
 
-    // Force immediate 3D mode
-    mapRef.current.setPitch(65);
-    mapRef.current.setZoom(17.5);
-
-    // Update camera position and bearing on every location/bearing change
-    mapRef.current.easeTo({
-      center: [location.lng, location.lat],
-      bearing: userBearing,
-      zoom: 17.5,
-      pitch: 65,
-      duration: 500,
-    });
-
-    // Continuously lock pitch if user tries to change it
-    const pitchLockInterval = setInterval(() => {
-      if (mapRef.current && mapRef.current.getPitch() < 60) {
-        mapRef.current.setPitch(65);
+    if (lastLocationRef.current) {
+      const segmentDistance = calculateDistance(
+        lastLocationRef.current.lat,
+        lastLocationRef.current.lng,
+        location.lat,
+        location.lng
+      );
+      if (segmentDistance > 0.1 && segmentDistance < 100) { // Filter out GPS noise & jumps
+        setDistanceTraveled(prev => prev + segmentDistance);
       }
-    }, 150);
+    }
+    lastLocationRef.current = location;
+  }, [location, isInAppNavigating]);
 
-    return () => clearInterval(pitchLockInterval);
-  }, [isInAppNavigating, location, userBearing]);
+  // Smart step progression: when within 200m of the next maneuver, auto-advance to next instruction
+  useEffect(() => {
+    if (!isInAppNavigating || !location || routeSteps.length === 0) return;
+
+    if (currentStepIndex >= routeSteps.length) return;
+
+    const currentStep = routeSteps[currentStepIndex];
+    if (!currentStep.maneuver?.location) return;
+
+    const distanceToNextManeuver = calculateDistance(
+      location.lat,
+      location.lng,
+      currentStep.maneuver.location[1],
+      currentStep.maneuver.location[0]
+    );
+
+    if (distanceToNextManeuver <= STEP_PROXIMITY_THRESHOLD) {
+      const nextIdx = currentStepIndex + 1;
+      if (nextIdx < routeSteps.length) {
+        const nextStep = routeSteps[nextIdx];
+        const maneuverIcon = getManeuverIcon(nextStep.maneuver?.type || 'continue');
+        const stepName = nextStep.name || "Continue";
+        const stepDistance = Math.round(nextStep.distance);
+        let instruction = `${maneuverIcon} ${stepName}`;
+        if (stepDistance > 0) {
+          instruction += ` - ${stepDistance > 1000 ? (stepDistance / 1000).toFixed(1) + ' km' : stepDistance + 'm'}`;
+        }
+        setNextInstruction(instruction);
+        setCurrentStepIndex(nextIdx);
+      }
+    }
+  }, [location, isInAppNavigating, currentStepIndex, routeSteps]);
 
   const handleAcceptBounty = (bountyId: string) => {
     acceptGig(bountyId);
@@ -409,7 +443,7 @@ const GigRadar = () => {
       {/* FULL-SCREEN IMMERSIVE NAVIGATION MODE */}
       {showActiveNav && claimedBatch && isInAppNavigating ? (
         <div className="fixed inset-0 w-screen h-screen z-50 flex flex-col">
-          {/* Full-screen map - completely immersive */}
+          {/* Full-screen map - completely immersive with free-pan support */}
           <MapboxMapComponent
             ref={mapRef}
             initialLat={mapCenter.lat}
@@ -418,7 +452,9 @@ const GigRadar = () => {
             style="mapbox://styles/mapbox/navigation-night-v1"
             pitch={65}
             bearing={userBearing}
-            disableControls={true}
+            disableControls={false}
+            viewState={viewState}
+            onMove={(newViewState) => setViewState(newViewState as any)}
           >
             {location && isOnline && (
               <ChevronMarker
@@ -514,6 +550,37 @@ const GigRadar = () => {
             </motion.div>
           )}
 
+          {/* Recenter FAB Button - Top Right */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (location && mapRef.current) {
+                setViewState({
+                  latitude: location.lat,
+                  longitude: location.lng,
+                  zoom: 17.5,
+                  bearing: userBearing,
+                  pitch: 65,
+                });
+                mapRef.current.flyTo({
+                  center: [location.lng, location.lat],
+                  bearing: userBearing,
+                  pitch: 65,
+                  zoom: 17.5,
+                  duration: 1000,
+                });
+              }
+            }}
+            className="absolute top-8 right-6 z-60 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all"
+            style={{
+              backgroundColor: 'rgba(179, 124, 28, 0.9)',
+              color: '#FFFBF2',
+            }}
+          >
+            <MapPinned size={22} />
+          </motion.button>
+
           {/* Bottom Bar - ETA, Progress & Controls (Yango/Uber Style) */}
           <motion.div
             initial={{ y: '100%' }}
@@ -537,13 +604,13 @@ const GigRadar = () => {
                   <Car size={20} style={{ color: '#FFFBF2' }} />
                 </div>
                 <div className="min-w-0">
-                  {legData && legData[0] && (
+                  {totalRouteDuration > 0 && (
                     <>
                       <p className="text-2xl font-black leading-none" style={{ color: '#0F1A35' }}>
-                        {Math.ceil((legData[0].duration || 0) / 60)} <span className="text-lg font-bold opacity-70">min</span>
+                        {Math.max(Math.ceil((totalRouteDuration - (distanceTraveled / 1.39)) / 60), 0)} <span className="text-lg font-bold opacity-70">min</span>
                       </p>
                       <p className="text-sm font-semibold mt-1" style={{ color: '#0F1A35/70' }}>
-                        {((legData[0].distance || 0) / 1000).toFixed(1)} km
+                        {totalRouteDistance > 0 ? ((totalRouteDistance - distanceTraveled) / 1000).toFixed(1) : '0'} km
                       </p>
                     </>
                   )}
@@ -569,15 +636,14 @@ const GigRadar = () => {
               </motion.button>
             </div>
 
-            {/* Progress Track with Mini-Car Animation */}
+            {/* Progress Track - Linked to distance traveled */}
             <div className="mb-5">
               <div className="h-2 rounded-full" style={{ backgroundColor: '#E8E0D0' }}>
                 <motion.div
                   className="h-full rounded-full flex items-center justify-end pr-1"
                   style={{ backgroundColor: '#B37C1C' }}
-                  initial={{ width: 0 }}
-                  animate={{ width: '45%' }}
-                  transition={{ duration: 3.5, ease: 'easeOut' }}
+                  animate={{ width: `${Math.min((distanceTraveled / totalRouteDistance) * 100, 100)}%` }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
                 >
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#FFFBF2', boxShadow: '0 2px 8px rgba(179, 124, 28, 0.6)' }} />
                 </motion.div>
