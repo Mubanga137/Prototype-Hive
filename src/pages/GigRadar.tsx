@@ -80,25 +80,44 @@ const GigRadar = () => {
   useEffect(() => {
     if (!isInAppNavigating) return;
 
-    let heading = userBearing;
+    // Start with current bearing
+    if (mapRef.current && userBearing) {
+      mapRef.current.setBearing(userBearing);
+    }
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        // Update bearing from device compass
         if (position.coords.heading !== null && position.coords.heading !== undefined) {
-          heading = position.coords.heading;
-          setUserBearing(heading);
-          // Force map bearing update immediately
+          const newHeading = position.coords.heading;
+          setUserBearing(newHeading);
+
+          // Immediately update map bearing
           if (mapRef.current) {
-            mapRef.current.setBearing(heading);
+            mapRef.current.setBearing(newHeading);
           }
         }
       },
-      (error) => console.warn("[GigRadar] Heading watch error:", error),
-      { enableHighAccuracy: true, maximumAge: 500 }
+      (error) => {
+        console.warn("[GigRadar] Geolocation heading error:", error);
+        // Fallback: try device orientation API
+        if (window.DeviceOrientationEvent) {
+          window.addEventListener('deviceorientation', (event) => {
+            if (event.alpha !== null && event.alpha !== undefined) {
+              const heading = (360 - event.alpha) % 360;
+              setUserBearing(heading);
+              if (mapRef.current) {
+                mapRef.current.setBearing(heading);
+              }
+            }
+          });
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 250 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isInAppNavigating]);
+  }, [isInAppNavigating, userBearing]);
 
   useEffect(() => {
     if (isOnline && location) {
@@ -293,41 +312,29 @@ const GigRadar = () => {
 
   // Lock map camera to user location during in-app navigation with 3D perspective
   useEffect(() => {
-    if (isInAppNavigating && mapRef.current && location) {
-      // Force immediate 3D mode - aggressive pitch lock
-      mapRef.current.setPitch(65);
-      mapRef.current.setZoom(17.5);
-      mapRef.current.setBearing(userBearing || 0);
+    if (!isInAppNavigating || !mapRef.current || !location) return;
 
-      // Keep pitch locked continuously - update very frequently to prevent user changes
-      const pitchInterval = setInterval(() => {
-        if (mapRef.current) {
-          const currentPitch = mapRef.current.getPitch();
-          if (currentPitch < 60) {
-            // User tried to change pitch, force it back
-            mapRef.current.setPitch(65);
-          }
-        }
-      }, 100);
+    // Force immediate 3D mode
+    mapRef.current.setPitch(65);
+    mapRef.current.setZoom(17.5);
 
-      // Update camera position and bearing smoothly
-      const cameraInterval = setInterval(() => {
-        if (mapRef.current && location) {
-          mapRef.current.easeTo({
-            center: [location.lng, location.lat],
-            bearing: userBearing || 0,
-            zoom: 17.5,
-            pitch: 65,
-            duration: 300,
-          });
-        }
-      }, 600);
+    // Update camera position and bearing on every location/bearing change
+    mapRef.current.easeTo({
+      center: [location.lng, location.lat],
+      bearing: userBearing,
+      zoom: 17.5,
+      pitch: 65,
+      duration: 500,
+    });
 
-      return () => {
-        clearInterval(pitchInterval);
-        clearInterval(cameraInterval);
-      };
-    }
+    // Continuously lock pitch if user tries to change it
+    const pitchLockInterval = setInterval(() => {
+      if (mapRef.current && mapRef.current.getPitch() < 60) {
+        mapRef.current.setPitch(65);
+      }
+    }, 150);
+
+    return () => clearInterval(pitchLockInterval);
   }, [isInAppNavigating, location, userBearing]);
 
   const handleAcceptBounty = (bountyId: string) => {
@@ -364,7 +371,7 @@ const GigRadar = () => {
             initialLat={mapCenter.lat}
             initialLng={mapCenter.lng}
             initialZoom={17.5}
-            style="navigation-night-v1"
+            style="mapbox://styles/mapbox/navigation-night-v1"
             pitch={65}
             bearing={userBearing}
             disableControls={true}
