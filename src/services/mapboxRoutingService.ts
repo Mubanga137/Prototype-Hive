@@ -123,7 +123,52 @@ async function getFullRoute(
   }
 }
 
+async function getMultiWaypointRoute(
+  coordinates: [number, number][]
+): Promise<FullRouteData | null> {
+  try {
+    if (coordinates.length < 2) {
+      return null;
+    }
+
+    // Format coordinates as ;-separated lng,lat pairs
+    const coordString = coordinates.map(([lng, lat]) => `${lng},${lat}`).join(';');
+    const url = `${MAPBOX_DIRECTIONS_API}/${coordString}?geometries=geojson&steps=true&access_token=${MAPBOX_TOKEN}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Mapbox API error: ${response.status}`);
+    }
+
+    const data: RouteResponse = await response.json();
+
+    if (!data.routes || data.routes.length === 0) {
+      return null;
+    }
+
+    const route = data.routes[0];
+    const distanceMeters = route.distance;
+    const durationSeconds = route.duration;
+
+    const distanceKm = (distanceMeters / 1000).toFixed(1);
+    const durationMinutes = Math.ceil(durationSeconds / 60);
+    const eta = `${durationMinutes} min`;
+
+    return {
+      distance: `${distanceKm} km`,
+      eta,
+      coordinates: route.geometry.coordinates,
+      legs: route.legs,
+      durationSeconds,
+    };
+  } catch (error) {
+    console.error('Failed to fetch multi-waypoint route from Mapbox:', error);
+    return null;
+  }
+}
+
 export const mapboxRoutingService = {
   getRoute,
   getFullRoute,
+  getMultiWaypointRoute,
 };
