@@ -31,7 +31,29 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
 }, mapRef) => {
   const handleMapLoad = useCallback(() => {
     onMapLoad?.();
-  }, [onMapLoad]);
+    // Ensure 3D is set immediately after map loads
+    if (mapRef.current && disableControls && pitch > 0) {
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.setPitch(Math.max(pitch, 65));
+          mapRef.current.setBearing(bearing || 0);
+        }
+      }, 100);
+    }
+  }, [onMapLoad, disableControls, pitch, bearing]);
+
+  // Force pitch/bearing lock for navigation mode - run on every pitch change
+  React.useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (disableControls && pitch > 0) {
+      // Force 3D mode with aggressive pitch - immediately and continuously
+      mapRef.current.setPitch(Math.max(pitch, 65));
+      if (bearing !== undefined && bearing !== null) {
+        mapRef.current.setBearing(bearing);
+      }
+    }
+  }, [disableControls, pitch, bearing, mapRef]);
 
   return (
     <div className="w-full h-full overflow-x-hidden">
@@ -41,13 +63,13 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
           longitude: initialLng,
           latitude: initialLat,
           zoom: initialZoom,
-          pitch,
+          pitch: disableControls ? Math.max(pitch, 65) : pitch,
           bearing,
         }}
         style={{ width: '100%', height: '100%' }}
         mapStyle={style}
         accessToken={MAPBOX_TOKEN}
-        touchPitch={!disableControls}
+        touchPitch={false}
         dragPan={!disableControls}
         doubleClickZoom={!disableControls}
         dragRotate={!disableControls}

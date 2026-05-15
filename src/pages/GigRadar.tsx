@@ -76,18 +76,25 @@ const GigRadar = () => {
   const mapCenter = location || LUSAKA_CENTER;
   const userRole = user?.role || "gig_worker";
 
-  // Track device heading/bearing for chevron rotation
+  // Track device heading/bearing for chevron rotation and camera bearing
   useEffect(() => {
     if (!isInAppNavigating) return;
+
+    let heading = userBearing;
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         if (position.coords.heading !== null && position.coords.heading !== undefined) {
-          setUserBearing(position.coords.heading);
+          heading = position.coords.heading;
+          setUserBearing(heading);
+          // Force map bearing update immediately
+          if (mapRef.current) {
+            mapRef.current.setBearing(heading);
+          }
         }
       },
       (error) => console.warn("[GigRadar] Heading watch error:", error),
-      { enableHighAccuracy: true, maximumAge: 1000 }
+      { enableHighAccuracy: true, maximumAge: 500 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
@@ -287,21 +294,41 @@ const GigRadar = () => {
   // Lock map camera to user location during in-app navigation with 3D perspective
   useEffect(() => {
     if (isInAppNavigating && mapRef.current && location) {
-      const interval = setInterval(() => {
+      // Force immediate 3D mode - aggressive pitch lock
+      mapRef.current.setPitch(65);
+      mapRef.current.setZoom(17.5);
+      mapRef.current.setBearing(userBearing || 0);
+
+      // Keep pitch locked continuously - update very frequently to prevent user changes
+      const pitchInterval = setInterval(() => {
+        if (mapRef.current) {
+          const currentPitch = mapRef.current.getPitch();
+          if (currentPitch < 60) {
+            // User tried to change pitch, force it back
+            mapRef.current.setPitch(65);
+          }
+        }
+      }, 100);
+
+      // Update camera position and bearing smoothly
+      const cameraInterval = setInterval(() => {
         if (mapRef.current && location) {
           mapRef.current.easeTo({
             center: [location.lng, location.lat],
-            duration: 500,
-            zoom: 17,
-            pitch: 60,
-            bearing: userBearing,
+            bearing: userBearing || 0,
+            zoom: 17.5,
+            pitch: 65,
+            duration: 300,
           });
         }
-      }, 1000);
+      }, 600);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(pitchInterval);
+        clearInterval(cameraInterval);
+      };
     }
-  }, [isInAppNavigating, location]);
+  }, [isInAppNavigating, location, userBearing]);
 
   const handleAcceptBounty = (bountyId: string) => {
     acceptGig(bountyId);
