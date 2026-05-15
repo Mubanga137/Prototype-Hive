@@ -30,29 +30,29 @@ export const ChevronMarker: React.FC<ChevronMarkerProps> = ({
           }}
         />
 
-        {/* Chevron/Arrow pointer - rotates with bearing */}
+        {/* Gold Arrow pointer - rotates with bearing (Yango style) */}
         <svg
-          width="48"
-          height="48"
-          viewBox="0 0 40 40"
+          width="56"
+          height="56"
+          viewBox="0 0 56 56"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           style={{
-            filter: 'drop-shadow(0 0 12px rgba(179, 124, 28, 0.8)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))',
+            filter: 'drop-shadow(0 0 16px rgba(179, 124, 28, 0.9)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6))',
             transform: `rotate(${bearing}deg)`,
             transformOrigin: 'center',
-            transition: 'transform 0.2s ease-out',
+            transition: 'transform 0.15s ease-out',
             zIndex: 1,
           }}
         >
           <defs>
-            <linearGradient id="chevronGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#D4A574" />
-              <stop offset="50%" stopColor="#B37C1C" />
+            <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F4D4A8" />
+              <stop offset="50%" stopColor="#D4A574" />
               <stop offset="100%" stopColor="#8B5A1C" />
             </linearGradient>
-            <filter id="glowEffect" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
+            <filter id="arrowGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
               <feMerge>
                 <feMergeNode in="coloredBlur" />
                 <feMergeNode in="SourceGraphic" />
@@ -60,17 +60,20 @@ export const ChevronMarker: React.FC<ChevronMarkerProps> = ({
             </filter>
           </defs>
 
-          {/* Elongated triangle/chevron pointing up (velocity indicator) */}
+          {/* Outer chevron/arrow shape - upward pointing */}
           <path
-            d="M 20 2 L 36 22 L 28 22 L 20 8 L 12 22 L 4 22 Z"
-            fill="url(#chevronGrad)"
+            d="M 28 4 L 48 28 L 38 28 L 28 12 L 18 28 L 8 28 Z"
+            fill="url(#arrowGrad)"
             stroke="#FFFBF2"
-            strokeWidth="2"
-            filter="url(#glowEffect)"
+            strokeWidth="2.5"
+            filter="url(#arrowGlow)"
+            strokeLinejoin="round"
+            strokeLinecap="round"
           />
 
-          {/* Center dot for anchor point visibility */}
-          <circle cx="20" cy="26" r="5" fill="#FFFBF2" stroke="#B37C1C" strokeWidth="1.5" />
+          {/* Center circle with white background */}
+          <circle cx="28" cy="36" r="8" fill="#FFFBF2" stroke="#B37C1C" strokeWidth="2" />
+          <circle cx="28" cy="36" r="4" fill="#B37C1C" />
         </svg>
 
         {label && (

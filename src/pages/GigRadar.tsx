@@ -46,19 +46,49 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * c;
 }
 
-// Helper: Get maneuver icon based on turn type
-function getManeuverIcon(maneuverType: string): string {
-  const typeMap: { [key: string]: string } = {
-    'turn': '↙️',
-    'left': '←',
-    'right': '→',
-    'straight': '↑',
-    'merge': '⤵️',
-    'onto': '→',
-    'uturn': '↩️',
-    'continue': '↑',
+// Helper: Get maneuver SVG arrow icon based on turn type
+function getManeuverArrow(maneuverType: string, modifier?: string): JSX.Element {
+  const type = maneuverType?.toLowerCase() || 'straight';
+  const mod = modifier?.toLowerCase() || '';
+
+  const arrowStyles = {
+    width: '36px',
+    height: '36px',
+    viewBox: '0 0 48 48',
+    fill: 'none',
+    xmlns: 'http://www.w3.org/2000/svg',
   };
-  return typeMap[maneuverType?.toLowerCase() || 'straight'] || '↑';
+
+  if (type === 'left' || (type === 'turn' && mod.includes('left'))) {
+    return (
+      <svg {...arrowStyles} style={{ ...arrowStyles, transform: 'scaleX(-1)' }}>
+        <path d="M 12 24 L 36 24 M 24 12 L 36 24 L 24 36" stroke="#B37C1C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (type === 'right' || (type === 'turn' && mod.includes('right'))) {
+    return (
+      <svg {...arrowStyles}>
+        <path d="M 36 24 L 12 24 M 24 12 L 12 24 L 24 36" stroke="#B37C1C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (type === 'uturn') {
+    return (
+      <svg {...arrowStyles}>
+        <path d="M 12 24 Q 12 12 24 12 Q 36 12 36 24 M 30 18 L 36 24 L 30 30" stroke="#B37C1C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  // straight / continue / merge / onto / other
+  return (
+    <svg {...arrowStyles}>
+      <path d="M 24 8 L 24 40 M 18 28 L 24 40 L 30 28" stroke="#B37C1C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 interface SimulatedBounty {
@@ -100,6 +130,7 @@ const GigRadar = () => {
   const [legData, setLegData] = useState<Leg[]>([]); // Mapbox leg data for ETA display
   const [nextInstruction, setNextInstruction] = useState(""); // Turn-by-turn instruction
   const [currentStepIndex, setCurrentStepIndex] = useState(0); // Track which turn instruction we're on
+  const [currentManeuver, setCurrentManeuver] = useState<{ type?: string; modifier?: string } | null>(null); // Current maneuver details
   const [distanceTraveled, setDistanceTraveled] = useState(0); // Distance traveled in meters
   const [totalRouteDistance, setTotalRouteDistance] = useState(0); // Total route distance in meters
   const [totalRouteDuration, setTotalRouteDuration] = useState(0); // Total route duration in seconds
@@ -124,11 +155,6 @@ const GigRadar = () => {
   useEffect(() => {
     if (!isInAppNavigating) return;
 
-    // Start with current bearing
-    if (mapRef.current && userBearing) {
-      mapRef.current.setBearing(userBearing);
-    }
-
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         // Update bearing from device compass
@@ -136,32 +162,36 @@ const GigRadar = () => {
           const newHeading = position.coords.heading;
           setUserBearing(newHeading);
 
-          // Immediately update map bearing
-          if (mapRef.current) {
-            mapRef.current.setBearing(newHeading);
-          }
+          // Update viewState bearing to follow route direction (bird's-eye effect)
+          setViewState(prev => ({
+            ...prev,
+            bearing: newHeading,
+          }));
         }
       },
       (error) => {
         console.warn("[GigRadar] Geolocation heading error:", error);
         // Fallback: try device orientation API
         if (window.DeviceOrientationEvent) {
-          window.addEventListener('deviceorientation', (event) => {
+          const handleOrientation = (event: DeviceOrientationEvent) => {
             if (event.alpha !== null && event.alpha !== undefined) {
               const heading = (360 - event.alpha) % 360;
               setUserBearing(heading);
-              if (mapRef.current) {
-                mapRef.current.setBearing(heading);
-              }
+              setViewState(prev => ({
+                ...prev,
+                bearing: heading,
+              }));
             }
-          });
+          };
+          window.addEventListener('deviceorientation', handleOrientation);
+          return () => window.removeEventListener('deviceorientation', handleOrientation);
         }
       },
       { enableHighAccuracy: true, maximumAge: 250 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [isInAppNavigating, userBearing]);
+  }, [isInAppNavigating]);
 
   useEffect(() => {
     if (isOnline && location) {
@@ -295,14 +325,19 @@ const GigRadar = () => {
         // Extract and display first instruction
         if (allSteps.length > 0) {
           const firstStep = allSteps[0];
-          const maneuverIcon = getManeuverIcon(firstStep.maneuver?.type || 'continue');
           const stepName = firstStep.name || "Continue";
           const stepDistance = Math.round(firstStep.distance);
-          let instruction = `${maneuverIcon} ${stepName}`;
+          let instruction = stepName;
           if (stepDistance > 0) {
             instruction += ` - ${stepDistance > 1000 ? (stepDistance / 1000).toFixed(1) + ' km' : stepDistance + 'm'}`;
           }
           setNextInstruction(instruction);
+          if (firstStep.maneuver) {
+            setCurrentManeuver({
+              type: firstStep.maneuver.type,
+              modifier: firstStep.maneuver.modifier,
+            });
+          }
         }
 
         const totalMinutes = Math.ceil(fullRoute.durationSeconds / 60);
@@ -363,6 +398,19 @@ const GigRadar = () => {
     }
   }, [location, isOnline, routeGeometry]);
 
+  // Sync 3D perspective (pitch=65, bearing=heading) as rider moves
+  useEffect(() => {
+    if (!isInAppNavigating || !location) return;
+
+    // Update viewState center to follow rider with 3D pitch locked
+    setViewState(prev => ({
+      ...prev,
+      latitude: location.lat,
+      longitude: location.lng,
+      pitch: 65, // Maintain bird's-eye perspective
+    }));
+  }, [location, isInAppNavigating]);
+
   // Track distance traveled from route geometry
   const lastLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
@@ -402,14 +450,19 @@ const GigRadar = () => {
       const nextIdx = currentStepIndex + 1;
       if (nextIdx < routeSteps.length) {
         const nextStep = routeSteps[nextIdx];
-        const maneuverIcon = getManeuverIcon(nextStep.maneuver?.type || 'continue');
         const stepName = nextStep.name || "Continue";
         const stepDistance = Math.round(nextStep.distance);
-        let instruction = `${maneuverIcon} ${stepName}`;
+        let instruction = stepName;
         if (stepDistance > 0) {
           instruction += ` - ${stepDistance > 1000 ? (stepDistance / 1000).toFixed(1) + ' km' : stepDistance + 'm'}`;
         }
         setNextInstruction(instruction);
+        if (nextStep.maneuver) {
+          setCurrentManeuver({
+            type: nextStep.maneuver.type,
+            modifier: nextStep.maneuver.modifier,
+          });
+        }
         setCurrentStepIndex(nextIdx);
       }
     }
@@ -513,33 +566,36 @@ const GigRadar = () => {
             )}
           </MapboxMapComponent>
 
-          {/* Top-Left Turn Instruction HUD - Yango/Uber Style */}
+          {/* Top-Left Turn Instruction HUD - Yango/Google Maps Style */}
           {nextInstruction && (
             <motion.div
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="absolute top-8 left-6 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-5 hover:shadow-3xl transition-shadow"
+              className="absolute top-8 left-6 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-4 hover:shadow-3xl transition-shadow"
               style={{
-                backgroundColor: 'rgba(10, 10, 20, 0.92)',
-                borderColor: 'rgba(179, 124, 28, 0.7)',
-                maxWidth: '340px',
+                backgroundColor: 'rgba(15, 26, 53, 0.95)',
+                borderColor: 'rgba(179, 124, 28, 0.8)',
+                maxWidth: '320px',
               }}
             >
-              <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: 'rgba(179, 124, 28, 0.3)' }}>
-                  <ChevronRight size={28} style={{ color: '#B37C1C' }} />
+              <div className="flex items-center gap-3">
+                {/* Gold Arrow Direction Icon */}
+                <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(179, 124, 28, 0.2)' }}>
+                  {currentManeuver ? getManeuverArrow(currentManeuver.type || 'straight', currentManeuver.modifier) : getManeuverArrow('straight')}
                 </div>
+
+                {/* Instruction Text */}
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-lg font-bold leading-tight mb-2"
+                    className="text-base font-black leading-tight"
                     style={{ color: '#FFFBF2' }}
                   >
                     {nextInstruction.split(' - ')[0] || nextInstruction}
                   </p>
                   {nextInstruction.includes('-') && (
                     <p
-                      className="text-sm font-semibold tracking-wide"
+                      className="text-xs font-semibold mt-1"
                       style={{ color: '#B37C1C' }}
                     >
                       {nextInstruction.split(' - ')[1] || '...'}
