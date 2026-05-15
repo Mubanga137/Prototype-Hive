@@ -64,9 +64,11 @@ export const Navigation3DView = ({
         const endLng = dropoffLng;
         const endLat = dropoffLat;
 
-        const route = await mapboxRoutingService.getRoute(
-          [startLng, startLat],
-          [endLng, endLat]
+        const route = await mapboxRoutingService.getFullRoute(
+          startLng,
+          startLat,
+          endLng,
+          endLat
         );
 
         if (route && route.legs && route.legs[0]) {
@@ -80,9 +82,7 @@ export const Navigation3DView = ({
           }));
 
           setInstructions(instructionsList);
-          setRouteGeometry(
-            route.geometry?.coordinates as [number, number][] || null
-          );
+          setRouteGeometry(route.coordinates);
         }
       } catch (err) {
         console.error('Error fetching route:', err);

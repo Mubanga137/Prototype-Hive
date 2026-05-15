@@ -53,13 +53,24 @@ export const NavigationContinueCard = ({
       setError(null);
       try {
         const route = await mapboxRoutingService.getRoute(
-          [pickupLng, pickupLat],
-          [dropoffLng, dropoffLat]
+          pickupLng,
+          pickupLat,
+          dropoffLng,
+          dropoffLat
         );
 
-        if (route && route.legs && route.legs[0]) {
-          const leg = route.legs[0];
-          const steps = leg.steps || [];
+        if (route) {
+          // For getRoute, we need to use getFullRoute to get steps
+          const fullRoute = await mapboxRoutingService.getFullRoute(
+            pickupLng,
+            pickupLat,
+            dropoffLng,
+            dropoffLat
+          );
+          if (!fullRoute) return;
+
+          const leg = fullRoute.legs?.[0];
+          const steps = leg?.steps || [];
           
           const instructions = steps.map((step: any) => ({
             instruction: step.maneuver?.instruction || step.name || 'Continue',
@@ -69,8 +80,8 @@ export const NavigationContinueCard = ({
           }));
 
           setRouteData({
-            distance: leg.distance || route.distance,
-            duration: leg.duration || route.duration,
+            distance: fullRoute.durationSeconds ? parseInt(fullRoute.distance) * 1000 : 2500,
+            duration: fullRoute.durationSeconds || 900,
             instructions,
           });
         }

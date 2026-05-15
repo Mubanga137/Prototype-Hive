@@ -38,9 +38,11 @@ export const EnhancedTopNavigationHUD = ({
   useEffect(() => {
     const fetchRoute = async () => {
       try {
-        const route = await mapboxRoutingService.getRoute(
-          [currentLocation.lng, currentLocation.lat],
-          [destination.lng, destination.lat]
+        const route = await mapboxRoutingService.getFullRoute(
+          currentLocation.lng,
+          currentLocation.lat,
+          destination.lng,
+          destination.lat
         );
 
         if (route && route.legs && route.legs[0]) {

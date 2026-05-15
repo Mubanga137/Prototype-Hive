@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart } from "lucide-react";
 import NavigationContinueCard from "./NavigationContinueCard";
@@ -72,21 +72,23 @@ const HeroSection = () => {
         />
       </motion.div>
 
-      {/* 3D Navigation View Modal */}
+      {/* 3D Navigation View Modal - Only render when needed */}
       {navigationActive && (
-        <Navigation3DView
-          userLat={-15.3875}
-          userLng={28.3228}
-          userBearing={45}
-          pickupLat={-15.3875}
-          pickupLng={28.3228}
-          dropoffLat={-15.4}
-          dropoffLng={28.35}
-          pickupName="Hive HQ"
-          dropoffName="Your Location"
-          isPickupDone={false}
-          onClose={() => setNavigationActive(false)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><p style={{color: '#FFFBF2'}}>Loading navigation...</p></div>}>
+          <Navigation3DView
+            userLat={-15.3875}
+            userLng={28.3228}
+            userBearing={45}
+            pickupLat={-15.3875}
+            pickupLng={28.3228}
+            dropoffLat={-15.4}
+            dropoffLng={28.35}
+            pickupName="Hive HQ"
+            dropoffName="Your Location"
+            isPickupDone={false}
+            onClose={() => setNavigationActive(false)}
+          />
+        </Suspense>
       )}
     </section>
   );
