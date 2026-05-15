@@ -13,6 +13,7 @@ import { GoOnlineOverlay } from "@/components/gig-radar/GoOnlineOverlay";
 import { AvailableBountiesDrawer } from "@/components/gig-radar/AvailableBountiesDrawer";
 import { EnhancedMissionHUD } from "@/components/gig-radar/EnhancedMissionHUD";
 import { MissionControlPanel } from "@/components/gig-radar/MissionControlPanel";
+import { TopNavigationHUD } from "@/components/gig-radar/TopNavigationHUD";
 import { Menu, MapPin, Zap, Phone, PhoneOff, X, ChevronRight, MapPinned, Lightbulb, Car, Footprints } from "lucide-react";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import hiveLogo from "@/assets/hive-logo.jpeg";
@@ -20,9 +21,9 @@ import { BatchedOrder } from "@/utils/orderClustering";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
-import WorkerMarker from "@/components/Map/WorkerMarker";
+import ChevronMarker from "@/components/Map/ChevronMarker";
 import DestinationMarker from "@/components/Map/DestinationMarker";
-import { mapboxRoutingService } from "@/services/mapboxRoutingService";
+import { mapboxRoutingService, Leg } from "@/services/mapboxRoutingService";
 
 const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
 const DEFAULT_ZOOM = 14;
@@ -62,6 +63,9 @@ const GigRadar = () => {
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [claimedBatch, setClaimedBatch] = useState<BatchedOrder | null>(null);
   const [isInAppNavigating, setIsInAppNavigating] = useState(false);
+  const [userBearing, setUserBearing] = useState(0); // 0-360 degrees
+  const [legData, setLegData] = useState<Leg[]>([]); // Mapbox leg data for ETA display
+  const [nextInstruction, setNextInstruction] = useState(""); // Turn-by-turn instruction
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
   const { gigs, acceptGig } = useGigSimulation(location, isOnline);
@@ -69,6 +73,23 @@ const GigRadar = () => {
 
   const mapCenter = location || LUSAKA_CENTER;
   const userRole = user?.role || "gig_worker";
+
+  // Track device heading/bearing for chevron rotation
+  useEffect(() => {
+    if (!isInAppNavigating) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (position.coords.heading !== null && position.coords.heading !== undefined) {
+          setUserBearing(position.coords.heading);
+        }
+      },
+      (error) => console.warn("[GigRadar] Heading watch error:", error),
+      { enableHighAccuracy: true, maximumAge: 1000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [isInAppNavigating]);
 
   useEffect(() => {
     if (isOnline && location) {
@@ -148,6 +169,8 @@ const GigRadar = () => {
   useEffect(() => {
     if (!claimedBatch || !location) {
       setRouteGeometry(null);
+      setLegData([]);
+      setNextInstruction("");
       return;
     }
 
@@ -169,8 +192,8 @@ const GigRadar = () => {
         const dropoffLat = claimedBatch.dropoffs[0]?.loc.lat || LUSAKA_CENTER.lat;
         const dropoffLng = claimedBatch.dropoffs[0]?.loc.lng || LUSAKA_CENTER.lng;
 
-        // Leg 1: Worker to pickup
-        const leg1Route = await mapboxRoutingService.getRoute(location.lng, location.lat, pickupLng, pickupLat);
+        // Leg 1: Worker to pickup (with turn-by-turn steps)
+        const leg1Route = await mapboxRoutingService.getFullRoute(location.lng, location.lat, pickupLng, pickupLat);
 
         // Check if request was cancelled
         if (controller.signal.aborted) return;
@@ -178,7 +201,7 @@ const GigRadar = () => {
         if (!leg1Route) throw new Error("No route found for leg 1");
 
         // Leg 2: Pickup to customer
-        const leg2Route = await mapboxRoutingService.getRoute(pickupLng, pickupLat, dropoffLng, dropoffLat);
+        const leg2Route = await mapboxRoutingService.getFullRoute(pickupLng, pickupLat, dropoffLng, dropoffLat);
 
         // Check if request was cancelled
         if (controller.signal.aborted) return;
@@ -191,15 +214,27 @@ const GigRadar = () => {
           ...leg2Route.coordinates.slice(1),
         ];
 
-        const leg1Duration = parseInt(leg1Route.eta.split(" ")[0]);
-        const leg2Duration = parseInt(leg2Route.eta.split(" ")[0]);
-        const totalDuration = leg1Duration + leg2Duration;
-        const leg1Distance = parseFloat(leg1Route.distance.split(" ")[0]);
-        const leg2Distance = parseFloat(leg2Route.distance.split(" ")[0]);
-        const totalDistance = (leg1Distance + leg2Distance).toFixed(1);
+        // Extract leg data for MissionControlPanel ETA display
+        const allLegs = [...leg1Route.legs, ...leg2Route.legs];
+        setLegData(allLegs);
+
+        // Extract first turn-by-turn instruction from leg 1
+        if (leg1Route.legs[0]?.steps && leg1Route.legs[0].steps.length > 0) {
+          const firstStep = leg1Route.legs[0].steps[0];
+          const stepName = firstStep.name || "Continue";
+          const stepDistance = Math.round(firstStep.distance);
+          let instruction = `${stepName}`;
+          if (stepDistance > 0) {
+            instruction += ` - ${stepDistance > 1000 ? (stepDistance / 1000).toFixed(1) + ' km' : stepDistance + 'm'}`;
+          }
+          setNextInstruction(instruction);
+        }
+
+        const totalDuration = leg1Route.durationSeconds + leg2Route.durationSeconds;
+        const totalMinutes = Math.ceil(totalDuration / 60);
 
         setRouteGeometry(totalCoords as [number, number][]);
-        setRouteETAMap(new Map([[claimedBatch.clusterId, { eta: `⏱️ ETA: ${totalDuration}m`, distance: `📏 ${totalDistance}km` }]]));
+        setRouteETAMap(new Map([[claimedBatch.clusterId, { eta: `⏱️ ETA: ${totalMinutes}m`, distance: `📏 ${(totalDuration / 1000).toFixed(1)}km` }]]));
       } catch (error: any) {
         // Don't show error for aborted requests
         if (error?.name === "AbortError") {
@@ -207,7 +242,6 @@ const GigRadar = () => {
           return;
         }
         console.warn("[GigRadar] Mapbox route error:", error);
-        // Don't show toast for route errors - just log silently
       }
     };
 
@@ -305,7 +339,14 @@ const GigRadar = () => {
               initialLng={mapCenter.lng}
               initialZoom={16}
             >
-              {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
+              {location && isOnline && (
+                <ChevronMarker
+                  lng={location.lng}
+                  lat={location.lat}
+                  bearing={isInAppNavigating ? userBearing : 0}
+                  label={isInAppNavigating ? "You" : undefined}
+                />
+              )}
 
               {/* Pickup marker - from SME location */}
               {claimedBatch.pickupLoc && (
