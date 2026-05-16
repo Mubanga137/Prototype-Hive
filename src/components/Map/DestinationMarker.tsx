@@ -20,7 +20,7 @@ export const DestinationMarker: React.FC<DestinationMarkerProps> = ({
   return (
     <Marker longitude={lng} latitude={lat} anchor="bottom">
       <div className="relative flex flex-col items-center">
-        {/* Yango-style gold/amber lollipop pin */}
+        {/* Standard red circular lollipop pin for all destinations */}
         <svg
           width="52"
           height="66"
@@ -33,11 +33,11 @@ export const DestinationMarker: React.FC<DestinationMarkerProps> = ({
           }}
         >
           <defs>
-            {/* Gold gradient for pin circle */}
-            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#F4D4A8" />
-              <stop offset="50%" stopColor="#D4A574" />
-              <stop offset="100%" stopColor="#B37C1C" />
+            {/* Red gradient for pin circle */}
+            <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FF6B6B" />
+              <stop offset="50%" stopColor="#EF4444" />
+              <stop offset="100%" stopColor="#DC2626" />
             </linearGradient>
 
             {/* Glow effect */}
@@ -54,16 +54,16 @@ export const DestinationMarker: React.FC<DestinationMarkerProps> = ({
           <line
             x1="26" y1="38"
             x2="26" y2="64"
-            stroke="#B37C1C"
+            stroke="#991B1B"
             strokeWidth="4"
             strokeLinecap="round"
             filter="url(#glowPin)"
           />
 
-          {/* Outer circle - Gold */}
+          {/* Outer circle - Red */}
           <circle
             cx="26" cy="26" r="22"
-            fill="url(#goldGradient)"
+            fill="url(#redGradient)"
             filter="url(#glowPin)"
           />
 
@@ -71,15 +71,15 @@ export const DestinationMarker: React.FC<DestinationMarkerProps> = ({
           <circle
             cx="26" cy="26" r="16"
             fill="#FFFBF2"
-            stroke="#B37C1C"
+            stroke="#EF4444"
             strokeWidth="1.5"
           />
 
-          {/* Center marker badge */}
+          {/* Center marker badge - lighter red for dropoff, darker for pickup */}
           <circle
             cx="26" cy="26" r="9"
-            fill={isPickup ? '#B37C1C' : '#D4A574'}
-            opacity={isPickup ? 1 : 0.85}
+            fill={isPickup ? '#991B1B' : '#FCA5A5'}
+            opacity={isPickup ? 1 : 0.8}
           />
 
           {/* Highlight for 3D depth */}
@@ -94,7 +94,7 @@ export const DestinationMarker: React.FC<DestinationMarkerProps> = ({
           <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-full mt-2 bg-[#0F1A35] text-[#FFFBF2] px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-lg border border-[#B37C1C]"
+            className="absolute top-full mt-2 bg-[#0F1A35] text-[#FFFBF2] px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-lg border border-[#EF4444]"
           >
             {label}
           </motion.div>

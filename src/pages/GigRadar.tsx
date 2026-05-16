@@ -566,76 +566,67 @@ const GigRadar = () => {
             )}
           </MapboxMapComponent>
 
-          {/* Top-Left Turn Instruction HUD - Yango/Google Maps Style */}
-          {nextInstruction && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="absolute top-8 left-6 z-60 backdrop-blur-xl rounded-2xl border shadow-2xl p-4 hover:shadow-3xl transition-shadow"
-              style={{
-                backgroundColor: 'rgba(15, 26, 53, 0.95)',
-                borderColor: 'rgba(179, 124, 28, 0.8)',
-                maxWidth: '320px',
+          {/* Map Controls - Top Right: Zoom + 3D/2D Toggle */}
+          <div className="absolute top-6 right-6 z-60 flex flex-col gap-2">
+            {/* Recenter FAB Button */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (location && mapRef.current) {
+                  setViewState({
+                    latitude: location.lat,
+                    longitude: location.lng,
+                    zoom: 17.5,
+                    bearing: userBearing,
+                    pitch: 65,
+                  });
+                  mapRef.current.flyTo({
+                    center: [location.lng, location.lat],
+                    bearing: userBearing,
+                    pitch: 65,
+                    zoom: 17.5,
+                    duration: 1000,
+                  });
+                }
               }}
+              className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all"
+              style={{
+                backgroundColor: '#B37C1C',
+                color: '#FFFBF2',
+              }}
+              title="Recenter map on your location"
             >
-              <div className="flex items-center gap-3">
-                {/* Gold Arrow Direction Icon */}
-                <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(179, 124, 28, 0.2)' }}>
-                  {currentManeuver ? getManeuverArrow(currentManeuver.type || 'straight', currentManeuver.modifier) : getManeuverArrow('straight')}
-                </div>
+              <MapPinned size={22} />
+            </motion.button>
 
-                {/* Instruction Text */}
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-base font-black leading-tight"
-                    style={{ color: '#FFFBF2' }}
-                  >
-                    {nextInstruction.split(' - ')[0] || nextInstruction}
-                  </p>
-                  {nextInstruction.includes('-') && (
-                    <p
-                      className="text-xs font-semibold mt-1"
-                      style={{ color: '#B37C1C' }}
-                    >
-                      {nextInstruction.split(' - ')[1] || '...'}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Recenter FAB Button - Top Right */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (location && mapRef.current) {
-                setViewState({
-                  latitude: location.lat,
-                  longitude: location.lng,
-                  zoom: 17.5,
-                  bearing: userBearing,
-                  pitch: 65,
-                });
-                mapRef.current.flyTo({
-                  center: [location.lng, location.lat],
-                  bearing: userBearing,
-                  pitch: 65,
-                  zoom: 17.5,
-                  duration: 1000,
-                });
-              }
-            }}
-            className="absolute top-8 right-6 z-60 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all"
-            style={{
-              backgroundColor: 'rgba(179, 124, 28, 0.9)',
-              color: '#FFFBF2',
-            }}
-          >
-            <MapPinned size={22} />
-          </motion.button>
+            {/* 3D/2D Toggle Button (Gold Compass) */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setViewState(prev => ({
+                  ...prev,
+                  pitch: prev.pitch === 0 ? 60 : 0,
+                }));
+                if (mapRef.current) {
+                  mapRef.current.setPitch(viewState.pitch === 0 ? 60 : 0);
+                }
+              }}
+              className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all"
+              style={{
+                backgroundColor: '#B37C1C',
+                color: '#FFFBF2',
+              }}
+              title={viewState.pitch === 0 ? 'Switch to 3D view' : 'Switch to 2D view'}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                <line x1="12" y1="2" x2="12" y2="8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                <path d="M16.5 7.5L13 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </motion.button>
+          </div>
 
           {/* Bottom Bar - ETA, Progress & Controls (Yango/Uber Style) */}
           <motion.div

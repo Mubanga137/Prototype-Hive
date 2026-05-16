@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import FeaturedItemCard, { type FeaturedItem } from "@/components/FeaturedItemCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
+import VendorCard, { type VendorData } from "@/components/VendorCard";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -168,29 +169,29 @@ const Marketplace = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-16 pt-8 border-t border-border">
             <div className="mb-12">
               <h3 className="text-lg font-display font-bold text-foreground mb-6">Featured Vendors</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {allItems.slice(0, 6).map((item) => (
-                  <motion.div
-                    key={`vendor-${item.id}`}
-                    whileHover={{ y: -4 }}
-                    onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}
-                    className="p-4 rounded-xl border border-border bg-card hover:bg-secondary cursor-pointer transition-all"
-                  >
-                    <div className="flex gap-3 mb-3">
-                      {item.image_url && (
-                        <img src={item.image_url} alt={item.item_name} className="w-12 h-12 rounded-lg object-cover" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-foreground truncate">{item.store_name}</p>
-                        <p className="text-xs text-muted-foreground">{item.item_name.substring(0, 30)}...</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-primary">ZMW {item.price.toLocaleString()}</span>
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">{item.category}</span>
-                    </div>
-                  </motion.div>
-                ))}
+              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                {allItems.slice(0, 6).map((item, idx) => {
+                  const vendor: VendorData = {
+                    id: item.id,
+                    store_name: item.store_name,
+                    owner_name: item.store_name,
+                    verified: true,
+                    is_featured: item.is_featured,
+                    description: `Premium ${item.category} products and services`,
+                    category: item.category || "General",
+                    rating: 4.8,
+                    product_count: 24,
+                    location: "Lusaka",
+                  };
+                  return (
+                    <VendorCard
+                      key={`vendor-${item.id}`}
+                      vendor={vendor}
+                      index={idx}
+                      onVisitStore={() => { setSelectedItem(item); setDrawerOpen(true); }}
+                    />
+                  );
+                })}
               </div>
             </div>
 
