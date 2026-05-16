@@ -31,31 +31,44 @@ export const GoOnlineOverlay = ({
     setIsLoadingLocation(true);
 
     if (!navigator.geolocation) {
-      toast.error("Geolocation not supported");
+      toast.error("📍 Geolocation not supported on this device");
       setIsLoadingLocation(false);
       return;
     }
+
+    // Show initial toast to user
+    toast.loading("📍 Requesting location access...");
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
         setIsLoadingLocation(false);
+        toast.dismiss();
         onLocationAcquired?.(latitude, longitude);
         onOnline();
         toast.success("✨ You're online! Location acquired.");
       },
       (error) => {
         setIsLoadingLocation(false);
+        toast.dismiss();
         console.error("Geolocation error:", error);
+
         if (error.code === 1) {
-          toast.error("Location permission denied. Please enable location access.");
+          // PERMISSION_DENIED
+          toast.error("📍 Location Permission Denied\n\nPlease enable location access in your phone settings and try again.");
+        } else if (error.code === 2) {
+          // POSITION_UNAVAILABLE
+          toast.error("📍 Location Not Available\n\nPlease turn on your device GPS and try again.");
+        } else if (error.code === 3) {
+          // TIMEOUT
+          toast.error("📍 Location Request Timed Out\n\nPlease try again.");
         } else {
-          toast.error("Failed to get location. Please try again.");
+          toast.error("📍 Failed to get location\n\nPlease check your settings and try again.");
         }
       },
       {
         enableHighAccuracy: true,
-        timeout: 5000,
+        timeout: 15000, // Increased timeout for mobile
         maximumAge: 0,
       }
     );

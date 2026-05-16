@@ -39,7 +39,7 @@ const HeroSection = () => {
       </motion.p>
 
       <motion.a
-        href="#marketplace"
+        href="/marketplace"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.3 }}
@@ -51,26 +51,6 @@ const HeroSection = () => {
         SHOP WITH THE HIVE
       </motion.a>
 
-      {/* Navigation Continue Card Demo */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="mt-16"
-      >
-        <NavigationContinueCard
-          pickupLat={-15.3875}
-          pickupLng={28.3228}
-          dropoffLat={-15.4}
-          dropoffLng={28.35}
-          pickupName="Hive HQ - Cairo Rd"
-          dropoffName="Your Location"
-          onNavigateClick={() => {
-            setShowNavigation(true);
-            setNavigationActive(true);
-          }}
-        />
-      </motion.div>
 
       {/* 3D Navigation View Modal - Only render when needed */}
       {navigationActive && (

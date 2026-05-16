@@ -36,6 +36,7 @@ import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
 import OrderTracking from "./pages/OrderTracking.tsx";
 import TrackOrders from "./pages/customer/TrackOrders.tsx";
+import Marketplace from "./pages/customer/Marketplace.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const AppContent = () => {
 
         {/* Customer — temporarily open */}
         <Route path="/customer-dash" element={<CustomerDashboard />} />
+        <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/track-orders" element={<TrackOrders />} />
 
         {/* Vendor / SME — temporarily open */}

@@ -2,10 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react';
 import MapboxMapComponent from '@/components/Map/MapboxMapComponent';
-import ChevronMarker from '@/components/Map/ChevronMarker';
-import DestinationMarker from '@/components/Map/DestinationMarker';
-import { MapRef, Source, Layer } from 'react-map-gl';
+import { MapRef, Source, Layer, Marker } from 'react-map-gl';
 import { mapboxRoutingService } from '@/services/mapboxRoutingService';
+import { GoldArrowheadIcon, RedLocationPinIcon } from '@/components/Map/ExactNavigationIcons';
 
 interface Navigation3DViewProps {
   userLat: number;
@@ -49,11 +48,14 @@ export const Navigation3DView = ({
   onClose,
   onStepUpdate,
 }: Navigation3DViewProps) => {
+  const mapRef = useRef<MapRef>(null);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [totalDistance, setTotalDistance] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
 
   // Fetch route and instructions
   useEffect(() => {
@@ -83,6 +85,8 @@ export const Navigation3DView = ({
 
           setInstructions(instructionsList);
           setRouteGeometry(route.coordinates);
+          setTotalDistance(route.distance ? parseInt(route.distance) * 1000 : leg.distance || 0);
+          setTotalDuration(route.durationSeconds || leg.duration || 0);
         }
       } catch (err) {
         console.error('Error fetching route:', err);
@@ -106,6 +110,14 @@ export const Navigation3DView = ({
   const formatDistance = (meters: number) => {
     if (meters < 1000) return `${Math.round(meters)}m`;
     return `${(meters / 1000).toFixed(1)}km`;
+  };
+
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
   };
 
   const getManeuverArrow = () => {
@@ -172,68 +184,102 @@ export const Navigation3DView = ({
       className="fixed inset-0 z-50 flex flex-col"
     >
       {/* 3D Pitched Map - Full Screen */}
-      <div className="flex-1 relative overflow-hidden">
-        <MapboxMapComponent
-          initialLat={userLat}
-          initialLng={userLng}
-          initialZoom={18}
-          pitch={70}
-          bearing={userBearing}
-          style="mapbox://styles/mapbox/navigation-night-v1"
-          disableControls={true}
-        >
-          {/* User position marker - gold arrow */}
-          <ChevronMarker
-            lng={userLng}
-            lat={userLat}
-            bearing={userBearing}
-            label="You"
-          />
-
-          {/* Destination marker - gold lollipop pin */}
-          {!isPickupDone && (
-            <DestinationMarker
-              lng={pickupLng}
-              lat={pickupLat}
-              label={pickupName}
-              type="pickup"
-            />
-          )}
-
-          <DestinationMarker
-            lng={dropoffLng}
-            lat={dropoffLat}
-            label={dropoffName}
-            type="dropoff"
-          />
-
-          {/* Route polyline */}
-          {routeGeometry && (
-            <Source
-              id="route"
-              type="geojson"
-              data={{
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                  type: 'LineString',
-                  coordinates: routeGeometry,
-                },
-              }}
-            >
-              <Layer
-                id="route-line"
-                type="line"
-                paint={{
-                  'line-color': GOLD,
-                  'line-width': 5,
-                  'line-opacity': 0.9,
-                  'line-blur': 1,
+      <div className="flex-1 relative overflow-hidden bg-gray-900">
+        {loading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
+            <div className="text-center">
+              <div
+                className="w-12 h-12 rounded-full border-4 mx-auto mb-4"
+                style={{
+                  borderColor: '#374151',
+                  borderTopColor: GOLD,
+                  animation: 'spin 1s linear infinite',
                 }}
-              />
-            </Source>
-          )}
-        </MapboxMapComponent>
+              ></div>
+              <p style={{ color: IVORY }}>Loading navigation...</p>
+            </div>
+          </div>
+        ) : null}
+        <div style={{ width: '100%', height: '100%' }}>
+          <MapboxMapComponent
+            initialLat={userLat}
+            initialLng={userLng}
+            initialZoom={18}
+            pitch={70}
+            bearing={userBearing}
+            style="mapbox://styles/mapbox/navigation-night-v1"
+            disableControls={true}
+          >
+            {/* User position marker - exact gold arrowhead */}
+            <Marker longitude={userLng} latitude={userLat} anchor="center">
+              <div className="flex items-center justify-center">
+                <GoldArrowheadIcon bearing={userBearing} size={48} />
+              </div>
+            </Marker>
+
+            {/* Destination marker - exact red location pin */}
+            {!isPickupDone && (
+              <Marker longitude={pickupLng} latitude={pickupLat} anchor="bottom">
+                <div className="flex flex-col items-center">
+                  <RedLocationPinIcon size={52} type="pickup" />
+                  {pickupName && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute top-full mt-2 bg-[#0F1A35] text-[#FFFBF2] px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-lg border"
+                      style={{ borderColor: GOLD }}
+                    >
+                      {pickupName}
+                    </motion.div>
+                  )}
+                </div>
+              </Marker>
+            )}
+
+            <Marker longitude={dropoffLng} latitude={dropoffLat} anchor="bottom">
+              <div className="flex flex-col items-center">
+                <RedLocationPinIcon size={52} type="dropoff" />
+                {dropoffName && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute top-full mt-2 bg-[#0F1A35] text-[#FFFBF2] px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shadow-lg border"
+                    style={{ borderColor: GOLD }}
+                  >
+                    {dropoffName}
+                  </motion.div>
+                )}
+              </div>
+            </Marker>
+
+            {/* Route polyline */}
+            {routeGeometry && (
+              <Source
+                id="route"
+                type="geojson"
+                data={{
+                  type: 'Feature',
+                  properties: {},
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: routeGeometry,
+                  },
+                }}
+              >
+                <Layer
+                  id="route-line"
+                  type="line"
+                  paint={{
+                    'line-color': GOLD,
+                    'line-width': 5,
+                    'line-opacity': 0.9,
+                    'line-blur': 1,
+                  }}
+                />
+              </Source>
+            )}
+          </MapboxMapComponent>
+        </div>
 
         {/* Close button */}
         <motion.button
@@ -278,7 +324,10 @@ export const Navigation3DView = ({
             }}
           >
             {/* Maneuver arrow */}
-            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg" style={{ background: `${GOLD}20` }}>
+            <div
+              className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg"
+              style={{ background: `${GOLD}20` }}
+            >
               {getManeuverArrow()}
             </div>
 
@@ -287,7 +336,10 @@ export const Navigation3DView = ({
               <p className="text-xs font-bold uppercase" style={{ color: GOLD }}>
                 {currentInstruction.maneuver?.type || 'Continue'}
               </p>
-              <p className="text-sm font-semibold leading-snug" style={{ color: IVORY }}>
+              <p
+                className="text-sm font-semibold leading-snug truncate"
+                style={{ color: IVORY }}
+              >
                 {currentInstruction.instruction}
               </p>
             </div>
@@ -305,30 +357,81 @@ export const Navigation3DView = ({
         )}
       </AnimatePresence>
 
-      {/* Bottom HUD - Step navigation and summary */}
+      {/* Bottom Ivory Panel - ETA, Distance, Routing & Directional Guidance */}
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
-        className="px-4 py-4 backdrop-blur-md shadow-2xl"
+        className="px-4 py-6 shadow-2xl"
         style={{
-          background: `linear-gradient(135deg, ${NAVY}dd 0%, #1a2a4add 100%)`,
+          background: IVORY,
           borderTop: `2px solid ${GOLD}`,
         }}
       >
-        {/* Step counter and navigation */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-bold uppercase" style={{ color: `${IVORY}80` }}>
+        {/* Main routing info - ETA and Distance */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex-1">
+            <p className="text-xs font-bold uppercase" style={{ color: NAVY }}>
+              Estimated Time of Arrival
+            </p>
+            <p className="text-2xl font-bold" style={{ color: GOLD }}>
+              {formatDuration(totalDuration)}
+            </p>
+          </div>
+          <div className="w-px h-12" style={{ background: `${NAVY}20` }}></div>
+          <div className="flex-1 text-right">
+            <p className="text-xs font-bold uppercase" style={{ color: NAVY }}>
+              Total Distance
+            </p>
+            <p className="text-2xl font-bold" style={{ color: GOLD }}>
+              {formatDistance(totalDistance)}
+            </p>
+          </div>
+        </div>
+
+        {/* Current directional guidance */}
+        {currentInstruction && (
+          <motion.div
+            className="rounded-lg p-3 mb-4 flex items-start gap-3"
+            style={{
+              background: `${GOLD}15`,
+              border: `1px solid ${GOLD}40`,
+            }}
+          >
+            <div className="flex-shrink-0 text-lg">{getManeuverArrow()}</div>
+            <div className="flex-1">
+              <p className="text-xs font-bold uppercase" style={{ color: GOLD }}>
+                Next Direction
+              </p>
+              <p
+                className="text-sm font-semibold leading-tight mt-1"
+                style={{ color: NAVY }}
+              >
+                {currentInstruction.instruction}
+              </p>
+              <p className="text-xs mt-2" style={{ color: `${NAVY}70` }}>
+                📍 {formatDistance(currentInstruction.distance)} ahead
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step navigation */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase" style={{ color: `${NAVY}60` }}>
             Step {currentStepIndex + 1} of {instructions.length}
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
               disabled={currentStepIndex === 0}
-              className="w-8 h-8 rounded flex items-center justify-center transition-all disabled:opacity-20"
-              style={{ background: `${GOLD}30`, color: GOLD }}
+              className="px-3 py-1 rounded text-xs font-bold transition-all disabled:opacity-30"
+              style={{
+                background: GOLD,
+                color: NAVY,
+              }}
             >
-              <ChevronUp size={18} />
+              ← Prev
             </button>
             <button
               onClick={() =>
@@ -337,39 +440,14 @@ export const Navigation3DView = ({
                 )
               }
               disabled={currentStepIndex === instructions.length - 1}
-              className="w-8 h-8 rounded flex items-center justify-center transition-all disabled:opacity-20"
-              style={{ background: `${GOLD}30`, color: GOLD }}
+              className="px-3 py-1 rounded text-xs font-bold transition-all disabled:opacity-30"
+              style={{
+                background: GOLD,
+                color: NAVY,
+              }}
             >
-              <ChevronDown size={18} />
+              Next →
             </button>
-          </div>
-        </div>
-
-        {/* Route info grid */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg p-2 text-center" style={{ background: `${GOLD}15` }}>
-            <p className="text-xs" style={{ color: `${IVORY}80` }}>
-              FROM
-            </p>
-            <p className="text-xs font-bold" style={{ color: IVORY }}>
-              {isPickupDone ? pickupName : 'Your Location'}
-            </p>
-          </div>
-          <div className="rounded-lg p-2 text-center" style={{ background: `${GOLD}15` }}>
-            <p className="text-xs" style={{ color: `${IVORY}80` }}>
-              TO
-            </p>
-            <p className="text-xs font-bold" style={{ color: IVORY }}>
-              {dropoffName}
-            </p>
-          </div>
-          <div className="rounded-lg p-2 text-center" style={{ background: `${GOLD}15` }}>
-            <p className="text-xs" style={{ color: `${IVORY}80` }}>
-              STATUS
-            </p>
-            <p className="text-xs font-bold" style={{ color: GOLD }}>
-              🗺️ NAVIGATING
-            </p>
           </div>
         </div>
       </motion.div>
