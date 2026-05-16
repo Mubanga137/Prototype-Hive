@@ -205,10 +205,10 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
     const orderId = (data as any)?.id ?? "—";
 
-    // Brief success state, then route to WhatsApp.
+    // Brief success state
     setState("success");
     toast.success(
-      isService ? "Booking confirmed — opening WhatsApp…" : "Order placed — opening WhatsApp…"
+      isService ? "✅ Booking confirmed in database!" : "✅ Order successfully booked in database!"
     );
 
     const message = buildOrderMessage({
@@ -225,14 +225,15 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     const targetPhone = cleanZambianPhone(item.store_whatsapp);
 
     setTimeout(() => {
-      if (!targetPhone) {
-        toast.error("This store hasn't set a WhatsApp number yet.");
-        setState("idle");
+      // If WhatsApp is available, redirect. If not, just close the drawer.
+      if (targetPhone) {
+        // Same-tab redirect, per spec
+        window.location.href = buildWhatsAppUrl(targetPhone, message);
+      } else {
+        // WhatsApp is missing - gracefully close without blocking
+        console.warn("[checkout] WhatsApp number missing for store:", item.store_name);
         onOpenChange(false);
-        return;
       }
-      // Same-tab redirect, per spec
-      window.location.href = buildWhatsAppUrl(targetPhone, message);
     }, 1000);
   };
 

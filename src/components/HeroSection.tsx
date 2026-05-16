@@ -1,12 +1,24 @@
-import { useState, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShoppingCart } from "lucide-react";
-import NavigationContinueCard from "./NavigationContinueCard";
-import Navigation3DView from "./Navigation3DView";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const HeroSection = () => {
-  const [showNavigation, setShowNavigation] = useState(false);
-  const [navigationActive, setNavigationActive] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleShopClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    const { data: session } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      navigate("/customer-dash");
+    } else {
+      navigate("/customer-dash");
+    }
+  };
 
   return (
     <section className="relative z-10 flex flex-col items-center text-center px-4 pt-16 pb-12 md:pt-24 md:pb-20 max-w-4xl mx-auto">
@@ -38,8 +50,8 @@ const HeroSection = () => {
         Where smart entrepreneurship meets a better way to shop.
       </motion.p>
 
-      <motion.a
-        href="#marketplace"
+      <motion.button
+        onClick={handleShopClick}
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.3 }}
@@ -49,47 +61,7 @@ const HeroSection = () => {
       >
         <ShoppingCart size={20} />
         SHOP WITH THE HIVE
-      </motion.a>
-
-      {/* Navigation Continue Card Demo */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        className="mt-16"
-      >
-        <NavigationContinueCard
-          pickupLat={-15.3875}
-          pickupLng={28.3228}
-          dropoffLat={-15.4}
-          dropoffLng={28.35}
-          pickupName="Hive HQ - Cairo Rd"
-          dropoffName="Your Location"
-          onNavigateClick={() => {
-            setShowNavigation(true);
-            setNavigationActive(true);
-          }}
-        />
-      </motion.div>
-
-      {/* 3D Navigation View Modal - Only render when needed */}
-      {navigationActive && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><p style={{color: '#FFFBF2'}}>Loading navigation...</p></div>}>
-          <Navigation3DView
-            userLat={-15.3875}
-            userLng={28.3228}
-            userBearing={45}
-            pickupLat={-15.3875}
-            pickupLng={28.3228}
-            dropoffLat={-15.4}
-            dropoffLng={28.35}
-            pickupName="Hive HQ"
-            dropoffName="Your Location"
-            isPickupDone={false}
-            onClose={() => setNavigationActive(false)}
-          />
-        </Suspense>
-      )}
+      </motion.button>
     </section>
   );
 };
