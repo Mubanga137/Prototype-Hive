@@ -16,7 +16,8 @@ const HeroSection = () => {
     if (session?.user) {
       navigate("/customer-dash");
     } else {
-      navigate("/customer-dash");
+      // Route guest to marketplace view
+      navigate("/customer-dash?guest=true");
     }
   };
 

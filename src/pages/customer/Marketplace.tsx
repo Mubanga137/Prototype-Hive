@@ -7,6 +7,7 @@ import {
 import FeaturedItemCard, { type FeaturedItem } from "@/components/FeaturedItemCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
 import VendorCard, { type VendorData } from "@/components/VendorCard";
+import HoneycombBackground from "@/components/HoneycombBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -105,108 +106,73 @@ const Marketplace = () => {
   });
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+    <div className="max-w-5xl mx-auto relative">
+      <HoneycombBackground />
+      <div className="relative z-10">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground flex items-center gap-2">
           <ShoppingBag size={24} className="text-primary" /> Marketplace
         </h2>
         <p className="text-muted-foreground mt-1">Browse products, services, and exclusive deals</p>
       </motion.div>
 
-      <div className="flex gap-3 mb-6">
-        <div className="flex-1 relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search products, services, stores..." value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all" />
-        </div>
-        <button className="px-4 py-3 rounded-xl bg-card border border-border hover:bg-secondary transition-colors">
-          <SlidersHorizontal size={18} className="text-muted-foreground" />
-        </button>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-8 pb-1">
-        <button onClick={() => setSelectedCategory(null)}
-          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-secondary"}`}>
-          All
-        </button>
-        {categoryCards.map(cat => (
-          <button key={cat.label} onClick={() => setSelectedCategory(cat.label === selectedCategory ? null : cat.label)}
-            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedCategory === cat.label ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-secondary"}`}>
-            <span>{cat.emoji}</span> {cat.label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-        </div>
-      ) : allItems.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
-          <ShoppingBag size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No products in the catalogue yet. Check back soon!</p>
-        </div>
-      ) : (
-        <>
-          <HorizontalScrollRow title="Recommended For You" icon={<Sparkles size={20} className="text-primary" />} items={recommendedItems} />
-          <HorizontalScrollRow title="Trending Deals" icon={<TrendingUp size={20} className="text-orange-500" />} items={trendingItems} badge="HOT" variant="trending" />
-          <HorizontalScrollRow title="Hot Deals" icon={<Zap size={20} className="text-red-500" />} items={hotDeals} badge="SAVE BIG" variant="hot" />
-
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <FolderOpen size={20} className="text-primary" />
-              <h3 className="text-lg font-display font-bold text-foreground">{selectedCategory || "All Products & Services"}</h3>
-              <span className="text-xs text-muted-foreground">({filteredItems.length} items)</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-              {filteredItems.map((item, i) => (
-                <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={(it) => { setSelectedItem(it); setDrawerOpen(true); }} />
-              ))}
-            </div>
+        <div className="flex gap-3 mb-6">
+          <div className="flex-1 relative">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Search products, services, stores..." value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all" />
           </div>
+          <button className="px-4 py-3 rounded-xl bg-card border border-border hover:bg-secondary transition-colors">
+            <SlidersHorizontal size={18} className="text-muted-foreground" />
+          </button>
+        </div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-16 pt-8 border-t border-border">
-            <div className="mb-12">
-              <h3 className="text-lg font-display font-bold text-foreground mb-6">Featured Vendors</h3>
-              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-                {allItems.slice(0, 6).map((item, idx) => {
-                  const vendor: VendorData = {
-                    id: item.id,
-                    store_name: item.store_name,
-                    owner_name: item.store_name,
-                    verified: true,
-                    is_featured: item.is_featured,
-                    description: `Premium ${item.category} products and services`,
-                    category: item.category || "General",
-                    rating: 4.8,
-                    product_count: 24,
-                    location: "Lusaka",
-                  };
-                  return (
-                    <VendorCard
-                      key={`vendor-${item.id}`}
-                      vendor={vendor}
-                      index={idx}
-                      onVisitStore={() => { setSelectedItem(item); setDrawerOpen(true); }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+        {/* Category Cards Grid */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-10">
+          {categoryCards.map((cat, idx) => {
+            const Icon = cat.icon;
+            return (
+              <motion.button
+                key={cat.label}
+                onClick={() => setSelectedCategory(cat.label === selectedCategory ? null : cat.label)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`relative h-32 sm:h-40 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 transition-all border-2 overflow-hidden group ${
+                  selectedCategory === cat.label
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card/50 hover:border-primary/50"
+                }`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                <div className="relative z-10">
+                  <div className="text-4xl mb-2">{cat.emoji}</div>
+                  <p className="text-xs sm:text-sm font-bold text-foreground text-center">{cat.label}</p>
+                </div>
+              </motion.button>
+            );
+          })}
+        </motion.div>
 
-            <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8 text-center">
-              <h3 className="text-2xl font-display font-bold mb-2 text-foreground">Join The Hive</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                Become a vendor and reach thousands of customers. Flexible terms, zero commission for the first 30 days.
-              </p>
-              <button className="px-6 py-2.5 rounded-xl font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all">
-                Start Selling Today
-              </button>
-            </div>
-          </motion.div>
-        </>
-      )}
+        {/* Quick Filter Buttons */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-8 pb-1">
+          <button onClick={() => setSelectedCategory(null)}
+            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground hover:bg-secondary"}`}>
+            All
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          </div>
+        ) : allItems.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <ShoppingBag size={48} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No products in the catalogue yet. Check back soon!</p>
+          </div>
+          ) : null}
+      </div>
 
       <CheckoutDrawer open={drawerOpen} onOpenChange={setDrawerOpen} item={selectedItem} />
     </div>

@@ -2,13 +2,13 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ShoppingBag, FileText, MapPin, Wallet, FolderOpen, LogOut, Menu, X,
-  Settings, MessageSquare
+  Settings, MessageSquare, Home, LogIn, UserPlus
 } from "lucide-react";
 import hiveLogo from "@/assets/hive-logo.jpeg";
 import DashboardHeader from "@/components/DashboardHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface CustomerDashboardSidebarProps {
   children: React.ReactNode;
@@ -16,23 +16,36 @@ interface CustomerDashboardSidebarProps {
   onSectionChange: (section: string) => void;
 }
 
-const sidebarItems = [
-  { label: "Home", icon: LayoutDashboard },
-  { label: "Marketplace", icon: ShoppingBag },
-  { label: "Order History", icon: FileText },
-  { label: "Track My Orders", icon: MapPin },
-  { label: "Wallet", icon: Wallet },
-  { label: "Categories", icon: FolderOpen },
-  { label: "Messages", icon: MessageSquare },
-];
 
 const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: CustomerDashboardSidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
   const unreadCount = useUnreadCount();
+  const [searchParams] = useSearchParams();
+  const isGuest = searchParams.get("guest") === "true" || !user;
+
+  // Guest sidebar items: only Home, Login, Sign Up
+  const guestSidebarItems = [
+    { label: "Home", icon: Home },
+    { label: "Login", icon: LogIn },
+    { label: "Sign Up", icon: UserPlus },
+  ];
+
+  // Authenticated sidebar items
+  const authSidebarItems = [
+    { label: "Home", icon: LayoutDashboard },
+    { label: "Marketplace", icon: ShoppingBag },
+    { label: "Order History", icon: FileText },
+    { label: "Track My Orders", icon: MapPin },
+    { label: "Wallet", icon: Wallet },
+    { label: "Categories", icon: FolderOpen },
+    { label: "Messages", icon: MessageSquare },
+  ];
+
+  const sidebarItems = isGuest ? guestSidebarItems : authSidebarItems;
 
   const handleLogout = async () => {
     await signOut();
@@ -88,7 +101,13 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
           <motion.button
             key={item.label}
             onClick={() => {
-              onSectionChange(item.label);
+              if (isGuest) {
+                if (item.label === "Home") navigate("/");
+                else if (item.label === "Login") navigate("/login");
+                else if (item.label === "Sign Up") navigate("/signup");
+              } else {
+                onSectionChange(item.label);
+              }
               setSidebarOpen(false);
             }}
             whileHover={{ x: isCollapsed ? 0 : 4 }}
