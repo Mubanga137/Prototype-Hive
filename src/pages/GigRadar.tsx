@@ -140,7 +140,7 @@ const GigRadar = () => {
     latitude: LUSAKA_CENTER.lat,
     zoom: 17.5,
     bearing: 0,
-    pitch: 65,
+    pitch: 0,
   });
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
@@ -397,16 +397,15 @@ const GigRadar = () => {
     }
   }, [location, isOnline, routeGeometry]);
 
-  // Sync 3D perspective (pitch=65, bearing=heading) as rider moves
+  // Sync map position to rider location (respect user's manual pitch choice)
   useEffect(() => {
     if (!isInAppNavigating || !location) return;
 
-    // Update viewState center to follow rider with 3D pitch locked
+    // Update viewState center to follow rider, preserve pitch setting
     setViewState(prev => ({
       ...prev,
       latitude: location.lat,
       longitude: location.lng,
-      pitch: 65, // Maintain bird's-eye perspective
     }));
   }, [location, isInAppNavigating]);
 
@@ -502,8 +501,6 @@ const GigRadar = () => {
             initialLng={mapCenter.lng}
             initialZoom={17.5}
             style="mapbox://styles/mapbox/navigation-night-v1"
-            pitch={65}
-            bearing={userBearing}
             disableControls={false}
             viewState={viewState}
             onMove={(newViewState) => setViewState(newViewState as any)}
@@ -573,17 +570,16 @@ const GigRadar = () => {
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 if (location && mapRef.current) {
-                  setViewState({
+                  setViewState(prev => ({
                     latitude: location.lat,
                     longitude: location.lng,
                     zoom: 17.5,
                     bearing: userBearing,
-                    pitch: 65,
-                  });
+                    pitch: prev.pitch,
+                  }));
                   mapRef.current.flyTo({
                     center: [location.lng, location.lat],
                     bearing: userBearing,
-                    pitch: 65,
                     zoom: 17.5,
                     duration: 1000,
                   });
