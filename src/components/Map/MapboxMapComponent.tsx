@@ -75,10 +75,10 @@ const MapboxMapComponentImpl = forwardRef<MapRef, MapboxMapComponentProps>(({
         scrollZoom={true}
         onLoad={handleMapLoad}
       >
-        {!disableControls && <NavigationControl position="top-right" />}
+        {!disableControls && <NavigationControl position="top-left" />}
         {!disableControls && (
           <GeolocateControl
-            position="top-right"
+            position="top-left"
             trackUserLocation={true}
             showUserHeading={true}
             positionOptions={{ enableHighAccuracy: true }}
