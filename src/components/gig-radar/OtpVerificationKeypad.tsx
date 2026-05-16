@@ -5,6 +5,7 @@ import { X, Check } from "lucide-react";
 interface OtpVerificationKeypadProps {
   orderId: number;
   customerName: string;
+  otpType: "pickup" | "dropoff"; // Type of OTP verification
   onVerify: (otp: string) => Promise<boolean>;
   onFail: (reason: string) => Promise<boolean>;
   onCancel: () => void;
@@ -13,6 +14,7 @@ interface OtpVerificationKeypadProps {
 export const OtpVerificationKeypad = ({
   orderId,
   customerName,
+  otpType,
   onVerify,
   onFail,
   onCancel,
@@ -24,7 +26,7 @@ export const OtpVerificationKeypad = ({
   const [failReason, setFailReason] = useState("");
 
   const handleOtpInput = (digit: string) => {
-    if (otp.length < 6) {
+    if (otp.length < 4) {
       setOtp(otp + digit);
       setError("");
     }
@@ -35,8 +37,8 @@ export const OtpVerificationKeypad = ({
   };
 
   const handleVerify = async () => {
-    if (otp.length !== 6) {
-      setError("OTP must be 6 digits");
+    if (otp.length !== 4) {
+      setError("OTP must be 4 digits");
       return;
     }
 
@@ -73,23 +75,28 @@ export const OtpVerificationKeypad = ({
         {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2" style={{ color: "#0F1A35" }}>
-            🔒 Verify Delivery
+            {otpType === "pickup" ? "🔒 Confirm Vendor Pickup" : "✅ Confirm Delivery"}
           </h2>
           <p style={{ color: "#0F1A35/70" }} className="text-sm">
             Order <strong>#{orderId}</strong> - <strong>{customerName}</strong>
+          </p>
+          <p style={{ color: "#B37C1C" }} className="text-xs font-semibold mt-2">
+            {otpType === "pickup"
+              ? "Request OTP from Vendor"
+              : "Request Customer OTP"}
           </p>
         </div>
 
         {/* OTP Display */}
         <div className="mb-8">
           <label className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "#0F1A35/60" }}>
-            Enter 6-digit OTP
+            Enter 4-digit OTP
           </label>
-          <div className="flex gap-2 justify-center mb-4">
-            {[0, 1, 2, 3, 4, 5].map((idx) => (
+          <div className="flex gap-3 justify-center mb-4">
+            {[0, 1, 2, 3].map((idx) => (
               <motion.div
                 key={idx}
-                className="w-12 h-14 rounded-lg border-2 flex items-center justify-center text-xl font-bold"
+                className="w-14 h-16 rounded-lg border-2 flex items-center justify-center text-2xl font-bold"
                 style={{
                   borderColor: otp[idx] ? "#B37C1C" : "hsl(38,40%,85%)",
                   backgroundColor: otp[idx] ? "hsl(38,73%,40%,0.1)" : "transparent",
@@ -97,7 +104,7 @@ export const OtpVerificationKeypad = ({
                 }}
                 animate={{ scale: otp[idx] ? 1.05 : 1 }}
               >
-                {otp[idx] || ""}
+                {otp[idx] || "•"}
               </motion.div>
             ))}
           </div>
@@ -171,17 +178,17 @@ export const OtpVerificationKeypad = ({
             <div className="flex gap-3">
               <motion.button
                 onClick={handleVerify}
-                disabled={isVerifying || otp.length !== 6}
+                disabled={isVerifying || otp.length !== 4}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="flex-1 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 style={{
-                  background: otp.length === 6 ? "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" : "hsl(38,40%,85%)",
-                  color: otp.length === 6 ? "white" : "#0F1A35",
+                  background: otp.length === 4 ? "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)" : "hsl(38,40%,85%)",
+                  color: otp.length === 4 ? "white" : "#0F1A35",
                 }}
               >
                 <Check size={18} />
-                Verify
+                {otpType === "pickup" ? "Confirm Pickup" : "Confirm Delivery"}
               </motion.button>
 
               <motion.button

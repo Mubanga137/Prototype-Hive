@@ -203,26 +203,19 @@ export const EnhancedMissionHUD = ({
     }
   };
 
-  const handleNavigate = (stepIndex: number) => {
+  const handleOpenGoogleMaps = (stepIndex: number) => {
     const step = steps[stepIndex];
-    if (!step || step.type !== "dropoff") return;
+    if (!step) return;
 
-    const url = generateNavigationUrl(
-      { lat: currentLat, lng: currentLng },
-      {
-        id: step.id,
-        lat: -15.3875 + Math.random() * 0.05,
-        lng: 28.3228 + Math.random() * 0.05,
-        name: step.location,
-        type: "dropoff",
-        orderId: step.details.split(" • ")[0],
-        phone: step.customerPhone,
-      },
-      /iPad|iPhone|iPod/.test(navigator.userAgent)
-    );
+    const origin = `${currentLat},${currentLng}`;
+    const pickupWaypoint = `${batch.pickupLat || -15.3875},${batch.pickupLng || 28.3228}`;
+    const destination = step.type === "dropoff"
+      ? `${-15.3875 + Math.random() * 0.05},${28.3228 + Math.random() * 0.05}`
+      : pickupWaypoint;
 
-    window.open(url, "_blank");
-    toast.info("📍 Opening navigation...");
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&waypoints=${pickupWaypoint}&destination=${destination}`;
+    window.open(mapsUrl, "_blank");
+    toast.info("🗺️ Opening Google Maps...");
   };
 
   const formattedTotalPayout = new Intl.NumberFormat("en-ZM", {
@@ -492,37 +485,35 @@ export const EnhancedMissionHUD = ({
                             </motion.button>
                           ) : (
                             <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => handleNavigate(idx)}
-                                  className="py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 border"
-                                  style={{
-                                    backgroundColor: "transparent",
-                                    borderColor: "#B37C1C",
-                                    color: "#B37C1C",
-                                  }}
-                                >
-                                  <MapIcon size={12} />
-                                  🗺️ NAV
-                                </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleOpenGoogleMaps(idx)}
+                                className="w-full py-2 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 text-white"
+                                style={{
+                                  background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
+                                }}
+                              >
+                                <MapPin size={14} />
+                                🗺️ OPEN IN GOOGLE MAPS
+                              </motion.button>
 
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => handleOtpClick(step.id)}
-                                  className="py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 text-white"
-                                  style={{
-                                    background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
-                                  }}
-                                >
-                                  <ShieldCheck size={12} />
-                                  🛡️ OTP
-                                </motion.button>
-                              </div>
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleOtpClick(step.id)}
+                                className="w-full py-2 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 border"
+                                style={{
+                                  backgroundColor: "rgba(179, 124, 28, 0.1)",
+                                  borderColor: "#B37C1C",
+                                  color: "#0F1A35",
+                                }}
+                              >
+                                <ShieldCheck size={14} />
+                                ✅ CONFIRM DELIVERY
+                              </motion.button>
                               <p className="text-xs text-center mt-1" style={{ color: "#0F1A35/60" }}>
-                                Verify handoff to unlock next delivery
+                                Navigate & verify OTP for handoff
                               </p>
                             </>
                           )}

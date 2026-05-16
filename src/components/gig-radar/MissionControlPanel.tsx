@@ -106,30 +106,24 @@ export const MissionControlPanel = ({
     return false;
   };
 
-  const handleNavigateClick = () => {
-    onNavigateToggle(!isInAppNavigating);
-    if (!isInAppNavigating) {
-      toast.info("🗺️ In-app navigation enabled. Follow the blue polyline.");
-    } else {
-      toast.info("Navigation disabled.");
-    }
-  };
-
-  const getActionButtonLabel = () => {
-    if (activeStep?.type === "pickup") {
-      return "🔒 CONFIRM PICKUP";
-    }
-    return "🛡️ VERIFY OTP";
-  };
 
   const getMapsUrl = () => {
+    // Format: origin=currentLat,currentLng&waypoints=pickupLat,pickupLng&destination=dropoffLat,dropoffLng
+    const origin = `${currentLat},${currentLng}`;
+    const pickupWaypoint = `${batch.pickupLat || -15.3875},${batch.pickupLng || 28.3228}`;
+
     if (activeStep?.type === "pickup") {
-      return `https://www.google.com/maps/dir/${currentLat},${currentLng}/${batch.pickupLat || -15.3875},${batch.pickupLng || 28.3228}`;
+      // Route to pickup: origin → waypoint (pickup) as destination
+      return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${pickupWaypoint}`;
     }
+
+    // Route to dropoff: origin → waypoint (pickup) → destination (dropoff)
     const step = batch.dropoffs[currentStepIndex - 1];
     if (step) {
-      return `https://www.google.com/maps/dir/${currentLat},${currentLng}/${step.lat || -15.3875},${step.lng || 28.3228}`;
+      const destination = `${step.lat || -15.3875},${step.lng || 28.3228}`;
+      return `https://www.google.com/maps/dir/?api=1&origin=${origin}&waypoints=${pickupWaypoint}&destination=${destination}`;
     }
+
     return "https://www.google.com/maps";
   };
 
@@ -238,7 +232,22 @@ export const MissionControlPanel = ({
 
         {/* Action Buttons */}
         <div className="space-y-2 flex-shrink-0">
-          {/* Primary Action */}
+          {/* Primary: Google Maps Navigation */}
+          <a
+            href={getMapsUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 rounded-xl font-bold text-base transition-all text-white flex items-center justify-center gap-2 no-underline"
+            style={{
+              background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
+              boxShadow: "0 4px 12px rgba(179, 124, 28, 0.3)",
+            }}
+          >
+            <MapPin size={18} />
+            🗺️ OPEN IN GOOGLE MAPS
+          </a>
+
+          {/* Secondary: Pickup/Dropoff Confirmation */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -255,46 +264,20 @@ export const MissionControlPanel = ({
                 toast.success("Moving to deliveries...");
               }
             }}
-            className="w-full py-3 rounded-xl font-bold text-base transition-all text-white flex items-center justify-center gap-2"
-            style={{
-              background: "linear-gradient(135deg, #B37C1C 0%, #1a1a2e 100%)",
-              boxShadow: "0 4px 12px rgba(179, 124, 28, 0.3)",
-            }}
-          >
-            <ShieldCheck size={18} />
-            {pickupConfirmed && activeStep?.type === "pickup"
-              ? "✅ PICKUP CONFIRMED"
-              : getActionButtonLabel()}
-          </motion.button>
-
-          {/* Navigation Toggle */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleNavigateClick}
             className="w-full py-2 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 border"
             style={{
-              backgroundColor: isInAppNavigating ? "rgba(179, 124, 28, 0.15)" : "transparent",
+              backgroundColor: "rgba(179, 124, 28, 0.1)",
               borderColor: "#B37C1C",
-              color: "#B37C1C",
-            }}
-          >
-            {isInAppNavigating ? "🗺️ STOP NAV" : "🗺️ IN-APP NAV"}
-          </motion.button>
-
-          {/* Fallback Maps Link (ultra-faint) */}
-          <a
-            href={getMapsUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full text-center text-xs py-1 transition-all hover:opacity-100"
-            style={{
               color: "#0F1A35",
-              opacity: 0.25,
             }}
           >
-            Open in Google Maps (backup)
-          </a>
+            <ShieldCheck size={16} />
+            {activeStep?.type === "pickup" && !pickupConfirmed
+              ? "🔒 CONFIRM VENDOR PICKUP"
+              : activeStep?.type === "pickup" && pickupConfirmed
+              ? "✅ PICKUP CONFIRMED"
+              : "✅ CONFIRM DELIVERY"}
+          </motion.button>
         </div>
       </div>
 
