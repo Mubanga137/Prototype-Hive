@@ -23,7 +23,6 @@ import { toast } from "sonner";
 import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
 import ChevronMarker from "@/components/Map/ChevronMarker";
 import DestinationMarker from "@/components/Map/DestinationMarker";
-import WorkerMarker from "@/components/Map/WorkerMarker";
 import { mapboxRoutingService, Leg } from "@/services/mapboxRoutingService";
 import { optimizeRoutePath, formatCoordinatesForMapbox } from "@/utils/routeOptimizationV2";
 
@@ -141,7 +140,7 @@ const GigRadar = () => {
     latitude: LUSAKA_CENTER.lat,
     zoom: 17.5,
     bearing: 0,
-    pitch: 65,
+    pitch: 0,
   });
 
   const { location, isOnline, setIsOnline, locationStatus } = useLocationService();
@@ -398,16 +397,15 @@ const GigRadar = () => {
     }
   }, [location, isOnline, routeGeometry]);
 
-  // Sync 3D perspective (pitch=65, bearing=heading) as rider moves
+  // Sync map position to rider location (respect user's manual pitch choice)
   useEffect(() => {
     if (!isInAppNavigating || !location) return;
 
-    // Update viewState center to follow rider with 3D pitch locked
+    // Update viewState center to follow rider, preserve pitch setting
     setViewState(prev => ({
       ...prev,
       latitude: location.lat,
       longitude: location.lng,
-      pitch: 65, // Maintain bird's-eye perspective
     }));
   }, [location, isInAppNavigating]);
 
@@ -503,8 +501,6 @@ const GigRadar = () => {
             initialLng={mapCenter.lng}
             initialZoom={17.5}
             style="mapbox://styles/mapbox/navigation-night-v1"
-            pitch={65}
-            bearing={userBearing}
             disableControls={false}
             viewState={viewState}
             onMove={(newViewState) => setViewState(newViewState as any)}
@@ -568,39 +564,7 @@ const GigRadar = () => {
 
           {/* Map Controls - Top Right: Zoom + 3D/2D Toggle */}
           <div className="absolute top-6 right-6 z-60 flex flex-col gap-2">
-            {/* Recenter FAB Button */}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (location && mapRef.current) {
-                  setViewState({
-                    latitude: location.lat,
-                    longitude: location.lng,
-                    zoom: 17.5,
-                    bearing: userBearing,
-                    pitch: 65,
-                  });
-                  mapRef.current.flyTo({
-                    center: [location.lng, location.lat],
-                    bearing: userBearing,
-                    pitch: 65,
-                    zoom: 17.5,
-                    duration: 1000,
-                  });
-                }
-              }}
-              className="w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all"
-              style={{
-                backgroundColor: '#B37C1C',
-                color: '#FFFBF2',
-              }}
-              title="Recenter map on your location"
-            >
-              <MapPinned size={22} />
-            </motion.button>
-
-            {/* 3D/2D Toggle Button (Gold Compass) */}
+            {/* 3D/2D Toggle Button - Location Icon */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -620,11 +584,7 @@ const GigRadar = () => {
               }}
               title={viewState.pitch === 0 ? 'Switch to 3D view' : 'Switch to 2D view'}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                <line x1="12" y1="2" x2="12" y2="8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-                <path d="M16.5 7.5L13 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+              <MapPinned size={22} />
             </motion.button>
           </div>
 
@@ -668,8 +628,7 @@ const GigRadar = () => {
               <motion.button
                 onClick={() => {
                   setIsInAppNavigating(false);
-                  setShowActiveNav(false);
-                  setClaimedBatch(null);
+                  setShowActiveNav(true);
                 }}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
@@ -948,7 +907,7 @@ const GigRadar = () => {
                 initialLng={mapCenter.lng}
                 initialZoom={DEFAULT_ZOOM}
               >
-                {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
+                {location && isOnline && <ChevronMarker lng={location.lng} lat={location.lat} bearing={0} label="You" />}
               </MapboxMapComponent>
 
               <motion.button
