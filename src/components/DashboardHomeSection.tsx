@@ -8,6 +8,7 @@ import FeaturedItemCard, { FeaturedItem } from "@/components/FeaturedItemCard";
 import VendorCard, { VendorData } from "@/components/VendorCard";
 import PremiumCategoryCard from "@/components/PremiumCategoryCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
+import GlobalFooter from "@/components/GlobalFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -305,6 +306,8 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
       </div>
 
       <CheckoutDrawer open={drawerOpen} onOpenChange={setDrawerOpen} item={selectedItem} />
+
+      <GlobalFooter />
     </div>
   );
 };
