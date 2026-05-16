@@ -799,20 +799,46 @@ const GigRadar = () => {
               )}
             </MapboxMapComponent>
 
-            {/* Center map button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (location && mapRef.current) {
-                  mapRef.current.flyTo({ center: [location.lng, location.lat], zoom: 17, duration: 800 });
-                }
-              }}
-              className="absolute top-4 right-4 z-20 w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
-              style={{ backgroundColor: "#FFFBF2", color: "#0F1A35" }}
-            >
-              <MapPin size={20} />
-            </motion.button>
+            {/* Map Controls - Top Right: Zoom + 3D/2D Toggle */}
+            <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+              {/* Recenter button */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (location && mapRef.current) {
+                    mapRef.current.flyTo({ center: [location.lng, location.lat], zoom: 17, duration: 800 });
+                  }
+                }}
+                className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
+                style={{ backgroundColor: "#B37C1C", color: "#FFFBF2" }}
+                title="Recenter map on your location"
+              >
+                <MapPin size={18} />
+              </motion.button>
+
+              {/* 3D/2D Toggle Button */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (mapRef.current) {
+                    const currentPitch = mapRef.current.getPitch();
+                    const newPitch = currentPitch === 0 ? 45 : 0;
+                    mapRef.current.setPitch(newPitch);
+                  }
+                }}
+                className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center transition-all"
+                style={{ backgroundColor: "#B37C1C", color: "#FFFBF2" }}
+                title="Toggle 3D/2D view"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <line x1="12" y1="2" x2="12" y2="8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                  <path d="M16.5 7.5L13 10.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </motion.button>
+            </div>
           </div>
 
           {/* Bottom 30% - Mission Control Panel */}
