@@ -23,7 +23,6 @@ import { toast } from "sonner";
 import MapboxMapComponent from "@/components/Map/MapboxMapComponent";
 import ChevronMarker from "@/components/Map/ChevronMarker";
 import DestinationMarker from "@/components/Map/DestinationMarker";
-import WorkerMarker from "@/components/Map/WorkerMarker";
 import { mapboxRoutingService, Leg } from "@/services/mapboxRoutingService";
 import { optimizeRoutePath, formatCoordinatesForMapbox } from "@/utils/routeOptimizationV2";
 
@@ -948,7 +947,7 @@ const GigRadar = () => {
                 initialLng={mapCenter.lng}
                 initialZoom={DEFAULT_ZOOM}
               >
-                {location && isOnline && <WorkerMarker lng={location.lng} lat={location.lat} label="You" />}
+                {location && isOnline && <ChevronMarker lng={location.lng} lat={location.lat} bearing={0} label="You" />}
               </MapboxMapComponent>
 
               <motion.button
