@@ -253,9 +253,8 @@ export const MissionControlPanel = ({
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               if (activeStep?.type === "pickup" && !pickupConfirmed) {
-                setPickupConfirmed(true);
-                onPickupConfirmed?.(batch.pickupLat || -15.3875, batch.pickupLng || 28.3228);
-                toast.success("✅ Pickup confirmed! Route mapped.");
+                // Show OTP keypad for vendor pickup confirmation
+                setShowOtpKeypad(true);
               } else if (activeStep?.type === "dropoff") {
                 setShowOtpKeypad(true);
               } else if (pickupConfirmed && activeStep?.type === "pickup") {
@@ -287,7 +286,15 @@ export const MissionControlPanel = ({
           <OtpVerificationKeypad
             orderId={currentStepIndex}
             customerName={activeStep?.location || "Customer"}
-            onVerify={handleVerifyOtp}
+            otpType={activeStep?.type === "pickup" ? "pickup" : "dropoff"}
+            onVerify={async (otp: string) => {
+              const result = await handleVerifyOtp(otp);
+              if (result && activeStep?.type === "pickup") {
+                setPickupConfirmed(true);
+                onPickupConfirmed?.(batch.pickupLat || -15.3875, batch.pickupLng || 28.3228);
+              }
+              return result;
+            }}
             onFail={async () => {
               toast.error("Delivery failed. Contact support.");
               return false;

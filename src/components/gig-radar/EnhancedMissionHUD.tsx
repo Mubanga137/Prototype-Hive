@@ -571,6 +571,7 @@ export const EnhancedMissionHUD = ({
           <OtpVerificationKeypad
             orderId={parseInt(otpCustomerId.split("-").pop() || "0")}
             customerName={steps.find((s) => s.id === otpCustomerId)?.location || "Customer"}
+            otpType={otpCustomerId.startsWith("pickup") ? "pickup" : "dropoff"}
             onVerify={handleOtpSubmit}
             onFail={async () => {
               toast.error("Delivery failed. Please contact support.");

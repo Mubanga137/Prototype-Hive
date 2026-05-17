@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ShoppingBag, TrendingUp, Zap, Sparkles, Heart, Flame, Search, SlidersHorizontal
@@ -56,6 +57,7 @@ const HorizontalScrollRow = ({ title, icon, subtitle, badge, badgeColor, items, 
 };
 
 const Marketplace = () => {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const [allItems, setAllItems] = useState<FeaturedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,7 +163,39 @@ const Marketplace = () => {
             variant="hot"
           />
 
-          {/* Row 4: Categories Section */}
+          {/* Row 4: Recommended Vendors */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                <ShoppingBag size={20} className="text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-display font-bold text-foreground">Featured Vendors</h3>
+                <p className="text-xs text-muted-foreground">Shop from verified sellers</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pt-3">
+              {[1, 2, 3, 4, 5, 6].map((vendorIdx) => (
+                <motion.div
+                  key={vendorIdx}
+                  whileHover={{ scale: 1.05 }}
+                  className="rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-lg"
+                >
+                  <div className="w-full h-32 rounded-lg bg-secondary mb-3 flex items-center justify-center">
+                    <ShoppingBag size={32} className="text-muted-foreground" />
+                  </div>
+                  <h4 className="font-semibold text-sm text-foreground mb-1">Vendor {vendorIdx}</h4>
+                  <p className="text-xs text-muted-foreground">Multi-category store</p>
+                  <div className="mt-3 flex items-center gap-1 text-xs">
+                    <span className="text-yellow-500">★★★★★</span>
+                    <span className="text-muted-foreground">(124)</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 5: Categories Section */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-1">
               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
@@ -173,14 +207,26 @@ const Marketplace = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pt-3">
-              {["Fashion", "Tech", "Food", "Beauty", "Entertainment"].map((cat) => (
+              {[
+                { label: "Fashion", emoji: "👗", path: "/category/fashion" },
+                { label: "Tech", emoji: "📱", path: "/category/tech" },
+                { label: "Food", emoji: "🍔", path: "/category/food" },
+                { label: "Beauty", emoji: "💄", path: "/category/beauty" },
+                { label: "Entertainment", emoji: "🎬", path: "/category/entertainment" }
+              ].map((cat) => (
                 <motion.button
-                  key={cat}
+                  key={cat.label}
+                  onClick={() => navigate(cat.path)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="h-24 rounded-xl border-2 border-border bg-card/50 hover:border-primary/50 flex items-center justify-center font-semibold text-foreground transition-all"
+                  className="h-24 rounded-xl border-2 border-border bg-card/50 hover:border-primary/50 flex flex-col items-center justify-center font-semibold text-foreground transition-all"
+                  style={{
+                    borderColor: "#B37C1C",
+                    backgroundColor: "rgba(179, 124, 28, 0.05)"
+                  }}
                 >
-                  {cat}
+                  <span className="text-3xl mb-1">{cat.emoji}</span>
+                  <span className="text-xs">{cat.label}</span>
                 </motion.button>
               ))}
             </div>
