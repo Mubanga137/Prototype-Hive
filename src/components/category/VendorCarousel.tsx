@@ -144,7 +144,7 @@ const VendorCarousel = ({ vendors, theme }: VendorCarouselProps) => {
                     ))}
                   </div>
                   <span className="text-xs font-semibold text-[#0F1A35]">
-                    {vendor.rating.toFixed(1)} ({vendor.review_count})
+                    {(vendor.rating || 0).toFixed(1)} ({vendor.review_count || 0})
                   </span>
                 </div>
 
