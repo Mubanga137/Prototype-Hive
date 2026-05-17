@@ -2,14 +2,54 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ShoppingBag, TrendingUp, Zap, Sparkles, Heart, Flame, Search, SlidersHorizontal
+  ShoppingBag, TrendingUp, Zap, Sparkles, Heart, Flame, Search, SlidersHorizontal, ChevronRight
 } from "lucide-react";
 import FeaturedItemCard, { type FeaturedItem } from "@/components/FeaturedItemCard";
+import VendorCard, { type VendorData } from "@/components/VendorCard";
+import PremiumCategoryCard from "@/components/PremiumCategoryCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
 import GlobalFooter from "@/components/GlobalFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const categoryCards = [
+  {
+    label: "Fashion",
+    description: "Trending styles, streetwear & formal wear",
+    imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F4738e72a426d4c5592aa5a70cf81c44f?format=webp&width=800&height=1200",
+    path: "/category/fashion",
+    accentColor: "#3B4C8F",
+  },
+  {
+    label: "Tech",
+    description: "Latest gadgets, phones & smart devices",
+    imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F4480a768d47d4386a883353f2f6a302f?format=webp&width=800&height=1200",
+    path: "/category/tech",
+    accentColor: "#06B6D4",
+  },
+  {
+    label: "Entertainment",
+    description: "Events, experiences & media services",
+    imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2Fe70524cb2bbe41ba95ac86c6a76936ba?format=webp&width=800&height=1200",
+    path: "/category/entertainment",
+    accentColor: "#8B5CF6",
+  },
+  {
+    label: "Food",
+    description: "Fresh meals, snacks & local delicacies",
+    imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F04e2e15aa3524f06b0a1964a4a8b8dd5?format=webp&width=800&height=1200",
+    path: "/category/food",
+    accentColor: "#F97316",
+  },
+  {
+    label: "Beauty",
+    description: "Skincare, makeup & cosmetics",
+    imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F9c864285676e4cb485d271b033e1cc3f?format=webp&width=800&height=1200",
+    path: "/category/beauty",
+    accentColor: "#EC4899",
+  },
+];
 
 const mapItem = (item: any): FeaturedItem => ({
   id: item.id,
@@ -60,6 +100,7 @@ const Marketplace = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [allItems, setAllItems] = useState<FeaturedItem[]>([]);
+  const [vendors, setVendors] = useState<VendorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
@@ -81,6 +122,38 @@ const Marketplace = () => {
       setLoading(false);
     };
     fetchItems();
+  }, []);
+
+  useEffect(() => {
+    const fetchVendors = async () => {
+      const { data: storesData } = await supabase
+        .from("sme_stores")
+        .select("id, brand_name, description, owner_user_id")
+        .limit(6);
+
+      if (storesData && storesData.length > 0) {
+        const { data: productsData } = await supabase
+          .from("hive_catalogue")
+          .select("sme_id");
+
+        const productCounts: Record<string, number> = {};
+        productsData?.forEach((p: any) => {
+          productCounts[p.sme_id] = (productCounts[p.sme_id] || 0) + 1;
+        });
+
+        const vendorsList: VendorData[] = storesData.map((store: any) => ({
+          id: store.id,
+          store_name: store.brand_name || "Unknown Store",
+          description: store.description || "Quality products and services",
+          verified: false,
+          product_count: productCounts[store.id] || 0,
+          location: "Zambia",
+          category: "Multi-category",
+        }));
+        setVendors(vendorsList);
+      }
+    };
+    fetchVendors();
   }, []);
 
   // Derive rows (mirroring DashboardHomeSection structure)
@@ -163,71 +236,50 @@ const Marketplace = () => {
             variant="hot"
           />
 
-          {/* Row 4: Recommended Vendors */}
+          {/* Row 4: Featured Vendors (same as dashboard) */}
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
                 <ShoppingBag size={20} className="text-primary" />
               </div>
-              <div className="flex-1">
+              <div>
                 <h3 className="text-lg font-display font-bold text-foreground">Featured Vendors</h3>
                 <p className="text-xs text-muted-foreground">Shop from verified sellers</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pt-3">
-              {[1, 2, 3, 4, 5, 6].map((vendorIdx) => (
-                <motion.div
-                  key={vendorIdx}
-                  whileHover={{ scale: 1.05 }}
-                  className="rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-lg"
-                >
-                  <div className="w-full h-32 rounded-lg bg-secondary mb-3 flex items-center justify-center">
-                    <ShoppingBag size={32} className="text-muted-foreground" />
-                  </div>
-                  <h4 className="font-semibold text-sm text-foreground mb-1">Vendor {vendorIdx}</h4>
-                  <p className="text-xs text-muted-foreground">Multi-category store</p>
-                  <div className="mt-3 flex items-center gap-1 text-xs">
-                    <span className="text-yellow-500">★★★★★</span>
-                    <span className="text-muted-foreground">(124)</span>
-                  </div>
-                </motion.div>
-              ))}
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              {vendors.length > 0 ? (
+                vendors.map((vendor, i) => (
+                  <VendorCard key={vendor.id} vendor={vendor} index={i} onVisitStore={(v) => navigate(`/store/${v.id}`)} />
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No vendors available yet</p>
+              )}
             </div>
           </div>
 
-          {/* Row 5: Categories Section */}
+          {/* Row 5: Explore Categories (Premium) - same as dashboard */}
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                <Sparkles size={20} className="text-primary" />
+                <ChevronRight size={20} className="text-primary" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-display font-bold text-foreground">Browse Categories</h3>
-                <p className="text-xs text-muted-foreground">Explore by category</p>
+              <div>
+                <h3 className="text-lg font-display font-bold text-foreground">Explore Categories</h3>
+                <p className="text-xs text-muted-foreground">Curated shopping experiences</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pt-3">
-              {[
-                { label: "Fashion", emoji: "👗", path: "/category/fashion" },
-                { label: "Tech", emoji: "📱", path: "/category/tech" },
-                { label: "Food", emoji: "🍔", path: "/category/food" },
-                { label: "Beauty", emoji: "💄", path: "/category/beauty" },
-                { label: "Entertainment", emoji: "🎬", path: "/category/entertainment" }
-              ].map((cat) => (
-                <motion.button
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
+              {categoryCards.map((cat, i) => (
+                <PremiumCategoryCard
                   key={cat.label}
-                  onClick={() => navigate(cat.path)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="h-24 rounded-xl border-2 border-border bg-card/50 hover:border-primary/50 flex flex-col items-center justify-center font-semibold text-foreground transition-all"
-                  style={{
-                    borderColor: "#B37C1C",
-                    backgroundColor: "rgba(179, 124, 28, 0.05)"
-                  }}
-                >
-                  <span className="text-3xl mb-1">{cat.emoji}</span>
-                  <span className="text-xs">{cat.label}</span>
-                </motion.button>
+                  label={cat.label}
+                  description={cat.description}
+                  imageUrl={cat.imageUrl}
+                  path={cat.path}
+                  accentColor={cat.accentColor}
+                  index={i}
+                />
               ))}
             </div>
           </div>
