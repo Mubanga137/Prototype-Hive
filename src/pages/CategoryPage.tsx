@@ -12,6 +12,7 @@ import VendorCarousel from "@/components/category/VendorCarousel";
 import CategoryFooter from "@/components/category/CategoryFooter";
 import { categoryThemes } from "@/lib/categoryThemes";
 import { subcategoryDefinitions } from "@/lib/categorySubcategories";
+import { mockProducts } from "@/lib/mockCategoryData";
 import { supabase } from "@/integrations/supabase/client";
 
 
@@ -92,7 +93,10 @@ const CategoryPage = () => {
           }))
         );
       } else {
-        setItems([]);
+        // Use mock data as fallback
+        const mockCategoryKey = key as keyof typeof mockProducts;
+        const mockData = mockProducts[mockCategoryKey] || [];
+        setItems(mockData);
       }
       setLoading(false);
     };
