@@ -55,9 +55,9 @@ const AppContent = () => {
         <Route path="/p/:pulseId" element={<PulsePublic />} />
         <Route path="/h/:itemId" element={<HiveLink />} />
 
-        {/* Customer — temporarily open */}
-        <Route path="/customer-dash" element={<CustomerDashboard />} />
-        <Route path="/track-orders" element={<TrackOrders />} />
+        {/* Customer — open to guests and authenticated users */}
+        <Route path="/customer-dash" element={<ProtectedRoute allowGuests><CustomerDashboard /></ProtectedRoute>} />
+        <Route path="/track-orders" element={<ProtectedRoute allowGuests><TrackOrders /></ProtectedRoute>} />
 
         {/* Vendor / SME — temporarily open */}
         <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />

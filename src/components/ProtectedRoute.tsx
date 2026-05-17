@@ -5,14 +5,21 @@ import { useAuth } from "@/hooks/useAuth";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: string[];
+  allowGuests?: boolean;
 }
 
-const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowedRoles, allowGuests = false }: ProtectedRouteProps) => {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (loading) return;
+
+    // If guests are allowed, skip all checks
+    if (allowGuests) {
+      return;
+    }
+
     if (!user) {
       navigate("/login", { replace: true });
       return;
@@ -26,7 +33,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
       };
       navigate(routes[profile.role] || "/", { replace: true });
     }
-  }, [user, profile, loading, allowedRoles, navigate]);
+  }, [user, profile, loading, allowedRoles, allowGuests, navigate]);
 
   if (loading) {
     return (
@@ -36,7 +43,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user) return null;
+  if (!allowGuests && !user) return null;
 
   return <>{children}</>;
 };

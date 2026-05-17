@@ -12,6 +12,7 @@ import VendorCarousel from "@/components/category/VendorCarousel";
 import CategoryFooter from "@/components/category/CategoryFooter";
 import { categoryThemes } from "@/lib/categoryThemes";
 import { subcategoryDefinitions } from "@/lib/categorySubcategories";
+import { mockProducts } from "@/lib/mockCategoryData";
 import { supabase } from "@/integrations/supabase/client";
 
 
@@ -41,7 +42,19 @@ const CategoryPage = () => {
           id: store.id,
           store_name: store.brand_name || "Unknown Store",
           description: store.description || "Quality products and services",
+          location: "Zambia",
         })));
+      } else {
+        // Fallback to mock data if no vendors found
+        const mockVendors = [
+          { id: 1, store_name: "Prime Store", description: "Premium quality products with fast delivery", location: "Lusaka" },
+          { id: 2, store_name: "Market Hub", description: "Wide selection of products at great prices", location: "Ndola" },
+          { id: 3, store_name: "Elite Brands", description: "Exclusive and authenticated brands", location: "Kitwe" },
+          { id: 4, store_name: "Quick Deals", description: "Best deals and discounts every day", location: "Livingstone" },
+          { id: 5, store_name: "Trusted Traders", description: "Verified vendors with excellent ratings", location: "Lusaka" },
+          { id: 6, store_name: "Value Store", description: "Budget-friendly without compromising quality", location: "Chingola" },
+        ];
+        setVendors(mockVendors);
       }
     };
     fetchVendors();
@@ -80,7 +93,10 @@ const CategoryPage = () => {
           }))
         );
       } else {
-        setItems([]);
+        // Use mock data as fallback
+        const mockCategoryKey = key as keyof typeof mockProducts;
+        const mockData = mockProducts[mockCategoryKey] || [];
+        setItems(mockData);
       }
       setLoading(false);
     };

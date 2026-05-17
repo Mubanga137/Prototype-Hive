@@ -167,66 +167,65 @@ const CategoryHero = ({ theme }: CategoryHeroProps) => {
         </h1>
       </div>
 
-      {/* Carousel Container */}
+      {/* Carousel Container - Horizontal Layout */}
       <div className="relative px-6 md:px-8 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="relative overflow-hidden">
           <AnimatePresence mode="wait">
-            {content.slides.map((slide, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: idx === currentSlide ? 1 : 0.6, y: idx === currentSlide ? 0 : 10 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className={`relative overflow-hidden rounded-2xl p-6 transition-all ${
-                  idx === currentSlide
-                    ? "ring-2 ring-[#B37C1C] shadow-lg"
-                    : "hover:ring-1 hover:ring-[#B37C1C]/50"
-                }`}
-                style={{
-                  background: `linear-gradient(135deg, ${slide.bgGradient.split(" ").slice(0, 2).join(" ")})`,
-                }}
-              >
-                {/* Icon */}
-                <div className="flex items-center justify-center mb-4 text-[#B37C1C]">
-                  {slide.icon}
+            <motion.div
+              key={currentSlide}
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              transition={{ duration: 0.4 }}
+              className="relative overflow-hidden rounded-2xl p-8 md:p-12 bg-gradient-to-br from-[#B37C1C]/15 to-[#FFFBF2]/10 border border-[#B37C1C]/20 min-h-[280px] flex flex-col justify-between"
+            >
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                {/* Left: Content */}
+                <div className="flex-1">
+                  {/* Icon */}
+                  <div className="flex items-center justify-start mb-6 text-[#B37C1C]">
+                    {content.slides[currentSlide].icon}
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="text-2xl md:text-3xl font-display font-bold text-[#0F1A35] mb-3">
+                    {content.slides[currentSlide].title}
+                  </h3>
+                  <p className="text-sm md:text-base text-[#0F1A35]/70 leading-relaxed max-w-lg">
+                    {content.slides[currentSlide].description}
+                  </p>
                 </div>
 
-                {/* Content */}
-                <h3 className="text-lg font-display font-bold text-[#0F1A35] mb-2 text-center">
-                  {slide.title}
-                </h3>
-                <p className="text-sm text-[#0F1A35]/75 text-center leading-relaxed">
-                  {slide.description}
-                </p>
+                {/* Right: Spacer for balance */}
+                <div className="hidden md:block flex-shrink-0 w-24" />
+              </div>
 
-                {/* Indicator dot */}
-                <div className="flex justify-center gap-1 mt-4 pt-4 border-t border-[#B37C1C]/10">
-                  {content.slides.map((_, dotIdx) => (
-                    <button
-                      key={dotIdx}
-                      onClick={() => setCurrentSlide(dotIdx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        dotIdx === currentSlide
-                          ? "bg-[#B37C1C] w-6"
-                          : "bg-[#B37C1C]/30 hover:bg-[#B37C1C]/50"
-                      }`}
-                      aria-label={`Go to slide ${dotIdx + 1}`}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+              {/* Pagination dots at bottom */}
+              <div className="flex gap-2 mt-8">
+                {content.slides.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlide(idx)}
+                    className={`transition-all rounded-full ${
+                      idx === currentSlide
+                        ? "bg-[#B37C1C] w-8 h-2"
+                        : "bg-[#B37C1C]/30 hover:bg-[#B37C1C]/50 w-2 h-2"
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Navigation Arrows (visible on desktop) */}
-        <div className="hidden md:flex absolute inset-y-0 left-0 right-0 items-center justify-between pointer-events-none px-4">
+        {/* Navigation Arrows */}
+        <div className="flex gap-2 mt-6 justify-end">
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={prevSlide}
-            className="pointer-events-auto p-2 rounded-full bg-[#B37C1C] text-white hover:bg-[#0F1A35] transition-colors shadow-lg"
+            className="p-2 rounded-full bg-[#B37C1C] text-white hover:bg-[#0F1A35] transition-colors"
             aria-label="Previous slide"
           >
             <ChevronLeft size={20} />
@@ -235,7 +234,7 @@ const CategoryHero = ({ theme }: CategoryHeroProps) => {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={nextSlide}
-            className="pointer-events-auto p-2 rounded-full bg-[#B37C1C] text-white hover:bg-[#0F1A35] transition-colors shadow-lg"
+            className="p-2 rounded-full bg-[#B37C1C] text-white hover:bg-[#0F1A35] transition-colors"
             aria-label="Next slide"
           >
             <ChevronRight size={20} />

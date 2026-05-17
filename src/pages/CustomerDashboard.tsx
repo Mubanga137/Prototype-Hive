@@ -27,7 +27,7 @@ const CustomerDashboard = () => {
   const [activeSection, setActiveSection] = useState("Home");
 
   const greeting = useMemo(() => getGreeting(), []);
-  const firstName = profile?.full_name?.split(" ")[0] || "Shopper";
+  const firstName = user?.email?.split("@")[0] || profile?.full_name?.split(" ")[0] || "Guest";
 
   const renderContent = () => {
     switch (activeSection) {

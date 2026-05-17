@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ShoppingBag, TrendingUp, Zap, Sparkles, Heart, Flame, Search, SlidersHorizontal
+  ShoppingBag, TrendingUp, Zap, Sparkles, Heart, Flame, Search, SlidersHorizontal, ChevronRight
 } from "lucide-react";
 import FeaturedItemCard, { type FeaturedItem } from "@/components/FeaturedItemCard";
+import PremiumCategoryCard from "@/components/PremiumCategoryCard";
 import CheckoutDrawer from "@/components/CheckoutDrawer";
 import GlobalFooter from "@/components/GlobalFooter";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +58,7 @@ const HorizontalScrollRow = ({ title, icon, subtitle, badge, badgeColor, items, 
 };
 
 const Marketplace = () => {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const [allItems, setAllItems] = useState<FeaturedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,27 +164,64 @@ const Marketplace = () => {
             variant="hot"
           />
 
-          {/* Row 4: Categories Section */}
+          {/* Row 4: Premium Categories Section */}
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                <Sparkles size={20} className="text-primary" />
+                <ChevronRight size={20} className="text-primary" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-display font-bold text-foreground">Browse Categories</h3>
-                <p className="text-xs text-muted-foreground">Explore by category</p>
+              <div>
+                <h3 className="text-lg font-display font-bold text-foreground">Explore Categories</h3>
+                <p className="text-xs text-muted-foreground">Curated shopping experiences</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pt-3">
-              {["Fashion", "Tech", "Food", "Beauty", "Entertainment"].map((cat) => (
-                <motion.button
-                  key={cat}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="h-24 rounded-xl border-2 border-border bg-card/50 hover:border-primary/50 flex items-center justify-center font-semibold text-foreground transition-all"
-                >
-                  {cat}
-                </motion.button>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
+              {[
+                {
+                  label: "Fashion",
+                  description: "Trending styles, streetwear & formal wear",
+                  imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F4738e72a426d4c5592aa5a70cf81c44f?format=webp&width=800&height=1200",
+                  path: "/category/fashion",
+                  accentColor: "#3B4C8F",
+                },
+                {
+                  label: "Tech",
+                  description: "Latest gadgets, phones & smart devices",
+                  imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F4480a768d47d4386a883353f2f6a302f?format=webp&width=800&height=1200",
+                  path: "/category/tech",
+                  accentColor: "#06B6D4",
+                },
+                {
+                  label: "Entertainment",
+                  description: "Events, experiences & media services",
+                  imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2Fe70524cb2bbe41ba95ac86c6a76936ba?format=webp&width=800&height=1200",
+                  path: "/category/entertainment",
+                  accentColor: "#8B5CF6",
+                },
+                {
+                  label: "Food",
+                  description: "Fresh meals, snacks & local delicacies",
+                  imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F04e2e15aa3524f06b0a1964a4a8b8dd5?format=webp&width=800&height=1200",
+                  path: "/category/food",
+                  accentColor: "#F97316",
+                },
+                {
+                  label: "Beauty",
+                  description: "Skincare, makeup & cosmetics",
+                  imageUrl: "https://cdn.builder.io/api/v1/image/assets%2F4bf015b55143432d9c1c69e328364ff3%2F9c864285676e4cb485d271b033e1cc3f?format=webp&width=800&height=1200",
+                  path: "/category/beauty",
+                  accentColor: "#EC4899",
+                },
+              ].map((cat, i) => (
+                <PremiumCategoryCard
+                  key={cat.label}
+                  label={cat.label}
+                  description={cat.description}
+                  imageUrl={cat.imageUrl}
+                  path={cat.path}
+                  accentColor={cat.accentColor}
+                  index={i}
+                />
               ))}
             </div>
           </div>
