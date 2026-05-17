@@ -179,9 +179,13 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       buyer_id: guestMode ? null : (user?.id ?? null),
       sme_id: item.sme_id ?? null,
       item_id: item.id,
-      total_price: totalAmount,
+      total_amount: totalAmount,
       status: "pending",
-      "customer_phone number": cleanedPhone,
+      customer_phone: cleanedPhone,
+      customer_name: name.trim(),
+      delivery_address: address.trim(),
+      scheduled_date: isService ? scheduledDate : null,
+      service_notes: isService ? serviceNotes : null,
     };
 
     const { data, error } = await (supabase.from("orders") as any)

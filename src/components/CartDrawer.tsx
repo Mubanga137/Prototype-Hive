@@ -122,9 +122,11 @@ const CartDrawer = ({
       buyer_id: guestMode ? null : user.id,
       sme_id: smeId,
       item_id: l.offer_id,
-      total_price: l.unit_price * l.quantity,
+      total_amount: l.unit_price * l.quantity,
       status: "pending",
-      "customer_phone number": cleanedPhone,
+      customer_phone: cleanedPhone,
+      customer_name: name.trim(),
+      delivery_address: address.trim(),
     }));
 
     const { data, error } = await (supabase.from("orders") as any)

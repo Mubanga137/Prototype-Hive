@@ -38,21 +38,36 @@ const CategoryPage = () => {
         .limit(6);
 
       if (storesData && storesData.length > 0) {
+        const { data: productsData } = await supabase
+          .from("hive_catalogue")
+          .select("sme_id");
+
+        const productCounts: Record<string, number> = {};
+        productsData?.forEach((p: any) => {
+          productCounts[p.sme_id] = (productCounts[p.sme_id] || 0) + 1;
+        });
+
         setVendors(storesData.map((store: any) => ({
           id: store.id,
           store_name: store.brand_name || "Unknown Store",
+          owner_name: store.owner_name || "Store Owner",
+          verified: false,
+          is_featured: false,
           description: store.description || "Quality products and services",
+          category: "Multi-category",
+          rating: 4.5,
+          product_count: productCounts[store.id] || 0,
           location: "Zambia",
         })));
       } else {
         // Fallback to mock data if no vendors found
         const mockVendors = [
-          { id: 1, store_name: "Prime Store", description: "Premium quality products with fast delivery", location: "Lusaka" },
-          { id: 2, store_name: "Market Hub", description: "Wide selection of products at great prices", location: "Ndola" },
-          { id: 3, store_name: "Elite Brands", description: "Exclusive and authenticated brands", location: "Kitwe" },
-          { id: 4, store_name: "Quick Deals", description: "Best deals and discounts every day", location: "Livingstone" },
-          { id: 5, store_name: "Trusted Traders", description: "Verified vendors with excellent ratings", location: "Lusaka" },
-          { id: 6, store_name: "Value Store", description: "Budget-friendly without compromising quality", location: "Chingola" },
+          { id: 1, store_name: "Prime Store", owner_name: "Owner", verified: false, is_featured: false, description: "Premium quality products with fast delivery", category: "Multi-category", rating: 4.5, product_count: 12, location: "Lusaka" },
+          { id: 2, store_name: "Market Hub", owner_name: "Owner", verified: false, is_featured: false, description: "Wide selection of products at great prices", category: "Multi-category", rating: 4.3, product_count: 8, location: "Ndola" },
+          { id: 3, store_name: "Elite Brands", owner_name: "Owner", verified: false, is_featured: false, description: "Exclusive and authenticated brands", category: "Multi-category", rating: 4.7, product_count: 15, location: "Kitwe" },
+          { id: 4, store_name: "Quick Deals", owner_name: "Owner", verified: false, is_featured: false, description: "Best deals and discounts every day", category: "Multi-category", rating: 4.2, product_count: 10, location: "Livingstone" },
+          { id: 5, store_name: "Trusted Traders", owner_name: "Owner", verified: false, is_featured: false, description: "Verified vendors with excellent ratings", category: "Multi-category", rating: 4.6, product_count: 20, location: "Lusaka" },
+          { id: 6, store_name: "Value Store", owner_name: "Owner", verified: false, is_featured: false, description: "Budget-friendly without compromising quality", category: "Multi-category", rating: 4.4, product_count: 18, location: "Chingola" },
         ];
         setVendors(mockVendors);
       }

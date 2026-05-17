@@ -69,17 +69,22 @@ const Marketplace = () => {
   useEffect(() => {
     const fetchItems = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("hive_catalogue")
-        .select("*, sme_stores(brand_name, whatsapp_number)")
-        .order("created_at", { ascending: false })
-        .limit(60);
+      try {
+        const { data, error } = await supabase
+          .from("hive_catalogue")
+          .select("*, sme_stores(brand_name, whatsapp_number)")
+          .order("created_at", { ascending: false })
+          .limit(60);
 
-      if (error) { toast.error("Failed to load marketplace."); }
-      if (data && data.length > 0) {
-        setAllItems(data.map(mapItem));
+        if (error) { toast.error("Failed to load marketplace."); }
+        if (data && data.length > 0) {
+          setAllItems(data.map(mapItem));
+        }
+      } catch (err) {
+        toast.error("Error loading marketplace");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchItems();
   }, []);
@@ -124,11 +129,7 @@ const Marketplace = () => {
         </div>
       </motion.div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-        </div>
-      ) : allItems.length === 0 ? (
+      {allItems.length === 0 && !loading ? (
         <div className="text-center py-20 text-muted-foreground">
           <ShoppingBag size={48} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">No products in the catalogue yet. Check back soon!</p>
@@ -136,33 +137,70 @@ const Marketplace = () => {
       ) : (
         <>
           {/* Row 1: Recommended */}
-          <HorizontalScrollRow
-            title="Recommended For You"
-            icon={<Heart size={20} className="text-primary" />}
-            subtitle="Based on your interests"
-            items={recommended}
-          />
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Heart size={20} className="text-primary" /></div>
+              <div className="flex-1">
+                <h3 className="text-lg font-display font-bold text-foreground">Recommended For You</h3>
+                <p className="text-xs text-muted-foreground">Based on your interests</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-3">
+              {loading ? (
+                [...Array(5)].map((_, i) => <div key={i} className="bg-card border border-border rounded-xl h-40 animate-pulse" />)
+              ) : (
+                recommended.map((item, i) => (
+                  <FeaturedItemCard key={item.id} item={item} index={i} variant="default" onBuyNow={() => {}} />
+                ))
+              )}
+            </div>
+          </div>
 
           {/* Row 2: Trending */}
-          <HorizontalScrollRow
-            title="Trending Now"
-            icon={<TrendingUp size={20} className="text-primary" />}
-            subtitle="Most popular items"
-            items={trending}
-            badge="HOT"
-            badgeColor="bg-orange-500"
-          />
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><TrendingUp size={20} className="text-primary" /></div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-display font-bold text-foreground">Trending Now</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-orange-500">HOT</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Most popular items</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-3">
+              {loading ? (
+                [...Array(5)].map((_, i) => <div key={i} className="bg-card border border-border rounded-xl h-40 animate-pulse" />)
+              ) : (
+                trending.map((item, i) => (
+                  <FeaturedItemCard key={item.id} item={item} index={i} variant="default" onBuyNow={() => {}} />
+                ))
+              )}
+            </div>
+          </div>
 
           {/* Row 3: Hot Deals */}
-          <HorizontalScrollRow
-            title="Hot Deals"
-            icon={<Flame size={20} className="text-primary" />}
-            subtitle="Limited time offers"
-            items={hotDeals}
-            badge="SALE"
-            badgeColor="bg-red-500"
-            variant="hot"
-          />
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Flame size={20} className="text-primary" /></div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-display font-bold text-foreground">Hot Deals</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-red-500">SALE</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Limited time offers</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-3">
+              {loading ? (
+                [...Array(5)].map((_, i) => <div key={i} className="bg-card border border-border rounded-xl h-40 animate-pulse" />)
+              ) : (
+                hotDeals.map((item, i) => (
+                  <FeaturedItemCard key={item.id} item={item} index={i} variant="hot" onBuyNow={() => {}} />
+                ))
+              )}
+            </div>
+          </div>
 
           {/* Row 4: Premium Categories Section */}
           <div className="mb-8">

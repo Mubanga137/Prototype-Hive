@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, ShoppingBag, Briefcase, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { CategoryTheme } from "@/lib/categoryThemes";
 
 interface CategoryHeroProps {
@@ -9,237 +9,164 @@ interface CategoryHeroProps {
 
 interface HeroSlide {
   title: string;
-  description: string;
-  icon: React.ReactNode;
-  bgGradient: string;
+  subtitle: string;
+  accentColor: string;
 }
 
 const CategoryHero = ({ theme }: CategoryHeroProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Hero content with icons instead of emojis
-  const heroContent: Record<string, { headline: string; slides: HeroSlide[] }> = {
-    tech: {
-      headline: "Latest Gadgets & Smart Tech",
-      slides: [
-        {
-          title: "Cutting-Edge Devices",
-          description: "Discover the newest smartphones, laptops, and wearables from top brands",
-          icon: <ShoppingBag size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Smart Accessories",
-          description: "Complete your tech setup with premium chargers, cables, and gadgets",
-          icon: <Sparkles size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Expert Services",
-          description: "Get tech support, repairs, and consultation from certified professionals",
-          icon: <Briefcase size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-      ],
-    },
-    fashion: {
-      headline: "Trending Styles & Curated Looks",
-      slides: [
-        {
-          title: "Premium Collections",
-          description: "Explore exclusive apparel, footwear, and accessories for every occasion",
-          icon: <ShoppingBag size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Designer Brands",
-          description: "Shop authenticated designer pieces from emerging and established brands",
-          icon: <Sparkles size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Styling Services",
-          description: "Book personal stylists and fashion consultants for custom recommendations",
-          icon: <Briefcase size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-      ],
-    },
-    food: {
-      headline: "Fresh & Delicious Flavors",
-      slides: [
-        {
-          title: "Farm-Fresh Produce",
-          description: "Organic fruits, vegetables, and locally-sourced ingredients delivered fresh",
-          icon: <ShoppingBag size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Gourmet Specialties",
-          description: "Artisan foods, premium teas, coffee, and international delicacies",
-          icon: <Sparkles size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Catering Services",
-          description: "Book professional chefs and catering teams for events and gatherings",
-          icon: <Briefcase size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-      ],
-    },
-    entertainment: {
-      headline: "Live Experiences & Events",
-      slides: [
-        {
-          title: "Experience Products",
-          description: "Premium entertainment gear, concert tickets, and exclusive merchandise",
-          icon: <ShoppingBag size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Event Packages",
-          description: "Curated experiences, workshops, and exclusive access to shows",
-          icon: <Sparkles size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Professional Services",
-          description: "Book DJs, photographers, event planners, and entertainment professionals",
-          icon: <Briefcase size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-      ],
-    },
-    beauty: {
-      headline: "Premium Beauty & Skincare",
-      slides: [
-        {
-          title: "Beauty Products",
-          description: "Natural skincare, makeup, haircare, and wellness products from top brands",
-          icon: <ShoppingBag size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Premium Treatments",
-          description: "Luxury serums, face masks, hair treatments, and holistic wellness items",
-          icon: <Sparkles size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-        {
-          title: "Expert Services",
-          description: "Book beauty consultations, facials, hair styling, and spa treatments",
-          icon: <Briefcase size={48} />,
-          bgGradient: "from-[#B37C1C]/20 to-[#FFFBF2]/10",
-        },
-      ],
-    },
+  const heroSlides: Record<string, HeroSlide[]> = {
+    tech: [
+      { title: "Latest Gadgets", subtitle: "Explore cutting-edge technology and smart devices", accentColor: "#06B6D4" },
+      { title: "Smart Accessories", subtitle: "Premium chargers, cables, and tech essentials", accentColor: "#0EA5E9" },
+      { title: "Expert Support", subtitle: "Professional repairs and tech consultations", accentColor: "#06B6D4" },
+    ],
+    fashion: [
+      { title: "Trending Styles", subtitle: "Discover the latest fashion collections and trends", accentColor: "#3B4C8F" },
+      { title: "Premium Brands", subtitle: "Authenticated designer pieces and exclusive looks", accentColor: "#5B6BB8" },
+      { title: "Style Services", subtitle: "Personal styling and fashion consultation", accentColor: "#3B4C8F" },
+    ],
+    food: [
+      { title: "Fresh & Delicious", subtitle: "Farm-fresh produce and locally-sourced ingredients", accentColor: "#F97316" },
+      { title: "Gourmet Selection", subtitle: "Premium foods, specialty items, and international cuisine", accentColor: "#FB923C" },
+      { title: "Catering Services", subtitle: "Professional chefs for events and gatherings", accentColor: "#F97316" },
+    ],
+    entertainment: [
+      { title: "Live Experiences", subtitle: "Premium entertainment gear and exclusive events", accentColor: "#8B5CF6" },
+      { title: "Events & Packages", subtitle: "Curated experiences and exclusive access", accentColor: "#A78BFA" },
+      { title: "Professionals", subtitle: "Book DJs, photographers, and event specialists", accentColor: "#8B5CF6" },
+    ],
+    beauty: [
+      { title: "Premium Beauty", subtitle: "Natural skincare and makeup from top brands", accentColor: "#EC4899" },
+      { title: "Luxury Treatments", subtitle: "Premium serums, masks, and wellness products", accentColor: "#F472B6" },
+      { title: "Beauty Services", subtitle: "Facials, hair styling, and spa treatments", accentColor: "#EC4899" },
+    ],
   };
 
-  const content = heroContent[theme.key] || heroContent.tech;
+  const slides = heroSlides[theme.key] || heroSlides.tech;
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % content.slides.length);
-    }, 5000);
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 6000);
     return () => clearInterval(interval);
-  }, [content.slides.length]);
+  }, [slides.length]);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % content.slides.length);
+  const handlePrev = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + content.slides.length) % content.slides.length);
+  const handleNext = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
+
+  const currentColor = slides[currentSlide].accentColor;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative overflow-hidden rounded-3xl mb-12 bg-gradient-to-br from-[#FFFBF2] to-[#FFF9F0] border border-[#B37C1C]/20"
+      transition={{ duration: 0.6 }}
+      className="relative overflow-hidden rounded-3xl mb-12 bg-gradient-to-br from-slate-50 to-slate-100/50"
     >
-      {/* Main title */}
-      <div className="px-6 md:px-8 pt-8 md:pt-10 pb-4">
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-[#0F1A35] leading-tight">
-          {content.headline}
-        </h1>
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentSlide}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(135deg, ${currentColor}08 0%, ${currentColor}03 100%)`,
+            }}
+          />
+        </AnimatePresence>
       </div>
 
-      {/* Carousel Container - Horizontal Layout */}
-      <div className="relative px-6 md:px-8 pb-8">
-        <div className="relative overflow-hidden">
-          <AnimatePresence mode="wait">
+      {/* Decorative elements */}
+      <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-10 pointer-events-none" style={{ background: currentColor }} />
+      <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-10 pointer-events-none" style={{ background: currentColor }} />
+
+      {/* Content */}
+      <div className="relative z-10">
+        <div className="px-6 md:px-10 lg:px-14 py-12 md:py-16 lg:py-20">
+          <div className="max-w-4xl mx-auto">
+            {/* Badge */}
             <motion.div
-              key={currentSlide}
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -100 }}
-              transition={{ duration: 0.4 }}
-              className="relative overflow-hidden rounded-2xl p-8 md:p-12 bg-gradient-to-br from-[#B37C1C]/15 to-[#FFFBF2]/10 border border-[#B37C1C]/20 min-h-[280px] flex flex-col justify-between"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="inline-flex items-center gap-2 mb-6"
             >
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-                {/* Left: Content */}
-                <div className="flex-1">
-                  {/* Icon */}
-                  <div className="flex items-center justify-start mb-6 text-[#B37C1C]">
-                    {content.slides[currentSlide].icon}
-                  </div>
-
-                  {/* Title & Description */}
-                  <h3 className="text-2xl md:text-3xl font-display font-bold text-[#0F1A35] mb-3">
-                    {content.slides[currentSlide].title}
-                  </h3>
-                  <p className="text-sm md:text-base text-[#0F1A35]/70 leading-relaxed max-w-lg">
-                    {content.slides[currentSlide].description}
-                  </p>
-                </div>
-
-                {/* Right: Spacer for balance */}
-                <div className="hidden md:block flex-shrink-0 w-24" />
-              </div>
-
-              {/* Pagination dots at bottom */}
-              <div className="flex gap-2 mt-8">
-                {content.slides.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentSlide(idx)}
-                    className={`transition-all rounded-full ${
-                      idx === currentSlide
-                        ? "bg-[#B37C1C] w-8 h-2"
-                        : "bg-[#B37C1C]/30 hover:bg-[#B37C1C]/50 w-2 h-2"
-                    }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
+              <div className="w-2 h-2 rounded-full" style={{ background: currentColor }} />
+              <span className="text-sm font-semibold" style={{ color: currentColor }}>
+                {theme.title}
+              </span>
             </motion.div>
-          </AnimatePresence>
-        </div>
 
-        {/* Navigation Arrows */}
-        <div className="flex gap-2 mt-6 justify-end">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={prevSlide}
-            className="p-2 rounded-full bg-[#B37C1C] text-white hover:bg-[#0F1A35] transition-colors"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft size={20} />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={nextSlide}
-            className="p-2 rounded-full bg-[#B37C1C] text-white hover:bg-[#0F1A35] transition-colors"
-            aria-label="Next slide"
-          >
-            <ChevronRight size={20} />
-          </motion.button>
+            {/* Main content */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlide}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+              >
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mb-4 leading-tight tracking-tight">
+                  {slides[currentSlide].title}
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+                  {slides[currentSlide].subtitle}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Slide indicators */}
+            <div className="flex gap-2 mt-10">
+              {slides.map((_, idx) => (
+                <motion.button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className="transition-all rounded-full"
+                  style={{
+                    background: idx === currentSlide ? currentColor : `${currentColor}30`,
+                    width: idx === currentSlide ? 32 : 8,
+                    height: 8,
+                  }}
+                  whileHover={{ scale: 1.2 }}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="absolute bottom-6 right-6 z-10 flex gap-3">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handlePrev}
+          className="w-10 h-10 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow flex items-center justify-center text-foreground"
+          aria-label="Previous slide"
+        >
+          <ChevronLeft size={20} />
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleNext}
+          className="w-10 h-10 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow flex items-center justify-center text-foreground"
+          aria-label="Next slide"
+        >
+          <ChevronRight size={20} />
+        </motion.button>
       </div>
     </motion.div>
   );
