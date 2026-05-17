@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ShoppingBag, TrendingUp, Zap, Sparkles, Heart, Flame, Search, SlidersHorizontal
@@ -56,6 +57,7 @@ const HorizontalScrollRow = ({ title, icon, subtitle, badge, badgeColor, items, 
 };
 
 const Marketplace = () => {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const [allItems, setAllItems] = useState<FeaturedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,14 +175,21 @@ const Marketplace = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pt-3">
-              {["Fashion", "Tech", "Food", "Beauty", "Entertainment"].map((cat) => (
+              {[
+                { label: "Fashion", path: "/category/fashion" },
+                { label: "Tech", path: "/category/tech" },
+                { label: "Food", path: "/category/food" },
+                { label: "Beauty", path: "/category/beauty" },
+                { label: "Entertainment", path: "/category/entertainment" },
+              ].map((cat) => (
                 <motion.button
-                  key={cat}
+                  key={cat.label}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate(cat.path)}
                   className="h-24 rounded-xl border-2 border-border bg-card/50 hover:border-primary/50 flex items-center justify-center font-semibold text-foreground transition-all"
                 >
-                  {cat}
+                  {cat.label}
                 </motion.button>
               ))}
             </div>
