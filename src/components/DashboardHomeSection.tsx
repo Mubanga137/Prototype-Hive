@@ -89,6 +89,8 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [vendorsLoading, setVendorsLoading] = useState(true);
 
   const handleCategoryNavigate = (categoryPath: string) => {
     navigate(categoryPath);
@@ -96,6 +98,7 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
 
   useEffect(() => {
     const fetchItems = async () => {
+      setItemsLoading(true);
       const { data } = await supabase
         .from("hive_catalogue")
         .select("*, sme_stores(brand_name)")
@@ -120,12 +123,14 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
         }));
         setItems(mapped);
       }
+      setItemsLoading(false);
     };
     fetchItems();
   }, []);
 
   useEffect(() => {
     const fetchVendors = async () => {
+      setVendorsLoading(true);
       const { data: storesData } = await supabase
         .from("sme_stores")
         .select("id, brand_name, description, owner_user_id")
@@ -144,14 +149,18 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
         const vendorsList: VendorData[] = storesData.map((store: any) => ({
           id: store.id,
           store_name: store.brand_name || "Unknown Store",
-          description: store.description || "Quality products and services",
+          owner_name: store.owner_user_id || "Store Owner",
           verified: false,
+          is_featured: false,
+          description: store.description || "Quality products and services",
+          category: "Multi-category",
+          rating: 4.5,
           product_count: productCounts[store.id] || 0,
           location: "Zambia",
-          category: "Multi-category",
         }));
         setVendors(vendorsList);
       }
+      setVendorsLoading(false);
     };
     fetchVendors();
   }, []);
@@ -169,6 +178,10 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
 
   const trending = [...items].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 8);
   const hotDeals = items.filter(i => i.old_price && i.old_price > i.price).slice(0, 8);
+
+  const SkeletonCard = () => (
+    <div className="bg-card border border-border rounded-xl h-40 animate-pulse" />
+  );
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -218,44 +231,74 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
         </motion.div>
       </div>
 
-            {/* Row 1: Recommended For You */}
-      <HorizontalScrollRow
-        title="Recommended For You"
-        icon={<Sparkles size={20} className="text-primary" />}
-        subtitle="Based on your taste profile"
-        badge="PERSONALIZED"
-        badgeColor="bg-primary"
-      >
-        {recommended.map((item, i) => (
-          <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} />
-        ))}
-      </HorizontalScrollRow>
+      {/* Row 1: Recommended For You */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Sparkles size={20} className="text-primary" /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-display font-bold text-foreground">Recommended For You</h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-primary">PERSONALIZED</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Based on your taste profile</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-3">
+          {itemsLoading ? (
+            [...Array(5)].map((_, i) => <SkeletonCard key={i} />)
+          ) : (
+            recommended.map((item, i) => (
+              <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} />
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Row 2: Trending Now */}
-      <HorizontalScrollRow
-        title="Trending Now"
-        icon={<TrendingUp size={20} className="text-primary" />}
-        subtitle="Most popular products right now"
-        badge="TRENDING"
-        badgeColor="bg-primary"
-      >
-        {trending.map((item, i) => (
-          <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="trending" />
-        ))}
-      </HorizontalScrollRow>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><TrendingUp size={20} className="text-primary" /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-display font-bold text-foreground">Trending Now</h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-primary">TRENDING</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Most popular products right now</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-3">
+          {itemsLoading ? (
+            [...Array(5)].map((_, i) => <SkeletonCard key={i} />)
+          ) : (
+            trending.map((item, i) => (
+              <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="trending" />
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Row 3: Hot Deals */}
-      <HorizontalScrollRow
-        title="Hot Deals"
-        icon={<Flame size={20} className="text-primary" />}
-        subtitle="Biggest discounts right now"
-        badge="SAVE BIG"
-        badgeColor="bg-primary"
-      >
-        {(hotDeals.length > 0 ? hotDeals : items.slice(0, 6)).map((item, i) => (
-          <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="hot" />
-        ))}
-      </HorizontalScrollRow>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center"><Flame size={20} className="text-primary" /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-display font-bold text-foreground">Hot Deals</h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-primary">SAVE BIG</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Biggest discounts right now</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pt-3">
+          {itemsLoading ? (
+            [...Array(5)].map((_, i) => <SkeletonCard key={i} />)
+          ) : (
+            (hotDeals.length > 0 ? hotDeals : items.slice(0, 6)).map((item, i) => (
+              <FeaturedItemCard key={item.id} item={item} index={i} onBuyNow={handleBuyNow} onVisitStore={(it) => navigate(`/store/${it.sme_id || 1}`)} variant="hot" />
+            ))
+          )}
+        </div>
+      </div>
 
       {/* Row 4: Recommended Vendors */}
       <div className="mb-8">
@@ -269,7 +312,9 @@ const DashboardHomeSection = ({ firstName, greeting, setActiveSection }: Props) 
           </div>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide pt-3">
-          {vendors.length > 0 ? (
+          {vendorsLoading ? (
+            [...Array(3)].map((_, i) => <div key={i} className="bg-card border border-border rounded-xl min-w-[260px] h-48 animate-pulse" />)
+          ) : vendors.length > 0 ? (
             vendors.map((vendor, i) => (
               <VendorCard key={vendor.id} vendor={vendor} index={i} onVisitStore={(v) => navigate(`/store/${v.id}`)} />
             ))
