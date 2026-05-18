@@ -178,8 +178,11 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     const insertPayload: Record<string, any> = {
       buyer_id: guestMode ? null : (user?.id ?? null),
       sme_id: item.sme_id ?? null,
+      store_id: item.store_id ?? item.sme_id ?? null,
       item_id: item.id,
       total_amount: totalAmount,
+      total_price: totalAmount,
+      otp_code: otp,
       status: "pending",
       customer_phone: cleanedPhone,
       customer_name: name.trim(),
