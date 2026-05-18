@@ -10,6 +10,7 @@ import SubcategorySection from "@/components/category/SubcategorySection";
 import DiscoverySection from "@/components/category/DiscoverySection";
 import VendorCarousel from "@/components/category/VendorCarousel";
 import CategoryFooter from "@/components/category/CategoryFooter";
+import CustomerDashboardSidebar from "@/components/CustomerDashboardSidebar";
 import { categoryThemes } from "@/lib/categoryThemes";
 import { subcategoryDefinitions } from "@/lib/categorySubcategories";
 import { mockProducts } from "@/lib/mockCategoryData";
@@ -29,6 +30,7 @@ const CategoryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<FeaturedItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("Categories");
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -175,18 +177,16 @@ const CategoryPage = () => {
   }
 
   return (
-    <div className="min-h-screen relative bg-[#FFFBF2]">
-      {/* Dynamic honeycomb background */}
+    <div className="min-h-screen relative">
       <ThemedHoneycombBackground color={theme.honeycombColor} />
-
-      {/* Ambient radial gradient (page-wide) */}
       <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{ background: theme.gradient }}
       />
 
-      <div className="relative z-10">
-        <div className="max-w-6xl mx-auto px-4 py-8">
+      <CustomerDashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection}>
+        <div className="relative z-10">
+          <div className="max-w-6xl mx-auto px-4 py-8">
           {/* 1. CATEGORY HERO */}
           <CategoryHero theme={theme} />
 
@@ -284,6 +284,7 @@ const CategoryPage = () => {
       <CategoryFooter theme={theme} />
 
       <CheckoutDrawer open={drawerOpen} onOpenChange={setDrawerOpen} item={selectedItem} />
+      </CustomerDashboardSidebar>
     </div>
   );
 };
