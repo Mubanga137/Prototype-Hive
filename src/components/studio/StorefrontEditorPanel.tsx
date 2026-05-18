@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Upload, Plus, Trash2, Edit, Loader2, Copy, Check, ExternalLink, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -75,6 +75,39 @@ const StorefrontEditorPanel = ({
   isVerified = false,
   onVerifiedChange,
 }: EditorPanelProps) => {
+  // Local state for inputs - prevents re-render on every keystroke
+  const [localBrandName, setLocalBrandName] = useState(brandName);
+  const [localDescription, setLocalDescription] = useState(description);
+  const [localHeroTitle, setLocalHeroTitle] = useState(heroTitle);
+  const [localHeroSubtitle, setLocalHeroSubtitle] = useState(heroSubtitle);
+  const [localWhatsappNumber, setLocalWhatsappNumber] = useState(whatsappNumber);
+  const [localStoreSlug, setLocalStoreSlug] = useState(storeSlug);
+
+  // Sync local state when props change
+  useEffect(() => {
+    setLocalBrandName(brandName);
+  }, [brandName]);
+
+  useEffect(() => {
+    setLocalDescription(description);
+  }, [description]);
+
+  useEffect(() => {
+    setLocalHeroTitle(heroTitle);
+  }, [heroTitle]);
+
+  useEffect(() => {
+    setLocalHeroSubtitle(heroSubtitle);
+  }, [heroSubtitle]);
+
+  useEffect(() => {
+    setLocalWhatsappNumber(whatsappNumber);
+  }, [whatsappNumber]);
+
+  useEffect(() => {
+    setLocalStoreSlug(storeSlug);
+  }, [storeSlug]);
+
   const [sections, setSections] = useState<Section[]>([
     { id: 'identity', title: 'Store Identity', expanded: true },
     { id: 'hero', title: 'Hero Section', expanded: false },
@@ -228,8 +261,9 @@ const StorefrontEditorPanel = ({
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">Store Name</label>
               <input
-                value={brandName}
-                onChange={(e) => onBrandNameChange(e.target.value)}
+                value={localBrandName}
+                onChange={(e) => setLocalBrandName(e.target.value)}
+                onBlur={() => onBrandNameChange(localBrandName)}
                 placeholder="e.g. Lusaka Threads"
                 className={inputClass}
               />
@@ -271,8 +305,9 @@ const StorefrontEditorPanel = ({
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">/store/</span>
                 <input
-                  value={storeSlug}
-                  onChange={(e) => onSlugChange(e.target.value)}
+                  value={localStoreSlug}
+                  onChange={(e) => setLocalStoreSlug(e.target.value)}
+                  onBlur={() => onSlugChange(localStoreSlug)}
                   placeholder="store-name"
                   className={inputClass}
                 />
@@ -285,22 +320,24 @@ const StorefrontEditorPanel = ({
                 Description (max 120 chars)
               </label>
               <textarea
-                value={description}
-                onChange={(e) => onDescriptionChange(e.target.value.slice(0, 120))}
+                value={localDescription}
+                onChange={(e) => setLocalDescription(e.target.value.slice(0, 120))}
+                onBlur={() => onDescriptionChange(localDescription)}
                 placeholder="Tell customers about your store..."
                 rows={2}
                 maxLength={120}
                 className={`${inputClass} resize-none`}
               />
-              <p className="text-xs text-muted-foreground mt-1">{description.length}/120</p>
+              <p className="text-xs text-muted-foreground mt-1">{localDescription.length}/120</p>
             </div>
 
             {/* WhatsApp */}
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">WhatsApp Number</label>
               <input
-                value={whatsappNumber}
-                onChange={(e) => onWhatsappChange(e.target.value)}
+                value={localWhatsappNumber}
+                onChange={(e) => setLocalWhatsappNumber(e.target.value)}
+                onBlur={() => onWhatsappChange(localWhatsappNumber)}
                 placeholder="+260 9XX XXX XXX"
                 className={inputClass}
               />
@@ -336,8 +373,9 @@ const StorefrontEditorPanel = ({
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">Main Heading</label>
               <input
-                value={heroTitle}
-                onChange={(e) => onHeroTitleChange(e.target.value)}
+                value={localHeroTitle}
+                onChange={(e) => setLocalHeroTitle(e.target.value)}
+                onBlur={() => onHeroTitleChange(localHeroTitle)}
                 placeholder="Your store heading..."
                 className={inputClass}
               />
@@ -347,8 +385,9 @@ const StorefrontEditorPanel = ({
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">Tagline</label>
               <input
-                value={heroSubtitle}
-                onChange={(e) => onHeroSubtitleChange(e.target.value)}
+                value={localHeroSubtitle}
+                onChange={(e) => setLocalHeroSubtitle(e.target.value)}
+                onBlur={() => onHeroSubtitleChange(localHeroSubtitle)}
                 placeholder="Premium Quality, Fast Delivery"
                 className={inputClass}
               />
