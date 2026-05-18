@@ -109,7 +109,7 @@ const StorefrontEditorPanel = ({
   }, [storeSlug]);
 
   const [sections, setSections] = useState<Section[]>([
-    { id: 'identity', title: 'Store Identity', expanded: true },
+    { id: 'identity', title: 'Store Identity', expanded: false },
     { id: 'hero', title: 'Hero Section', expanded: false },
     { id: 'products', title: 'Products & Services', expanded: false },
     { id: 'promotions', title: 'Promotions', expanded: false },
@@ -122,6 +122,32 @@ const StorefrontEditorPanel = ({
   const [uploadingHero, setUploadingHero] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef(0);
+
+  // Prevent autoscroll-to-top by disabling focus-based scrolling
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleFocus = (e: FocusEvent) => {
+      // Store current scroll position before focus
+      scrollPositionRef.current = container.scrollTop;
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      // Restore scroll position after focus (prevents scrollIntoView)
+      container.scrollTop = scrollPositionRef.current;
+    };
+
+    container.addEventListener('focus', handleFocus, true);
+    container.addEventListener('focusin', handleFocusIn, true);
+
+    return () => {
+      container.removeEventListener('focus', handleFocus, true);
+      container.removeEventListener('focusin', handleFocusIn, true);
+    };
+  }, []);
 
   const toggleSection = (id: string) => {
     setSections((prev) =>
@@ -235,7 +261,7 @@ const StorefrontEditorPanel = ({
       </div>
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
         {/* STORE IDENTITY */}
         <Section section={sections.find((s) => s.id === 'identity')!}>
           <div className="space-y-3">
