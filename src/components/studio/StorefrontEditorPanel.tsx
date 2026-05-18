@@ -202,7 +202,7 @@ const StorefrontEditorPanel = ({
       </div>
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto scroll-smooth">
+      <div className="flex-1 overflow-y-auto">
         {/* STORE IDENTITY */}
         <Section section={sections.find((s) => s.id === 'identity')!}>
           <div className="space-y-3">
