@@ -149,7 +149,12 @@ const CartDrawer = ({
 
     const orderIds = ((data as any[]) || []).map((r) => r.id);
     setState("success");
-    toast.success("Order placed — opening WhatsApp…");
+    toast.success("✅ Order successful! Check track orders to track your product", {
+      action: {
+        label: "Track Order",
+        onClick: () => window.location.href = "/track-orders"
+      }
+    });
 
     const targetPhone = cleanZambianPhone(storeWhatsapp);
     const message = buildCartMessage(

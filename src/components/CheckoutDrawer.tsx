@@ -211,9 +211,23 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
     // Brief success state
     setState("success");
-    toast.success(
-      isService ? "✅ Booking confirmed in database!" : "✅ Order successfully booked in database!"
-    );
+
+    // Show appropriate success notification based on order type
+    if (isService) {
+      toast.success("✅ Booking successful! Check messages to find booking details", {
+        action: {
+          label: "Go to Messages",
+          onClick: () => window.location.href = "/messages"
+        }
+      });
+    } else {
+      toast.success("✅ Order successful! Check track orders to track your product", {
+        action: {
+          label: "Track Order",
+          onClick: () => window.location.href = "/track-orders"
+        }
+      });
+    }
 
     const message = buildOrderMessage({
       orderId,
