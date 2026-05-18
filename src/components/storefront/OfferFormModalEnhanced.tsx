@@ -16,6 +16,10 @@ export interface Variant {
   sku?: string;
   quantity: number;
   price?: number;
+  image_url?: string;
+  tag?: string;
+  features?: string[];
+  benefits?: string[];
 }
 
 export interface MediaItem {
@@ -41,6 +45,7 @@ export interface OfferDraft {
   discount_value?: string;
   variants?: Variant[];
   media_gallery?: MediaItem[];
+  enableVariants?: boolean;
 }
 
 interface Props {
@@ -65,6 +70,7 @@ const emptyDraft: OfferDraft = {
   discount_value: "",
   variants: [],
   media_gallery: [],
+  enableVariants: false,
 };
 
 const typeMeta: Record<ItemType, { label: string; icon: any; help: string }> = {
@@ -160,9 +166,9 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
     const isService = draft.item_type === "service";
     const basePrice = parseFloat(draft.price) || 0;
 
-    // Auto-generate 4 variants for new products (not services)
+    // Auto-generate variants only if enableVariants is true and no manual variants exist
     let generatedVariants: any[] = [];
-    if (!draft.id && !isService && (!draft.variants || draft.variants.length === 0)) {
+    if (!draft.id && !isService && draft.enableVariants && (!draft.variants || draft.variants.length === 0)) {
       const variantData = generateVariants(
         draft.name.trim(),
         basePrice,
@@ -177,7 +183,7 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
         description: v.description,
         tag: v.tag,
         features: v.features || [],
-        quantity: 100, // Default stock per variant
+        quantity: 100,
       }));
     }
 
@@ -328,6 +334,29 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
 
                   <textarea value={draft.description} onChange={(e) => set("description", e.target.value)}
                     placeholder="Description" rows={3} className={`${inputClass} resize-none`} />
+
+                  {/* Variants Toggle (for products only) */}
+                  {!isService && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="enable-variants"
+                          checked={draft.enableVariants || false}
+                          onChange={(e) => set("enableVariants", e.target.checked)}
+                          className="w-5 h-5 rounded border-border"
+                        />
+                        <label htmlFor="enable-variants" className="text-sm font-semibold text-foreground cursor-pointer flex-1">
+                          📦 Enable Variants (Recommended)
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2 ml-8">
+                        {draft.enableVariants
+                          ? "Manual variants: Set exact prices, names, and tags for each product option."
+                          : "Offer this product as a single item. Add variants in the Variants tab to enable them."}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Primary Image */}
                   <div>

@@ -471,16 +471,14 @@ const StorefrontEditorPanel = ({
 
         {/* PROMOTIONS */}
         <Section section={sections.find((s) => s.id === 'promotions')!}>
-          <div className="space-y-3 text-xs text-muted-foreground">
-            <p>Promotion features coming soon...</p>
-            <div className="p-2 bg-secondary/30 rounded text-xs">
-              <p className="font-semibold mb-1">Features:</p>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Discount by percentage</li>
-                <li>Highlight featured products</li>
-                <li>Add promotional badges</li>
-              </ul>
-            </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.location.href = '/retailer-studio/marketing-promos'}
+              className="w-full px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <Zap size={16} /> Open Marketing & Promos
+            </button>
+            <p className="text-xs text-muted-foreground text-center">Manage discount codes, campaigns, and Hive Squad purchasing in the dedicated panel.</p>
           </div>
         </Section>
 
