@@ -121,8 +121,11 @@ const CartDrawer = ({
     const payload = lines.map((l) => ({
       buyer_id: guestMode ? null : user.id,
       sme_id: smeId,
+      store_id: smeId,
       item_id: l.offer_id,
       total_amount: l.unit_price * l.quantity,
+      total_price: l.unit_price * l.quantity,
+      otp_code: otp,
       status: "pending",
       customer_phone: cleanedPhone,
       customer_name: name.trim(),
@@ -149,7 +152,12 @@ const CartDrawer = ({
 
     const orderIds = ((data as any[]) || []).map((r) => r.id);
     setState("success");
-    toast.success("Order placed — opening WhatsApp…");
+    toast.success("✅ Order successful! Check track orders to track your product", {
+      action: {
+        label: "Track Order",
+        onClick: () => window.location.href = "/track-orders"
+      }
+    });
 
     const targetPhone = cleanZambianPhone(storeWhatsapp);
     const message = buildCartMessage(
