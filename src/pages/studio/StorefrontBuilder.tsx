@@ -139,15 +139,26 @@ const StorefrontBuilder = () => {
     };
   }, [brandName, description, logoUrl, heroImageUrl, heroTitle, heroSubtitle, whatsappNumber, storeSlug, businessType, isVerified, currentStore]);
 
-  // File uploads
+  // File uploads with immediate DB persistence
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
-    if (!user) { toast.error("Sign in to upload"); return null; }
+    if (!user || !currentStore) { toast.error("Sign in to upload"); return null; }
     const ext = file.name.split(".").pop();
     const path = `${user.id}/${folder}_${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from("hive_media").upload(path, file, { upsert: true });
     if (error) { toast.error("Upload failed"); return null; }
     const { data } = supabase.storage.from("hive_media").getPublicUrl(path);
-    return data.publicUrl;
+    const url = data.publicUrl;
+
+    // Immediately persist to DB so it doesn't disappear on page reload
+    const updatePayload: Record<string, any> = {};
+    if (folder === "logo") updatePayload.logo_url = url;
+    if (folder === "hero") updatePayload.hero_image_url = url;
+
+    if (Object.keys(updatePayload).length > 0) {
+      await supabase.from("sme_stores").update(updatePayload).eq("id", currentStore.id);
+    }
+
+    return url;
   };
 
   // Launch

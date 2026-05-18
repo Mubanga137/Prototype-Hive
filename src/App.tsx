@@ -30,6 +30,7 @@ import WholesaleBountyHub from "./pages/studio/WholesaleBountyHub.tsx";
 import StorefrontBuilder from "./pages/studio/StorefrontBuilder.tsx";
 import KantembaLedger from "./pages/studio/KantembaLedger.tsx";
 import MarketingPromos from "./pages/studio/MarketingPromos.tsx";
+import GrowthIncentives from "./pages/studio/GrowthIncentives.tsx";
 import AnalyticsCustomers from "./pages/studio/AnalyticsCustomers.tsx";
 import HiveEscrowWallet from "./pages/studio/HiveEscrowWallet.tsx";
 import Messages from "./pages/Messages.tsx";
@@ -72,6 +73,7 @@ const AppContent = () => {
         <Route path="/retailer-studio/storefront" element={<StorefrontBuilder />} />
         <Route path="/retailer-studio/kantemba" element={<KantembaLedger />} />
         <Route path="/retailer-studio/marketing" element={<MarketingPromos />} />
+        <Route path="/retailer-studio/growth" element={<GrowthIncentives />} />
         <Route path="/retailer-studio/analytics" element={<AnalyticsCustomers />} />
         <Route path="/retailer-studio/escrow" element={<HiveEscrowWallet />} />
 
