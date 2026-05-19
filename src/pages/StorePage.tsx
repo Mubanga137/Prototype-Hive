@@ -205,7 +205,7 @@ const StorePage = () => {
       image_url: item.image_url,
       item_type: item.item_type ?? "physical",
     });
-    toast.success(`Added "${item.product_name}" to cart`);
+    toast.success("✅ Done! Your update is live.");
   };
 
   const handleMessageStore = async () => {
@@ -356,7 +356,7 @@ const StorePage = () => {
                             image_url: variant.baseProductImage,
                             item_type: variant.baseItemType === "service" ? "service" : "physical",
                           });
-                          toast.success(`Added "${variant.title}" to cart`);
+                          toast.success("✅ Done! Your update is live.");
                         }}
                       />
                     );
@@ -444,7 +444,7 @@ const StorePage = () => {
                           image_url: variant.baseProductImage,
                           item_type: variant.baseItemType === "service" ? "service" : "physical",
                         });
-                        toast.success(`Added "${variant.title}" to cart`);
+                        toast.success("✅ Done! Your update is live.");
                       }}
                     />
                     );

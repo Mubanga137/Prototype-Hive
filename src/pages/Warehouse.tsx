@@ -113,7 +113,7 @@ const Warehouse = () => {
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storeId) {
-      toast.error("No wholesale store linked. Contact support.");
+      toast.error("⚠️ Store setup incomplete. Contact support to get started.");
       return;
     }
 
@@ -132,11 +132,11 @@ const Warehouse = () => {
     if (editingId) {
       const { error } = await supabase.from("hive_catalogue").update(payload).eq("id", editingId);
       if (error) { toast.error(error.message); return; }
-      toast.success("Item updated!");
+      toast.success("✅ Done! Your update is live.");
     } else {
       const { error } = await supabase.from("hive_catalogue").insert(payload);
       if (error) { toast.error(error.message); return; }
-      toast.success("Bulk item added!");
+      toast.success("✅ Done! Your update is live.");
     }
 
     resetForm();
@@ -169,7 +169,7 @@ const Warehouse = () => {
       .update({ is_wholesale_enabled: newVal } as any)
       .eq("id", item.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(newVal ? "Item listed for SME resell!" : "Item removed from resell mall.");
+    toast.success(newVal ? "✅ Done! Your update is live." : "✅ Done! Your update is live.");
     fetchStoreAndInventory();
   };
 
