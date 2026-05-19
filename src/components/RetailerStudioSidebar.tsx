@@ -49,6 +49,7 @@ const sidebarModules = [
     items: [
       { label: "Business Ledger", icon: BookOpen, path: "/retailer-studio/kantemba" },
       { label: "Marketing & Promos", icon: Tag, path: "/retailer-studio/marketing" },
+      { label: "Growth & Incentives", icon: Coins, path: "/retailer-studio/growth" },
       { label: "Analytics & Customers", icon: BarChart3, path: "/retailer-studio/analytics" },
       { label: "Hive Escrow Wallet", icon: Wallet, path: "/retailer-studio/escrow" },
     ],

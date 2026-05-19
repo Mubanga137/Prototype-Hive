@@ -166,26 +166,9 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
     const isService = draft.item_type === "service";
     const basePrice = parseFloat(draft.price) || 0;
 
-    // Auto-generate variants only if enableVariants is true and no manual variants exist
+    // NO auto-generation. Use only manual variants if enabled.
     let generatedVariants: any[] = [];
-    if (!draft.id && !isService && draft.enableVariants && (!draft.variants || draft.variants.length === 0)) {
-      const variantData = generateVariants(
-        draft.name.trim(),
-        basePrice,
-        "product",
-        draft.category,
-        draft.description
-      );
-      generatedVariants = variantData.variants.map((v: any) => ({
-        id: `${Date.now()}-${Math.random()}`,
-        name: v.title,
-        price: v.price,
-        description: v.description,
-        tag: v.tag,
-        features: v.features || [],
-        quantity: 100,
-      }));
-    }
+    // Auto-generation is disabled - SME must manually add variants
 
     const payload: any = {
       product_name: draft.name.trim(),
@@ -472,6 +455,12 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
               {/* VARIANTS TAB */}
               {expandedTab === "variants" && !isService && (
                 <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-xs text-foreground">
+                      <strong>Variants:</strong> Manually add product variations (sizes, colors, models) with exact pricing and stock counts.
+                    </p>
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <label className="text-xs font-semibold text-foreground">Product Variants</label>
@@ -486,51 +475,63 @@ const OfferFormModalEnhanced = ({ open, onOpenChange, smeId, initial, onSaved }:
 
                     {draft.variants && draft.variants.length > 0 ? (
                       <div className="space-y-3">
-                        {draft.variants.map((variant) => (
-                          <div key={variant.id} className="p-3 border border-border rounded-lg space-y-2">
-                            <div className="flex items-center justify-between">
-                              <input
-                                value={variant.name}
-                                onChange={(e) => updateVariant(variant.id, "name", e.target.value)}
-                                placeholder="Variant name (e.g., White Airforce 1s)"
-                                className={inputClass}
-                              />
+                        {draft.variants.map((variant, idx) => (
+                          <div key={variant.id} className="p-3 border border-border rounded-lg space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 space-y-2">
+                                <input
+                                  value={variant.name}
+                                  onChange={(e) => updateVariant(variant.id, "name", e.target.value)}
+                                  placeholder="Variant name (e.g. Starter, Pro, Large)"
+                                  className={inputClass}
+                                  required
+                                />
+                                <div className="grid grid-cols-3 gap-2">
+                                  <input
+                                    value={variant.price || ""}
+                                    onChange={(e) => updateVariant(variant.id, "price", e.target.value ? parseFloat(e.target.value) : 0)}
+                                    placeholder="Price (ZMW)"
+                                    type="number"
+                                    step="0.01"
+                                    className={`${inputClass} text-xs font-semibold text-primary`}
+                                    required
+                                  />
+                                  <input
+                                    value={variant.quantity}
+                                    onChange={(e) => updateVariant(variant.id, "quantity", parseInt(e.target.value) || 0)}
+                                    placeholder="Stock"
+                                    type="number"
+                                    className={`${inputClass} text-xs`}
+                                  />
+                                  <input
+                                    value={variant.tag || ""}
+                                    onChange={(e) => updateVariant(variant.id, "tag", e.target.value)}
+                                    placeholder="Tag (e.g. 30% Off)"
+                                    className={`${inputClass} text-xs`}
+                                  />
+                                </div>
+                                <textarea
+                                  value={(variant.benefits || []).join("\n")}
+                                  onChange={(e) => updateVariant(variant.id, "benefits", e.target.value.split("\n").filter(b => b.trim()))}
+                                  placeholder="Benefits/bullets (one per line)"
+                                  rows={2}
+                                  className={`${inputClass} resize-none text-xs`}
+                                />
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => removeVariant(variant.id)}
-                                className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                                className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0"
                               >
                                 <Trash2 size={16} />
                               </button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <input
-                                value={variant.sku || ""}
-                                onChange={(e) => updateVariant(variant.id, "sku", e.target.value)}
-                                placeholder="SKU (optional)"
-                                className={`${inputClass} text-xs`}
-                              />
-                              <input
-                                value={variant.quantity}
-                                onChange={(e) => updateVariant(variant.id, "quantity", parseInt(e.target.value) || 0)}
-                                placeholder="Quantity"
-                                type="number"
-                                className={`${inputClass} text-xs`}
-                              />
-                              <input
-                                value={variant.price || ""}
-                                onChange={(e) => updateVariant(variant.id, "price", e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="Price (optional)"
-                                type="number"
-                                className={`${inputClass} text-xs`}
-                              />
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        No variants yet. Add one to manage inventory by product type.
+                      <p className="text-xs text-muted-foreground text-center py-6 italic">
+                        No variants yet. Click "Add Variant" to create options for this product.
                       </p>
                     )}
                   </div>
