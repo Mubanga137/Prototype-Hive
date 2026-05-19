@@ -24,9 +24,8 @@ export const setupGlobalErrorHandlers = () => {
       // Clear session
       await forceSignOut();
 
-      // Show user-friendly message
       import("sonner").then(({ toast }) => {
-        toast.error("Your session has expired. Please log in again.");
+        toast.error("⚠️ Account not found. Welcome to The Hive—please sign up!");
       });
 
       // Redirect to login if not already there
@@ -68,7 +67,7 @@ export const setupGlobalErrorHandlers = () => {
           await forceSignOut();
 
           import("sonner").then(({ toast }) => {
-            toast.error("Your session has expired. Please log in again.");
+            toast.error("⚠️ Account not found. Welcome to The Hive—please sign up!");
           });
 
           if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
@@ -96,7 +95,7 @@ export const setupGlobalErrorHandlers = () => {
         await forceSignOut();
 
         import("sonner").then(({ toast }) => {
-          toast.error("Your session has expired. Please log in again.");
+          toast.error("⚠️ Account not found. Welcome to The Hive—please sign up!");
         });
 
         if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {

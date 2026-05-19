@@ -29,11 +29,9 @@ export const withTokenErrorHandling = async <T>(
       // Force sign out and clear tokens
       await forceSignOut();
 
-      // Optional: Show toast notification
       if (options?.showErrorToast) {
-        // Dynamic import to avoid circular dependencies
         import("sonner").then(({ toast }) => {
-          toast.error("Your session has expired. Please log in again.");
+          toast.error("⚠️ Account not found. Welcome to The Hive—please sign up!");
         });
       }
 

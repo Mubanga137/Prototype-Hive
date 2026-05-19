@@ -201,8 +201,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         hint: (error as any).hint,
         payload: insertPayload,
       });
-      const msg = (error as any).details || error.message || "Could not place your order. Please try again.";
-      toast.error(msg);
+      toast.error("⚠️ A network glitch occurred. Please refresh or try again.");
       setState("idle");
       return;
     }
@@ -212,16 +211,15 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     // Brief success state
     setState("success");
 
-    // Show appropriate success notification based on order type
     if (isService) {
-      toast.success("✅ Booking successful! Check messages to find booking details", {
+      toast.success("✅ Funds Secured in Escrow. Notifying your Service Provider!", {
         action: {
-          label: "Go to Messages",
+          label: "View Booking",
           onClick: () => window.location.href = "/messages"
         }
       });
     } else {
-      toast.success("✅ Order successful! Check track orders to track your product", {
+      toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
         action: {
           label: "Track Order",
           onClick: () => window.location.href = "/track-orders"

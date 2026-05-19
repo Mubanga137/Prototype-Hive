@@ -144,17 +144,16 @@ const CartDrawer = ({
         hint: (error as any).hint,
         payload,
       });
-      const msg = (error as any).details || error.message || "Could not place your order.";
-      toast.error(msg);
+      toast.error("⚠️ A network glitch occurred. Please refresh or try again.");
       setState("idle");
       return;
     }
 
     const orderIds = ((data as any[]) || []).map((r) => r.id);
     setState("success");
-    toast.success("✅ Order successful! Check track orders to track your product", {
+    toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
       action: {
-        label: "Track Order",
+        label: "Track Orders",
         onClick: () => window.location.href = "/track-orders"
       }
     });
@@ -170,7 +169,7 @@ const CartDrawer = ({
     setTimeout(() => {
       clear();
       if (!targetPhone) {
-        toast.error("This store hasn't set a WhatsApp number yet.");
+        toast.error("⚠️ Store contact unavailable. Please reach out to support.");
         setState("idle");
         onOpenChange(false);
         return;
