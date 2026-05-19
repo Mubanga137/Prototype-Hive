@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Upload, Plus, Trash2, Edit, Loader2, Copy, Check, ExternalLink, Zap } from 'lucide-react';
+import { ChevronDown, Upload, Plus, Trash2, Edit, Loader2, Copy, Check, ExternalLink, Zap, Percent, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { generateOfferVariants, generateSmartSectionContent } from '@/lib/offerEngine';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EditorPanelProps {
   store: any;
@@ -108,6 +109,13 @@ const StorefrontEditorPanel = ({
     setLocalStoreSlug(storeSlug);
   }, [storeSlug]);
 
+  // Load promos from store draft_data
+  useEffect(() => {
+    if (store?.draft_data?.promos) {
+      setPromos(store.draft_data.promos);
+    }
+  }, [store?.draft_data]);
+
   const [sections, setSections] = useState<Section[]>([
     { id: 'identity', title: 'Store Identity', expanded: false },
     { id: 'hero', title: 'Hero Section', expanded: false },
@@ -124,6 +132,13 @@ const StorefrontEditorPanel = ({
   const heroInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef(0);
+
+  // Promotions state
+  const [promos, setPromos] = useState<any[]>([]);
+  const [showPromoForm, setShowPromoForm] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState('');
+  const [promoType, setPromoType] = useState<'percentage' | 'fixed'>('percentage');
 
   // Prevent autoscroll-to-top by disabling focus-based scrolling
   useEffect(() => {
@@ -184,6 +199,62 @@ const StorefrontEditorPanel = ({
     setCopied(true);
     toast.success('Link copied!');
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  // Promo management functions
+  const addPromo = async () => {
+    if (!promoCode.trim()) {
+      toast.error('Promo code required');
+      return;
+    }
+    if (!promoDiscount.trim()) {
+      toast.error('Discount value required');
+      return;
+    }
+    if (!store?.id) {
+      toast.error('Store not loaded');
+      return;
+    }
+
+    const newPromo = {
+      id: Date.now().toString(),
+      code: promoCode.toUpperCase().trim(),
+      discount: parseFloat(promoDiscount),
+      type: promoType,
+      created_at: new Date().toISOString(),
+    };
+
+    const updatedPromos = [...promos, newPromo];
+    setPromos(updatedPromos);
+
+    // Save to DB draft_data
+    await supabase.from('sme_stores').update({
+      draft_data: {
+        ...((store as any).draft_data || {}),
+        promos: updatedPromos,
+      },
+    }).eq('id', store.id);
+
+    setPromoCode('');
+    setPromoDiscount('');
+    setPromoType('percentage');
+    toast.success('✅ Promo added!');
+  };
+
+  const deletePromo = async (id: string) => {
+    const updatedPromos = promos.filter(p => p.id !== id);
+    setPromos(updatedPromos);
+
+    if (store?.id) {
+      await supabase.from('sme_stores').update({
+        draft_data: {
+          ...((store as any).draft_data || {}),
+          promos: updatedPromos,
+        },
+      }).eq('id', store.id);
+    }
+
+    toast.success('Promo removed');
   };
 
   const SaveIndicator = () => {
@@ -471,14 +542,94 @@ const StorefrontEditorPanel = ({
 
         {/* PROMOTIONS */}
         <Section section={sections.find((s) => s.id === 'promotions')!}>
-          <div className="space-y-3">
-            <button
-              onClick={() => window.location.href = '/retailer-studio/marketing'}
-              className="w-full px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-            >
-              <Zap size={16} /> Open Marketing & Promos
-            </button>
-            <p className="text-xs text-muted-foreground text-center">Create promo codes, manage campaigns, and set up Hive Squad purchasing.</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-xs font-semibold text-foreground">Active Promos: {promos.length}</p>
+              <button
+                onClick={() => setShowPromoForm(!showPromoForm)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Plus size={14} /> {showPromoForm ? 'Cancel' : 'Add Promo'}
+              </button>
+            </div>
+
+            {showPromoForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="p-3 border border-primary/20 bg-primary/5 rounded-lg space-y-3"
+              >
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Promo Code</label>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="e.g. HIVE20"
+                    className={inputClass}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-foreground mb-1 block">Type</label>
+                    <select
+                      value={promoType}
+                      onChange={(e) => setPromoType(e.target.value as 'percentage' | 'fixed')}
+                      className={inputClass}
+                    >
+                      <option value="percentage">Percentage %</option>
+                      <option value="fixed">Fixed ZMW</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-foreground mb-1 block">Discount</label>
+                    <input
+                      type="number"
+                      value={promoDiscount}
+                      onChange={(e) => setPromoDiscount(e.target.value)}
+                      placeholder={promoType === 'percentage' ? '20' : '500'}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={addPromo}
+                  className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-xs hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Check size={14} /> Add Promo Code
+                </button>
+              </motion.div>
+            )}
+
+            {promos.length > 0 ? (
+              <div className="space-y-2">
+                {promos.map((promo) => (
+                  <div
+                    key={promo.id}
+                    className="flex items-center justify-between px-3 py-2.5 bg-secondary/30 rounded-lg border border-border/50 hover:border-border transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-mono font-bold text-primary text-sm">{promo.code}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {promo.discount}{promo.type === 'percentage' ? '%' : ' ZMW'} off
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deletePromo(promo.id)}
+                      className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : !showPromoForm ? (
+              <p className="text-xs text-muted-foreground text-center py-3 italic">
+                No promos yet. Click "Add Promo" to create discount codes.
+              </p>
+            ) : null}
           </div>
         </Section>
 
