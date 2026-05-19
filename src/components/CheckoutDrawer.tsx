@@ -152,16 +152,13 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
-    if (!user?.id && !guestMode) {
-      setGuestMode(true);
-      return;
-    }
-
+    // Validate before attempting guest mode
     const err = validate();
     if (err) {
       toast.error(err);
       return;
     }
+
     if (state !== "idle") return; // hard-block duplicate clicks
 
     setState("submitting");
