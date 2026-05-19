@@ -159,7 +159,7 @@ const StorePage_v2 = () => {
       image_url: item.image_url,
       item_type: item.item_type ?? "physical",
     });
-    toast.success(`Added "${item.product_name}" to cart`);
+    toast.success("✅ Done! Your update is live.");
   };
 
   const handleMessageStore = async () => {

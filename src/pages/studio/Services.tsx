@@ -96,10 +96,10 @@ const Services = () => {
     };
     if (editingId) {
       const { error } = await supabase.from("hive_catalogue").update(payload).eq("id", editingId);
-      if (error) { toast.error(error.message); } else { toast.success("Service updated!"); }
+      if (error) { toast.error(error.message); } else { toast.success("🚀 Listing Live! Your storefront is updated."); }
     } else {
       const { error } = await supabase.from("hive_catalogue").insert(payload);
-      if (error) { toast.error(error.message); } else { toast.success("Service added!"); }
+      if (error) { toast.error(error.message); } else { toast.success("🚀 Listing Live! Your storefront is updated."); }
     }
     setSubmitting(false);
     resetForm();
