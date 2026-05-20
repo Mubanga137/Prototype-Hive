@@ -15,42 +15,42 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   },
   global: {
-    fetch: async (url: string, options?: RequestInit) => {
-      try {
-        // Use 15 second timeout for Supabase queries (more generous than 10s)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+    fetch: (url: string, options?: RequestInit) => {
+      // Use 15 second timeout for Supabase queries (more generous than 10s)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-        try {
-          const response = await fetch(url, {
-            ...options,
-            signal: controller.signal,
-          });
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+      })
+        .then((response) => {
           clearTimeout(timeoutId);
           return response;
-        } catch (fetchError: any) {
+        })
+        .catch((error: any) => {
           clearTimeout(timeoutId);
-          throw fetchError;
-        }
-      } catch (error: any) {
-        // Log detailed error info for debugging
-        const errorInfo = {
-          url,
-          message: error?.message,
-          name: error?.name,
-          code: error?.code,
-          timestamp: new Date().toISOString(),
-        };
 
-        // Only log timeouts and auth errors, not every error
-        if (error?.name === "AbortError" || error?.message?.includes("timeout")) {
-          console.warn("[Supabase] Request timeout:", errorInfo);
-        } else if (error?.status === 401 || error?.status === 403) {
-          console.warn("[Supabase] Auth error:", errorInfo);
-        }
+          // Log detailed error info for debugging
+          const errorInfo = {
+            url,
+            message: error?.message,
+            name: error?.name,
+            code: error?.code,
+            timestamp: new Date().toISOString(),
+          };
 
-        throw error;
-      }
+          // Only log timeouts and auth errors, not every error
+          if (error?.name === "AbortError") {
+            console.warn("[Supabase] Request timeout (15s):", errorInfo);
+          } else if (error?.status === 401 || error?.status === 403) {
+            console.warn("[Supabase] Auth error:", errorInfo);
+          } else if (error?.message) {
+            console.warn("[Supabase] Request error:", errorInfo);
+          }
+
+          throw error;
+        });
     },
   },
 });
