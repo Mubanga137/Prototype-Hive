@@ -30,6 +30,7 @@ import {
   cleanZambianPhone,
   generateOtpCode,
 } from "@/lib/whatsapp";
+import { logCheckoutError, getUserFriendlyErrorMessage } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
 
 export interface CheckoutItem {
@@ -179,6 +180,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       item_id: item.id,
       total_amount: totalAmount,
       total_price: totalAmount,
+      quantity: isService ? 1 : quantity,
       otp_code: otp,
       status: "pending",
       customer_phone: cleanedPhone,
@@ -194,14 +196,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       .single();
 
     if (error) {
-      console.error("[checkout] insert failed:", {
-        message: error.message,
-        code: (error as any).code,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        payload: insertPayload,
-      });
-      toast.error("⚠️ A network glitch occurred. Please refresh or try again.");
+      logCheckoutError(error, insertPayload);
+      const userMessage = getUserFriendlyErrorMessage(error);
+      toast.error(`⚠️ ${userMessage}`);
       setState("idle");
       return;
     }
