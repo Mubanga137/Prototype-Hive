@@ -179,6 +179,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       item_id: item.id,
       total_amount: totalAmount,
       total_price: totalAmount,
+      quantity: isService ? 1 : quantity,
       otp_code: otp,
       status: "pending",
       customer_phone: cleanedPhone,
@@ -199,6 +200,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         code: (error as any).code,
         details: (error as any).details,
         hint: (error as any).hint,
+        status: (error as any).status,
         payload: insertPayload,
       });
       toast.error("⚠️ A network glitch occurred. Please refresh or try again.");

@@ -125,6 +125,7 @@ const CartDrawer = ({
       item_id: l.offer_id,
       total_amount: l.unit_price * l.quantity,
       total_price: l.unit_price * l.quantity,
+      quantity: l.quantity,
       otp_code: otp,
       status: "pending",
       customer_phone: cleanedPhone,
@@ -142,6 +143,7 @@ const CartDrawer = ({
         code: (error as any).code,
         details: (error as any).details,
         hint: (error as any).hint,
+        status: (error as any).status,
         payload,
       });
       toast.error("⚠️ A network glitch occurred. Please refresh or try again.");
