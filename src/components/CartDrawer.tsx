@@ -138,15 +138,19 @@ const CartDrawer = ({
       .select("id");
 
     if (error) {
+      const errorObj = error as any;
       console.error("[cart-checkout] insert failed:", {
-        message: error.message,
-        code: (error as any).code,
-        details: (error as any).details,
-        hint: (error as any).hint,
-        status: (error as any).status,
+        message: errorObj.message,
+        code: errorObj.code,
+        details: errorObj.details,
+        hint: errorObj.hint,
+        status: errorObj.status,
+        statusCode: errorObj.statusCode,
+        error: errorObj.error,
+        errorDescription: errorObj.errorDescription,
         payload,
       });
-      toast.error("⚠️ A network glitch occurred. Please refresh or try again.");
+      toast.error(`⚠️ Checkout failed: ${errorObj.message || 'Unknown error'}`);
       setState("idle");
       return;
     }
