@@ -16,6 +16,7 @@ import {
   buildWhatsAppUrl, cleanZambianPhone, generateOtpCode,
 } from "@/lib/whatsapp";
 import { useStoreCart, type CartLine } from "@/hooks/useStoreCart";
+import { logCheckoutError, getUserFriendlyErrorMessage } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
 
 interface CartDrawerProps {
@@ -138,19 +139,9 @@ const CartDrawer = ({
       .select("id");
 
     if (error) {
-      const errorObj = error as any;
-      console.error("[cart-checkout] insert failed:", {
-        message: errorObj.message,
-        code: errorObj.code,
-        details: errorObj.details,
-        hint: errorObj.hint,
-        status: errorObj.status,
-        statusCode: errorObj.statusCode,
-        error: errorObj.error,
-        errorDescription: errorObj.errorDescription,
-        payload,
-      });
-      toast.error(`⚠️ Checkout failed: ${errorObj.message || 'Unknown error'}`);
+      logCheckoutError(error, payload);
+      const userMessage = getUserFriendlyErrorMessage(error);
+      toast.error(`⚠️ ${userMessage}`);
       setState("idle");
       return;
     }

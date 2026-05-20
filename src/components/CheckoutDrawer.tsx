@@ -30,6 +30,7 @@ import {
   cleanZambianPhone,
   generateOtpCode,
 } from "@/lib/whatsapp";
+import { logCheckoutError, getUserFriendlyErrorMessage } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
 
 export interface CheckoutItem {
@@ -195,19 +196,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       .single();
 
     if (error) {
-      const errorObj = error as any;
-      console.error("[checkout] insert failed:", {
-        message: errorObj.message,
-        code: errorObj.code,
-        details: errorObj.details,
-        hint: errorObj.hint,
-        status: errorObj.status,
-        statusCode: errorObj.statusCode,
-        error: errorObj.error,
-        errorDescription: errorObj.errorDescription,
-        payload: insertPayload,
-      });
-      toast.error(`⚠️ Checkout failed: ${errorObj.message || 'Unknown error'}`);
+      logCheckoutError(error, insertPayload);
+      const userMessage = getUserFriendlyErrorMessage(error);
+      toast.error(`⚠️ ${userMessage}`);
       setState("idle");
       return;
     }
