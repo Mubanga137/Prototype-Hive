@@ -1,14 +1,7 @@
 /**
  * Safely serialize any error object to a readable format
  */
-export function serializeError(error: any): {
-  message: string;
-  code?: string;
-  status?: number;
-  details?: string;
-  hint?: string;
-  statusCode?: number;
-} {
+export function serializeError(error: any): Record<string, any> {
   if (!error) {
     return { message: 'Unknown error' };
   }
@@ -21,19 +14,27 @@ export function serializeError(error: any): {
       status: (error as any).status,
       details: (error as any).details,
       hint: (error as any).hint,
+      statusCode: (error as any).statusCode,
+      errorDescription: (error as any).errorDescription,
     };
   }
 
-  // Handle Supabase error responses
+  // Handle Supabase error responses (objects)
   if (typeof error === 'object') {
-    return {
-      message: error.message || JSON.stringify(error),
-      code: error.code,
-      status: error.status,
-      details: error.details,
-      hint: error.hint,
-      statusCode: error.statusCode,
-    };
+    try {
+      return {
+        message: String(error.message || error.msg || ''),
+        code: String(error.code || ''),
+        status: Number(error.status || error.statusCode || 0),
+        details: String(error.details || ''),
+        hint: String(error.hint || ''),
+        statusCode: Number(error.statusCode || 0),
+        errorDescription: String(error.errorDescription || ''),
+      };
+    } catch (e) {
+      // If serialization fails, at least get the message
+      return { message: String(error) };
+    }
   }
 
   // Handle strings
@@ -91,12 +92,32 @@ export function getUserFriendlyErrorMessage(error: any): string {
  */
 export function logCheckoutError(error: any, payload?: any) {
   const serialized = serializeError(error);
-  
-  console.error('[Checkout Error]', {
-    ...serialized,
-    payload,
-    timestamp: new Date().toISOString(),
-  });
+
+  // Format message for console
+  const errorMessage = serialized.message || 'Unknown error';
+  const errorCode = serialized.code ? ` (${serialized.code})` : '';
+  const errorStatus = serialized.status ? ` [${serialized.status}]` : '';
+
+  console.error(
+    `[Checkout Error] ${errorMessage}${errorCode}${errorStatus}`,
+    {
+      code: serialized.code,
+      status: serialized.status,
+      details: serialized.details,
+      hint: serialized.hint,
+      statusCode: serialized.statusCode,
+      errorDescription: serialized.errorDescription,
+      payload: payload ? {
+        sme_id: payload.sme_id,
+        store_id: payload.store_id,
+        item_id: payload.item_id,
+        status: payload.status,
+        customer_name: payload.customer_name ? '[provided]' : '[missing]',
+        customer_phone: payload.customer_phone ? '[provided]' : '[missing]',
+      } : undefined,
+      timestamp: new Date().toISOString(),
+    }
+  );
 
   return serialized;
 }
