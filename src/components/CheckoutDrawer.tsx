@@ -153,7 +153,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
-    // Validate before attempting guest mode
+    // Validate before attempting checkout
     const err = validate();
     if (err) {
       toast.error(err);
@@ -171,10 +171,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       : address.trim();
 
     // Insert into orders. Only use fields confirmed to exist in the schema.
-    // Extra fields (customer_name, delivery_address, etc.) will be handled
-    // via WhatsApp message and can be stored in webhook handlers if needed.
+    // buyer_id will be null for guests, user?.id for authenticated users
     const insertPayload: Record<string, any> = {
-      buyer_id: guestMode ? null : (user?.id ?? null),
+      buyer_id: user?.id ?? null,  // ✅ Allow null for guests
       sme_id: item.sme_id ?? null,
       store_id: item.store_id ?? item.sme_id ?? null,
       item_id: item.id,
@@ -182,7 +181,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       total_price: totalAmount,
       quantity: isService ? 1 : quantity,
       otp_code: otp,
-      status: "pending",
+      status: "pending_payment",  // ✅ Updated status
       customer_phone: cleanedPhone,
       customer_name: name.trim(),
       delivery_address: address.trim(),
@@ -192,7 +191,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
     const { data, error } = await (supabase.from("orders") as any)
       .insert(insertPayload)
-      .select("id")
+      .select("id, tracking_token")  // ✅ Capture tracking_token
       .single();
 
     if (error) {
@@ -204,6 +203,19 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     }
 
     const orderId = (data as any)?.id ?? "—";
+    const trackingToken = (data as any)?.tracking_token;  // ✅ Extract token
+
+    // ✅ For guests, save tracking session to localStorage
+    if (!user?.id && trackingToken) {
+      localStorage.setItem(
+        "hive_guest_orders",
+        JSON.stringify({
+          orderId,
+          trackingToken,
+          timestamp: Date.now(),
+        })
+      );
+    }
 
     // Brief success state
     setState("success");
@@ -216,6 +228,15 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         }
       });
     } else {
+      // ✅ For guests, redirect to tracking page with token
+      if (!user?.id && trackingToken) {
+        setTimeout(() => {
+          navigate(`/track-order/${orderId}?token=${trackingToken}`, { replace: true });
+          onOpenChange(false);
+        }, 1000);
+        return;
+      }
+
       toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
         action: {
           label: "Track Order",

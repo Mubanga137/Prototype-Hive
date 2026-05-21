@@ -104,11 +104,6 @@ const CartDrawer = ({
   };
 
   const handleCheckout = async () => {
-    if (!user?.id && !guestMode) {
-      setShowAuthGate(true);
-      return;
-    }
-
     const err = validate();
     if (err) { toast.error(err); return; }
     if (state !== "idle") return;
@@ -119,8 +114,9 @@ const CartDrawer = ({
     const cleanedPhone = cleanZambianPhone(phone) || phone;
 
     // Insert one row per line (shared OTP). Only use confirmed schema fields.
+    // ✅ buyer_id can be null for guests
     const payload = lines.map((l) => ({
-      buyer_id: guestMode ? null : user.id,
+      buyer_id: user?.id ?? null,  // ✅ Allow null for guests
       sme_id: smeId,
       store_id: smeId,
       item_id: l.offer_id,
@@ -128,7 +124,7 @@ const CartDrawer = ({
       total_price: l.unit_price * l.quantity,
       quantity: l.quantity,
       otp_code: otp,
-      status: "pending",
+      status: "pending_payment",  // ✅ Updated status
       customer_phone: cleanedPhone,
       customer_name: name.trim(),
       delivery_address: address.trim(),
@@ -136,7 +132,7 @@ const CartDrawer = ({
 
     const { data, error } = await (supabase.from("orders") as any)
       .insert(payload)
-      .select("id");
+      .select("id, tracking_token");  // ✅ Capture tracking_token
 
     if (error) {
       logCheckoutError(error, payload);
@@ -146,7 +142,29 @@ const CartDrawer = ({
       return;
     }
 
-    const orderIds = ((data as any[]) || []).map((r) => r.id);
+    const orders = ((data as any[]) || []);
+    const orderIds = orders.map((r) => r.id);
+
+    // ✅ For guests, save first order's tracking session and redirect
+    if (!user?.id && orders.length > 0) {
+      const firstOrder = orders[0];
+      localStorage.setItem(
+        "hive_guest_orders",
+        JSON.stringify({
+          orderId: firstOrder.id,
+          trackingToken: firstOrder.tracking_token,
+          timestamp: Date.now(),
+        })
+      );
+
+      setState("success");
+      setTimeout(() => {
+        navigate(`/track-order/${firstOrder.id}?token=${firstOrder.tracking_token}`, { replace: true });
+        onOpenChange(false);
+      }, 1000);
+      return;
+    }
+
     setState("success");
     toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
       action: {
