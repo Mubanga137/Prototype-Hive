@@ -27,7 +27,12 @@ const OrderHistory = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // For guests, show empty state
+      setLoading(false);
+      return;
+    }
+
     const fetchOrders = async () => {
       setLoading(true);
       const { data } = await supabase
@@ -80,7 +85,7 @@ const OrderHistory = () => {
       ) : orders.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
           <Package size={48} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No orders yet. Start shopping in the Marketplace!</p>
+          <p className="text-sm">{user ? "No orders yet. Start shopping in the Marketplace!" : "Sign in to view your order history"}</p>
         </div>
       ) : (
         <div className="space-y-3">

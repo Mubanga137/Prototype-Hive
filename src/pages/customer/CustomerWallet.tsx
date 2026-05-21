@@ -22,7 +22,12 @@ const CustomerWallet = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchWalletData = async () => {
-    if (!user) return;
+    if (!user) {
+      setBalance(0);
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     // Fetch balance from profile
@@ -90,16 +95,26 @@ const CustomerWallet = () => {
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 rounded-2xl p-6 mb-8">
         <p className="text-xs text-muted-foreground mb-1">Available Balance</p>
-        <p className="text-4xl font-display font-bold text-foreground">
-          ZMW <span className="text-primary">{loading ? "..." : balance.toLocaleString()}</span>
-        </p>
+        {user ? (
+          <p className="text-4xl font-display font-bold text-foreground">
+            ZMW <span className="text-primary">{loading ? "..." : balance.toLocaleString()}</span>
+          </p>
+        ) : (
+          <div>
+            <p className="text-4xl font-display font-bold text-muted-foreground/50">ZMW 0</p>
+            <p className="text-xs text-muted-foreground mt-2">Sign in to manage your wallet</p>
+          </div>
+        )}
         <div className="flex gap-3 mt-5">
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setTopUpOpen(true)}
-            className="btn-gold flex items-center gap-2 px-5 py-2.5 text-sm">
+          <motion.button whileHover={{ scale: user ? 1.03 : 1 }} whileTap={{ scale: user ? 0.97 : 1 }}
+            onClick={() => user && setTopUpOpen(true)}
+            disabled={!user}
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm ${user ? "btn-gold" : "bg-secondary text-muted-foreground cursor-not-allowed"}`}>
             <Plus size={16} /> Top Up
           </motion.button>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold border-2 border-border rounded-xl text-foreground hover:bg-secondary transition-colors">
+          <motion.button whileHover={{ scale: user ? 1.03 : 1 }} whileTap={{ scale: user ? 0.97 : 1 }}
+            disabled={!user}
+            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold border-2 rounded-xl transition-colors ${user ? "border-border text-foreground hover:bg-secondary" : "border-border/50 text-muted-foreground/50 cursor-not-allowed"}`}>
             <CreditCard size={16} /> Link Card
           </motion.button>
         </div>
