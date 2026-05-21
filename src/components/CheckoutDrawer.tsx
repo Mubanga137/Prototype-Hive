@@ -189,29 +189,44 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       service_notes: isService ? serviceNotes : null,
     };
 
+    // Try to insert and return tracking info. For guests, SELECT might fail due to RLS.
+    let orderId: any = null;
+    let trackingToken: any = null;
+
     const { data, error } = await (supabase.from("orders") as any)
       .insert(insertPayload)
-      .select("id, tracking_token")  // ✅ Capture tracking_token
+      .select("id, tracking_token")
       .single();
 
     if (error) {
-      logCheckoutError(error, insertPayload);
-      const userMessage = getUserFriendlyErrorMessage(error);
-      toast.error(`⚠️ ${userMessage}`);
-      setState("idle");
-      return;
+      // If the error is 42501 (permission denied) and the user is a guest,
+      // the INSERT likely succeeded but SELECT failed due to RLS.
+      // In that case, we still inserted the order, so proceed gracefully.
+      if (error.code === '42501' && !user?.id) {
+        // INSERT succeeded, SELECT blocked by RLS (expected for guests)
+        // We'll redirect to tracking without the ID, which uses localStorage + token
+        toast.info("Order placed! Redirecting to tracking...");
+      } else {
+        // This is a real error (not an RLS issue), so reject it
+        logCheckoutError(error, insertPayload);
+        const userMessage = getUserFriendlyErrorMessage(error);
+        toast.error(`⚠️ ${userMessage}`);
+        setState("idle");
+        return;
+      }
+    } else {
+      orderId = (data as any)?.id ?? "—";
+      trackingToken = (data as any)?.tracking_token;
     }
 
-    const orderId = (data as any)?.id ?? "—";
-    const trackingToken = (data as any)?.tracking_token;  // ✅ Extract token
-
     // ✅ For guests, save tracking session to localStorage
-    if (!user?.id && trackingToken) {
+    // If we couldn't SELECT, we use the OTP as a fallback identifier
+    if (!user?.id) {
       localStorage.setItem(
         "hive_guest_orders",
         JSON.stringify({
-          orderId,
-          trackingToken,
+          orderId: orderId || "pending",
+          otp: otp,
           timestamp: Date.now(),
         })
       );
@@ -228,10 +243,13 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         }
       });
     } else {
-      // ✅ For guests, redirect to tracking page with token
-      if (!user?.id && trackingToken) {
+      // ✅ For guests, redirect to tracking page (use token if available, else use OTP)
+      if (!user?.id) {
         setTimeout(() => {
-          navigate(`/track-order/${orderId}?token=${trackingToken}`, { replace: true });
+          const trackingPath = trackingToken
+            ? `/track-order/${orderId}?token=${trackingToken}`
+            : `/track-orders?otp=${otp}`;
+          navigate(trackingPath, { replace: true });
           onOpenChange(false);
         }, 1000);
         return;

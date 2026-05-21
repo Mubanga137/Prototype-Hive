@@ -67,8 +67,13 @@ export function getUserFriendlyErrorMessage(error: any): string {
     return 'Invalid request. Please check your information and try again.';
   }
 
-  if (serialized.status === 401 || serialized.code === '42501') {
-    return 'You do not have permission to place this order. Please log in or try again.';
+  if (serialized.status === 401) {
+    return 'Authentication required. Please log in and try again.';
+  }
+
+  // 42501 is a Postgres permission error - shouldn't happen for guest checkout now
+  if (serialized.code === '42501') {
+    return 'Database permission error. Please try again or contact support.';
   }
 
   if (serialized.status === 403) {
