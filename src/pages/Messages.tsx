@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Phone, Paperclip, Send, Search, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +67,7 @@ const initials = (name: string | null) =>
 const Messages = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -440,10 +441,12 @@ const Messages = () => {
     );
   }
 
+  // ---- Check if being rendered inside customer dashboard ----
+  const isInsideDashboard = location.pathname.includes("customer-dash");
+
   // ---- Desktop: two-panel ----
-  return (
-    <RetailerStudioSidebar>
-      <div className="h-screen flex relative">
+  const content = (
+    <div className="h-screen flex relative">
       <div className="relative z-10 w-[360px] shrink-0 border-r border-border flex flex-col">
         <InboxPanel />
       </div>
@@ -451,7 +454,17 @@ const Messages = () => {
         <ChatPanel />
       </div>
       <AttachProductModal open={attachOpen} onClose={() => setAttachOpen(false)} onSelect={handleAttachProduct} />
-      </div>
+    </div>
+  );
+
+  // If inside dashboard, don't wrap in RetailerStudioSidebar
+  if (isInsideDashboard) {
+    return content;
+  }
+
+  return (
+    <RetailerStudioSidebar>
+      {content}
     </RetailerStudioSidebar>
   );
 };

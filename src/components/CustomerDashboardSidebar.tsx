@@ -21,15 +21,14 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
-  const [showGuestLoginModal, setShowGuestLoginModal] = useState(false);
   const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
   const unreadCount = useUnreadCount();
   const [searchParams] = useSearchParams();
   const isGuest = searchParams.get("guest") === "true" || !user;
 
-  // Protected sections that require authentication
-  const protectedSections = ["Order History", "Track My Orders", "Wallet", "Messages"];
+  // No protected sections - all sections available to guests
+  const protectedSections: string[] = [];
 
   // Full sidebar items for both guest and authenticated (parity design)
   const fullSidebarItems = [
@@ -98,11 +97,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
           <motion.button
             key={item.label}
             onClick={() => {
-              if (isGuest && protectedSections.includes(item.label)) {
-                setShowGuestLoginModal(true);
-              } else {
-                onSectionChange(item.label);
-              }
+              onSectionChange(item.label);
               setSidebarOpen(false);
             }}
             whileHover={{ x: isCollapsed ? 0 : 4 }}
@@ -249,74 +244,6 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
         </main>
       </div>
 
-      {/* Guest Login Modal Overlay */}
-      <AnimatePresence>
-        {showGuestLoginModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowGuestLoginModal(false)}
-              className="fixed inset-0 backdrop-blur-sm z-[90]"
-              style={{ background: "hsl(220,55%,13%,0.5)" }}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-full max-w-md rounded-2xl shadow-2xl"
-              style={{ backgroundColor: "#FFFBF2" }}
-            >
-              <div className="p-8">
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-display font-bold text-[#0F1A35] mb-2">
-                    Sign In Required
-                  </h3>
-                  <p className="text-sm text-[#0F1A35]/70">
-                    Create an account or sign in to access this feature.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate("/login")}
-                    className="w-full py-3 rounded-xl text-sm font-semibold transition-colors"
-                    style={{
-                      backgroundColor: "#B37C1C",
-                      color: "#FFFBF2",
-                    }}
-                  >
-                    Sign In
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate("/signup")}
-                    className="w-full py-3 rounded-xl text-sm font-semibold border-2 transition-colors"
-                    style={{
-                      borderColor: "#B37C1C",
-                      color: "#B37C1C",
-                    }}
-                  >
-                    Create Account
-                  </motion.button>
-                </div>
-
-                <button
-                  onClick={() => setShowGuestLoginModal(false)}
-                  className="w-full mt-4 py-2 text-xs text-[#0F1A35]/60 hover:text-[#0F1A35]/80 transition-colors"
-                >
-                  Continue Browsing
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

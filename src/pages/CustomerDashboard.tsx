@@ -12,6 +12,7 @@ import TrackOrders from "@/pages/customer/TrackOrders";
 import CustomerWallet from "@/pages/customer/CustomerWallet";
 import Categories from "@/pages/customer/Categories";
 import CustomerSettings from "@/pages/customer/CustomerSettings";
+import Messages from "@/pages/customer/Messages";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -36,8 +37,8 @@ const CustomerDashboard = () => {
       case "Track My Orders": return <TrackOrders />;
       case "Wallet": return <CustomerWallet />;
       case "Categories": return <Categories />;
+      case "Messages": return <Messages />;
       case "Settings": return <CustomerSettings />;
-      case "Messages": { navigate("/messages"); return null; }
       default: return <DashboardHomeSection firstName={firstName} greeting={greeting} setActiveSection={setActiveSection} />;
     }
   };

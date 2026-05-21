@@ -55,30 +55,46 @@ const TrackOrders = () => {
         setLoading(true);
         setError(null);
 
-        if (!user) {
-          setOrders([]);
+        // For authenticated users, fetch their orders
+        if (user) {
+          const { data, error: queryError } = await supabase
+            .from("orders")
+            .select("id, total_price, status, created_at, runner_id, otp_code, hive_catalogue!orders_item_id_fkey(product_name)")
+            .eq("buyer_id", user.id)
+            .neq("status", "delivered")
+            .neq("status", "cancelled")
+            .order("created_at", { ascending: false })
+            .limit(20);
+
+          if (queryError) {
+            console.error("[TrackOrders] Supabase query error:", queryError);
+            setError(`Unable to load orders: ${queryError.message}`);
+            setOrders([]);
+            setLoading(false);
+            return;
+          }
+
+          setOrders(data || []);
           setLoading(false);
           return;
         }
 
-        const { data, error: queryError } = await supabase
-          .from("orders")
-          .select("id, total_price, status, created_at, runner_id, otp_code, hive_catalogue!orders_item_id_fkey(product_name)")
-          .eq("buyer_id", user.id)
-          .neq("status", "delivered")
-          .neq("status", "cancelled")
-          .order("created_at", { ascending: false })
-          .limit(20);
-
-        if (queryError) {
-          console.error("[TrackOrders] Supabase query error:", queryError);
-          setError(`Unable to load orders: ${queryError.message}`);
-          setOrders([]);
-          setLoading(false);
-          return;
+        // For guests, check localStorage for recent orders
+        const guestOrders = localStorage.getItem("hive_guest_orders");
+        if (guestOrders) {
+          try {
+            const parsed = JSON.parse(guestOrders);
+            // Guest can only see orders placed in this session
+            setOrders([]); // Guests would need OTP to track, which should be in the URL
+            setLoading(false);
+            return;
+          } catch (e) {
+            console.error("Failed to parse guest orders:", e);
+          }
         }
 
-        setOrders(data || []);
+        // No orders for guests without session data
+        setOrders([]);
         setLoading(false);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unexpected error";
