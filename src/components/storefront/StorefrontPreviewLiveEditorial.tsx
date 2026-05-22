@@ -63,10 +63,10 @@ const StorefrontPreviewLiveEditorial = ({
     });
   }, [offers]);
 
-  // Force re-render when key props change
+  // Force re-render when key props change (including heroImageUrl changes)
   useEffect(() => {
     setPreviewKey((prev) => prev + 1);
-  }, [storeName, heroImageUrl, logoUrl, heroTitle, description, offersWithVariants.length]);
+  }, [storeName, heroImageUrl, logoUrl, heroTitle, heroSubtitle, description, offersWithVariants.length]);
 
   return (
     <div

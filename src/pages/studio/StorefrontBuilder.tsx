@@ -88,7 +88,8 @@ const StorefrontBuilder = () => {
     setBrandName(draft.brand_name ?? currentStore.brand_name ?? "");
     setDescription(draft.description ?? currentStore.description ?? "");
     setLogoUrl(draft.logo_url ?? currentStore.logo_url ?? "");
-    setHeroImageUrl(draft.hero_image_url ?? "");
+    // Use banner_url (actual persisted upload) first, then fall back to draft hero_image_url
+    setHeroImageUrl(draft.hero_image_url ?? currentStore.banner_url ?? "");
     setHeroTitle(draft.hero_title ?? currentStore.brand_name ?? "");
     setHeroSubtitle(draft.hero_subtitle ?? "Premium Quality, Fast Delivery");
     setWhatsappNumber(draft.whatsapp_number ?? currentStore.whatsapp_number ?? "");
@@ -120,8 +121,12 @@ const StorefrontBuilder = () => {
         business_type: businessType,
         is_verified: isVerified,
       };
+      const updatePayload: any = { draft_data: draftPayload };
+      if (heroImageUrl) {
+        updatePayload.banner_url = heroImageUrl;
+      }
       const { error } = await (supabase.from("sme_stores") as any)
-        .update({ draft_data: draftPayload })
+        .update(updatePayload)
         .eq("id", currentStore.id);
 
       if (error) {
