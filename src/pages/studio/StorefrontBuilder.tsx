@@ -152,7 +152,7 @@ const StorefrontBuilder = () => {
     // Immediately persist to DB so it doesn't disappear on page reload
     const updatePayload: Record<string, any> = {};
     if (folder === "logo") updatePayload.logo_url = url;
-    if (folder === "hero") updatePayload.hero_image_url = url;
+    if (folder === "hero") updatePayload.banner_url = url;
 
     if (Object.keys(updatePayload).length > 0) {
       await supabase.from("sme_stores").update(updatePayload).eq("id", currentStore.id);
