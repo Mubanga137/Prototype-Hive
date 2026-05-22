@@ -171,14 +171,22 @@ const HeroSectionRefined = ({
                     {/* Decorative offset background */}
                     <div className="absolute inset-0 w-full h-full bg-white border border-[#B37C1C]/40 transform translate-x-2 translate-y-2 rounded-sm" />
 
-                    {/* Main frame with image */}
+                    {/* Main frame with image/video */}
                     <div className="relative bg-white border-2 border-[#B37C1C] rounded-sm overflow-hidden shadow-[10px_10px_40px_rgba(179,124,28,0.15)]">
                       <div className="aspect-[4/5] overflow-hidden bg-amber-50">
-                        <img
-                          src={heroImageUrl}
-                          alt="Featured"
-                          className="w-full h-full object-cover"
-                        />
+                        {heroImageUrl?.includes('.mp4') || heroImageUrl?.includes('.webm') || heroImageUrl?.includes('.mov') ? (
+                          <video
+                            src={heroImageUrl}
+                            controls
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <img
+                            src={heroImageUrl}
+                            alt="Featured"
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

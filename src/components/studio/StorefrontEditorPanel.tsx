@@ -185,7 +185,10 @@ const StorefrontEditorPanel = ({
     if (!file) return;
     setUploadingHero(true);
     const url = await onUploadFile(file, 'hero');
-    if (url) onHeroImageChange(url);
+    if (url) {
+      onHeroImageChange(url);
+      toast.success('✅ Media uploaded and live!');
+    }
     setUploadingHero(false);
     if (heroInputRef.current) heroInputRef.current.value = '';
   };
@@ -445,9 +448,9 @@ const StorefrontEditorPanel = ({
         {/* HERO SECTION */}
         <Section section={sections.find((s) => s.id === 'hero')!}>
           <div className="space-y-3">
-            {/* Hero Image */}
+            {/* Hero Image/Video */}
             <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">Featured Image</label>
+              <label className="text-xs font-semibold text-foreground mb-1.5 block">Featured Media (Image or Video)</label>
               <div
                 onClick={() => heroInputRef.current?.click()}
                 className="w-full h-32 rounded-lg border-2 border-dashed border-border hover:border-primary/40 flex items-center justify-center cursor-pointer overflow-hidden transition-colors bg-secondary/30"
@@ -455,15 +458,19 @@ const StorefrontEditorPanel = ({
                 {uploadingHero ? (
                   <Loader2 size={20} className="animate-spin text-muted-foreground" />
                 ) : heroImageUrl ? (
-                  <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
+                  heroImageUrl.includes('.mp4') || heroImageUrl.includes('.webm') || heroImageUrl.includes('.mov') ? (
+                    <video src={heroImageUrl} className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
+                  )
                 ) : (
                   <div className="text-center">
                     <Upload size={24} className="mx-auto text-muted-foreground/40" />
-                    <p className="text-xs text-muted-foreground mt-1">Click to upload</p>
+                    <p className="text-xs text-muted-foreground mt-1">Click to upload image or video</p>
                   </div>
                 )}
               </div>
-              <input ref={heroInputRef} type="file" accept="image/*" onChange={handleHeroUpload} className="hidden" />
+              <input ref={heroInputRef} type="file" accept="image/*,video/*" onChange={handleHeroUpload} className="hidden" />
             </div>
 
             {/* Hero Title */}
