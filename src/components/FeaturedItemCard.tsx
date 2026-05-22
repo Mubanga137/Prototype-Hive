@@ -54,9 +54,13 @@ const FeaturedItemCard = ({ item, index = 0, onBuyNow, onVisitStore, variant = "
       className={`bg-card rounded-xl overflow-hidden flex flex-col border ${borderClass} transition-colors shadow-sm w-full`}
     >
       <div className="relative h-40 bg-gradient-to-br from-secondary to-muted flex items-center justify-center overflow-hidden w-full">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <span className="text-3xl">{isService ? "💼" : "🛍️"}</span>
-        </div>
+        {item.image_url ? (
+          <img src={item.image_url} alt={item.item_name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-3xl">{isService ? "💼" : "🛍️"}</span>
+          </div>
+        )}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {item.is_featured && (
             <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">

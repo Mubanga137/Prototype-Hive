@@ -123,7 +123,7 @@ const HeroSectionEditorial = ({
             </motion.div>
           </motion.div>
 
-          {/* RIGHT COLUMN: Gallery Image Frame */}
+          {/* RIGHT COLUMN: Gallery Image/Video Frame */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -134,11 +134,19 @@ const HeroSectionEditorial = ({
               <div className="relative w-full max-w-sm">
                 {/* Gold Border Frame with Museum Shadow */}
                 <div className="aspect-square md:aspect-[4/5] rounded-xl overflow-hidden border border-[#B37C1C] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.05)]">
-                  <img
-                    src={frameImage}
-                    alt={storeName}
-                    className="w-full h-full object-cover"
-                  />
+                  {frameImage.includes('.mp4') || frameImage.includes('.webm') || frameImage.includes('.mov') ? (
+                    <video
+                      src={frameImage}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={frameImage}
+                      alt={storeName}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 {/* Decorative gold accent */}
                 <div className="absolute -top-3 -right-3 w-6 h-6 border-t-2 border-r-2 border-[#B37C1C]" />
@@ -148,7 +156,7 @@ const HeroSectionEditorial = ({
               <div className="w-full max-w-sm aspect-square md:aspect-[4/5] rounded-xl border border-[#B37C1C] bg-[#F5F1ED] flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-6xl mb-2">📸</div>
-                  <p className="text-sm text-gray-500">Add a featured image</p>
+                  <p className="text-sm text-gray-500">Add a featured image or video</p>
                 </div>
               </div>
             )}

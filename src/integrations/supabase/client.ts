@@ -16,20 +16,37 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     fetch: (url: string, options?: RequestInit) => {
-      // Use 15 second timeout for Supabase queries (more generous than 10s)
+      // Use 15 second timeout for Supabase queries
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let isAborted = false;
 
-      return fetch(url, {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          isAborted = true;
+          controller.abort();
+          reject(new Error('Request timeout after 15 seconds'));
+        }, 15000);
+      });
+
+      const fetchPromise = fetch(url, {
         ...options,
         signal: controller.signal,
-      })
+      });
+
+      return Promise.race([fetchPromise, timeoutPromise])
         .then((response) => {
-          clearTimeout(timeoutId);
+          if (timeoutId) clearTimeout(timeoutId);
           return response;
         })
         .catch((error: any) => {
-          clearTimeout(timeoutId);
+          if (timeoutId) clearTimeout(timeoutId);
+
+          // Only log abort errors if they're due to timeout, not other causes
+          if (error?.name === "AbortError" && !isAborted) {
+            // This is an abort from elsewhere (component unmount, etc) - silently ignore
+            throw error;
+          }
 
           // Log detailed error info for debugging
           const errorInfo = {
@@ -41,11 +58,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
           };
 
           // Only log timeouts and auth errors, not every error
-          if (error?.name === "AbortError") {
+          if (isAborted || error?.message === 'Request timeout after 15 seconds') {
             console.warn("[Supabase] Request timeout (15s):", errorInfo);
           } else if (error?.status === 401 || error?.status === 403) {
             console.warn("[Supabase] Auth error:", errorInfo);
-          } else if (error?.message) {
+          } else if (error?.message && error?.name !== "AbortError") {
             console.warn("[Supabase] Request error:", errorInfo);
           }
 
