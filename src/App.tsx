@@ -37,6 +37,7 @@ import Messages from "./pages/Messages.tsx";
 import HiveLink from "./pages/HiveLink.tsx";
 import OrderTracking from "./pages/OrderTracking.tsx";
 import TrackOrders from "./pages/customer/TrackOrders.tsx";
+import MyOrders from "./pages/customer/MyOrders.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const AppContent = () => {
 
         {/* Customer — open to guests and authenticated users */}
         <Route path="/customer-dash" element={<ProtectedRoute allowGuests><CustomerDashboard /></ProtectedRoute>} />
+        <Route path="/customer-dash/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
         <Route path="/track-orders" element={<ProtectedRoute allowGuests><TrackOrders /></ProtectedRoute>} />
 
         {/* Vendor / SME — temporarily open */}
