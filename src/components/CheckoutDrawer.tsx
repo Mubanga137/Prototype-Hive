@@ -203,8 +203,28 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       // The RPC returns a single result object due to SECURITY DEFINER
       const result = data?.[0] || data;
 
+      // Debug logging to diagnose response issues
+      if (!result) {
+        console.error("[Checkout] Empty RPC response", {
+          rawData: data,
+          dataArray: data?.[0],
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       if (!result || result.status !== "success") {
         const errorMsg = result?.message || "Order creation failed. Please try again.";
+
+        // Enhanced error logging
+        console.error("[Checkout] Order creation failed", {
+          result: result,
+          status: result?.status,
+          message: result?.message,
+          orderId: result?.order_id,
+          rawResponse: data,
+          timestamp: new Date().toISOString(),
+        });
+
         toast.error(`⚠️ ${errorMsg}`);
 
         if (result?.status === "insufficient_stock") {
