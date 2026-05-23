@@ -25,13 +25,14 @@ export const ActiveNavigationModal = ({
     useBatchRoutingStateMachine();
   const [showOtpKeypad, setShowOtpKeypad] = useState(false);
 
-  const riderId = profile?.id ? parseInt(profile.id as string) : 0;
+  // Use auth user ID (UUID) as rider identifier
+  const riderUserId = profile?.id || "";
 
   useEffect(() => {
-    if (state.status === "idle") {
-      initializeBatch(batch, riderId);
+    if (state.status === "idle" && riderUserId) {
+      initializeBatch(batch, riderUserId);
     }
-  }, []);
+  }, [riderUserId]);
 
   useEffect(() => {
     if (mapRef && state.status === "active_navigation") {
