@@ -170,12 +170,13 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       : address.trim();
 
     // Call secure_place_order RPC to atomically validate & create order
+    // Ensure all numeric values are properly typed (not strings)
     const { data, error } = await supabase.rpc("secure_place_order", {
-      p_buyer_id: user?.id ?? null,
-      p_item_id: item.id,
-      p_sme_id: item.sme_id ?? null,
-      p_store_id: item.store_id ?? item.sme_id ?? null,
-      p_quantity: isService ? 1 : quantity,
+      p_buyer_id: user?.id || null,
+      p_item_id: Number(item.id),
+      p_sme_id: item.sme_id ? Number(item.sme_id) : null,
+      p_store_id: item.store_id ? Number(item.store_id) : Number(item.sme_id) || null,
+      p_quantity: isService ? 1 : Number(quantity),
       p_customer_name: name.trim(),
       p_customer_phone: cleanedPhone,
       p_delivery_address: isService ? null : address.trim(),
