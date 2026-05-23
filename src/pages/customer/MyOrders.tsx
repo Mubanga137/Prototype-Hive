@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Copy, MessageCircle, X, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Copy, MessageCircle, X, Loader2, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import HoneycombBackground from "@/components/HoneycombBackground";
+import hiveLogo from "@/assets/hive-logo.jpeg";
 
 interface Order {
   id: number;
@@ -94,7 +96,7 @@ const MyOrders = () => {
 
   const displayOrders = filterTab === "active" ? activeOrders : historyOrders;
   const activeCount = activeOrders.length;
-  const deliveryTokens = activeOrders.length; // Simplified: one token per active order
+  const deliveryTokens = activeOrders.length;
 
   const toggleOtpReveal = (orderId: number) => {
     setRevealedOtps((prev) => {
@@ -108,21 +110,18 @@ const MyOrders = () => {
     });
   };
 
-  const copyOtp = (otp: string, orderId: number) => {
+  const copyOtp = (otp: string) => {
     navigator.clipboard.writeText(otp);
     toast.success("PIN copied to clipboard!");
   };
 
   const getStatusConfig = (status: string | null) => {
-    const configs: Record<
-      string,
-      { label: string; color: string; stepIndex: number }
-    > = {
+    const configs: Record<string, { label: string; color: string; stepIndex: number }> = {
       pending_payment: { label: "Payment Pending", color: "#B37C1C", stepIndex: 0 },
       pending_vendor: { label: "Awaiting Confirmation", color: "#B37C1C", stepIndex: 0 },
       locked: { label: "Locked", color: "#B37C1C", stepIndex: 0 },
       processing: { label: "Processing", color: "#B37C1C", stepIndex: 1 },
-      ready_for_handoff: { label: "Ready for Hand-off", color: "#0F1A35", stepIndex: 2 },
+      ready_for_handoff: { label: "Ready for Hand-off", color: "#B37C1C", stepIndex: 2 },
       delivered: { label: "Delivered", color: "#22c55e", stepIndex: 3 },
       cancelled: { label: "Cancelled", color: "#ef4444", stepIndex: -1 },
     };
@@ -131,14 +130,15 @@ const MyOrders = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#FFFBF2] flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] to-[#F5F1ED] flex items-center justify-center relative overflow-hidden">
+        <HoneycombBackground />
+        <div className="text-center relative z-10">
           <p className="text-[#0F1A35] text-lg font-semibold mb-4">
             Please sign in to view your orders
           </p>
           <a
             href="/login"
-            className="inline-block px-6 py-3 bg-[#B37C1C] text-white rounded-lg font-semibold hover:bg-[#9b6816] transition-colors"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-[#B37C1C] to-[#9b6816] text-white rounded-lg font-semibold hover:shadow-lg transition-all hover:scale-105"
           >
             Sign In
           </a>
@@ -148,132 +148,167 @@ const MyOrders = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBF2]">
-      {/* LEDGER HEADER */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-[#0F1A35] text-white sticky top-0 z-40 shadow-sm"
-      >
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Left: Avatar + Hello */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#B37C1C] flex items-center justify-center text-white font-bold">
-                {user.email?.[0]?.toUpperCase() || "U"}
-              </div>
-              <div>
-                <p className="text-xs opacity-80">Welcome back</p>
-                <p className="font-semibold text-sm">
-                  {user.user_metadata?.full_name || user.email?.split("@")[0] || "Buyer"}
-                </p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED] relative overflow-hidden">
+      <HoneycombBackground />
 
-            {/* Right: Stats */}
-            <div className="flex gap-6">
-              <div className="text-right">
-                <p className="text-xs opacity-80">Active Orders</p>
-                <p className="text-xl font-bold text-[#B37C1C]">{activeCount}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs opacity-80">Delivery Tokens</p>
-                <p className="text-xl font-bold text-[#B37C1C]">{deliveryTokens}</p>
+      <div className="relative z-10">
+        {/* PREMIUM HEADER */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="sticky top-0 z-40"
+        >
+          <div className="backdrop-blur-xl bg-gradient-to-r from-[#0F1A35] via-[#1a2741] to-[#0F1A35] border-b border-[#B37C1C]/20 shadow-2xl">
+            <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+              <div className="flex items-center justify-between gap-6">
+                {/* Left: Logo + Greeting */}
+                <div className="flex items-center gap-4 flex-1">
+                  <motion.div
+                    whileHover={{ scale: 1.05, rotate: 2 }}
+                    className="w-12 h-12 rounded-xl border-2 border-[#B37C1C]/50 overflow-hidden shadow-lg flex items-center justify-center bg-[#B37C1C]/10 backdrop-blur"
+                  >
+                    <img src={hiveLogo} alt="The Hive" className="w-full h-full object-cover" />
+                  </motion.div>
+
+                  <div className="flex-1">
+                    <p className="text-[#B37C1C] text-xs font-bold uppercase tracking-widest">
+                      The Hive Ledger
+                    </p>
+                    <p className="text-white font-display text-xl font-bold mt-0.5">
+                      {user.user_metadata?.full_name || user.email?.split("@")[0] || "Buyer"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Premium Stats */}
+                <div className="flex gap-8">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    className="text-right backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg border border-[#B37C1C]/20"
+                  >
+                    <p className="text-[#B37C1C]/80 text-xs font-semibold uppercase tracking-wider">
+                      Active Orders
+                    </p>
+                    <p className="text-[#B37C1C] text-2xl font-bold mt-1">{activeCount}</p>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    className="text-right backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg border border-[#B37C1C]/20"
+                  >
+                    <p className="text-[#B37C1C]/80 text-xs font-semibold uppercase tracking-wider">
+                      Delivery Tokens
+                    </p>
+                    <p className="text-[#B37C1C] text-2xl font-bold mt-1">{deliveryTokens}</p>
+                  </motion.div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      {/* FILTER TOGGLE */}
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 border-b border-gray-200">
-        <div className="flex gap-2">
-          <motion.button
-            onClick={() => setFilterTab("active")}
-            className={`relative px-4 py-2 text-sm font-semibold transition-colors ${
-              filterTab === "active"
-                ? "text-[#0F1A35]"
-                : "text-gray-600 hover:text-gray-800"
-            }`}
-            whileHover={{ scale: 1.02 }}
-          >
-            📦 Active Orders
-            {filterTab === "active" && (
-              <motion.div
-                layoutId="filter-underline"
-                className="absolute bottom-0 left-0 right-0 h-1 bg-[#B37C1C] rounded-full"
-                transition={{ type: "spring", damping: 15, stiffness: 100 }}
-              />
-            )}
-          </motion.button>
-
-          <motion.button
-            onClick={() => setFilterTab("history")}
-            className={`relative px-4 py-2 text-sm font-semibold transition-colors ${
-              filterTab === "history"
-                ? "text-[#0F1A35]"
-                : "text-gray-600 hover:text-gray-800"
-            }`}
-            whileHover={{ scale: 1.02 }}
-          >
-            📜 Order History
-            {filterTab === "history" && (
-              <motion.div
-                layoutId="filter-underline"
-                className="absolute bottom-0 left-0 right-0 h-1 bg-[#B37C1C] rounded-full"
-                transition={{ type: "spring", damping: 15, stiffness: 100 }}
-              />
-            )}
-          </motion.button>
-        </div>
-      </div>
-
-      {/* ORDERS CONTENT */}
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-[#B37C1C]" />
-          </div>
-        ) : displayOrders.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16 text-gray-600"
-          >
-            <p className="text-lg font-semibold text-[#0F1A35] mb-2">
-              {filterTab === "active"
-                ? "No active orders yet"
-                : "No order history"}
-            </p>
-            <p className="text-sm mb-6">
-              {filterTab === "active"
-                ? "Start shopping to see your orders here!"
-                : "Your completed orders will appear here."}
-            </p>
-            <a
-              href="/customer-dash"
-              className="inline-block px-6 py-3 bg-[#B37C1C] text-white rounded-lg font-semibold hover:bg-[#9b6816] transition-colors"
+        {/* FILTER TOGGLE */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="max-w-7xl mx-auto px-4 md:px-8 py-6"
+        >
+          <div className="flex gap-3 backdrop-blur-sm bg-white/40 p-1 rounded-xl border border-white/50 w-fit">
+            <motion.button
+              onClick={() => setFilterTab("active")}
+              className={`relative px-6 py-2.5 text-sm font-bold transition-all ${
+                filterTab === "active"
+                  ? "text-[#0F1A35]"
+                  : "text-[#0F1A35]/60 hover:text-[#0F1A35]"
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              Continue Shopping
-            </a>
-          </motion.div>
-        ) : (
-          <div className="space-y-6">
-            <AnimatePresence mode="popLayout">
-              {displayOrders.map((order, idx) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  isRevealed={revealedOtps.has(order.id)}
-                  onToggleReveal={() => toggleOtpReveal(order.id)}
-                  onCopyOtp={() => copyOtp(order.otp_code, order.id)}
-                  statusConfig={getStatusConfig(order.status)}
-                  index={idx}
+              📦 Active Orders
+              {filterTab === "active" && (
+                <motion.div
+                  layoutId="filter-underline"
+                  className="absolute inset-0 bg-gradient-to-r from-[#B37C1C]/80 to-[#D4AF37]/60 rounded-lg -z-10"
+                  transition={{ type: "spring", damping: 20, stiffness: 150 }}
                 />
-              ))}
-            </AnimatePresence>
+              )}
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterTab("history")}
+              className={`relative px-6 py-2.5 text-sm font-bold transition-all ${
+                filterTab === "history"
+                  ? "text-[#0F1A35]"
+                  : "text-[#0F1A35]/60 hover:text-[#0F1A35]"
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              📜 Order History
+              {filterTab === "history" && (
+                <motion.div
+                  layoutId="filter-underline"
+                  className="absolute inset-0 bg-gradient-to-r from-[#B37C1C]/80 to-[#D4AF37]/60 rounded-lg -z-10"
+                  transition={{ type: "spring", damping: 20, stiffness: 150 }}
+                />
+              )}
+            </motion.button>
           </div>
-        )}
+        </motion.div>
+
+        {/* ORDERS CONTENT */}
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-32">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity }}>
+                <Loader2 size={48} className="text-[#B37C1C]" />
+              </motion.div>
+              <p className="text-[#0F1A35]/60 mt-4">Loading your orders...</p>
+            </div>
+          ) : displayOrders.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-24"
+            >
+              <div className="text-6xl mb-4">
+                {filterTab === "active" ? "📦" : "📜"}
+              </div>
+              <p className="text-2xl font-bold text-[#0F1A35] mb-2">
+                {filterTab === "active" ? "No active orders yet" : "No order history"}
+              </p>
+              <p className="text-[#0F1A35]/60 mb-8">
+                {filterTab === "active"
+                  ? "Start shopping to see your orders here!"
+                  : "Your completed orders will appear here."}
+              </p>
+              <a
+                href="/customer-dash"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#B37C1C] to-[#9b6816] text-white rounded-xl font-bold hover:shadow-2xl transition-all hover:scale-105"
+              >
+                <Zap size={18} /> Continue Shopping
+              </a>
+            </motion.div>
+          ) : (
+            <div className="space-y-6">
+              <AnimatePresence mode="popLayout">
+                {displayOrders.map((order, idx) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    isRevealed={revealedOtps.has(order.id)}
+                    onToggleReveal={() => toggleOtpReveal(order.id)}
+                    onCopyOtp={() => copyOtp(order.otp_code)}
+                    statusConfig={getStatusConfig(order.status)}
+                    index={idx}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -296,43 +331,44 @@ const OrderCard = ({
   statusConfig,
   index,
 }: OrderCardProps) => {
-  const canCancel = ["pending_payment", "pending_vendor", "locked"].includes(
-    order.status || ""
-  );
+  const canCancel = ["pending_payment", "pending_vendor", "locked"].includes(order.status || "");
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ delay: index * 0.05 }}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+      exit={{ opacity: 0, y: -20, opacity: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.5 }}
+      className="group backdrop-blur-xl bg-gradient-to-br from-white/95 via-white/90 to-white/85 rounded-2xl shadow-xl border border-white/50 overflow-hidden hover:shadow-2xl transition-all duration-300"
     >
-      {/* CARD HEADER */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <h3 className="font-bold text-[#0F1A35] text-lg">
-            Order #{order.id}
-          </h3>
-          <button
-            onClick={onCopyOtp}
-            className="ml-auto md:ml-0 p-1.5 text-gray-400 hover:text-[#B37C1C] transition-colors flex-shrink-0"
-            title="Copy order ID"
-          >
-            <Copy size={16} />
-          </button>
+      {/* PREMIUM HEADER */}
+      <div className="bg-gradient-to-r from-[#0F1A35]/5 to-[#B37C1C]/5 px-6 md:px-8 py-5 border-b border-[#B37C1C]/10 flex items-center justify-between">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="p-2 rounded-lg bg-[#B37C1C]/10 border border-[#B37C1C]/20">
+            <Zap size={18} className="text-[#B37C1C]" />
+          </div>
+          <div>
+            <h3 className="font-bold text-[#0F1A35] text-lg">Order #{order.id}</h3>
+            <p className="text-xs text-[#0F1A35]/60 font-medium">{order.brand_name}</p>
+          </div>
         </div>
-        <div className="text-right ml-auto">
-          <p className="text-xs text-gray-500">Vendor</p>
-          <p className="text-sm font-semibold text-[#0F1A35] line-clamp-1">
-            {order.brand_name}
-          </p>
-        </div>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onCopyOtp}
+          className="p-2.5 rounded-lg hover:bg-[#B37C1C]/10 text-[#B37C1C] transition-colors"
+          title="Copy order ID"
+        >
+          <Copy size={18} />
+        </motion.button>
       </div>
 
-      {/* PRODUCT ROW */}
-      <div className="flex gap-4 px-6 py-4 border-b border-gray-100">
-        <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+      {/* PRODUCT SHOWCASE */}
+      <div className="px-6 md:px-8 py-6 border-b border-[#B37C1C]/10 flex gap-5">
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden border-2 border-[#B37C1C]/20 bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center shadow-md"
+        >
           {order.image_url ? (
             <img
               src={order.image_url}
@@ -340,119 +376,119 @@ const OrderCard = ({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-2xl">
-              📦
-            </div>
+            <span className="text-3xl">📦</span>
           )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[#0F1A35] line-clamp-1">
-            {order.product_name}
-          </p>
-          <p className="text-lg font-bold text-[#B37C1C] mt-1">
+        </motion.div>
+        <div className="flex-1">
+          <p className="font-bold text-[#0F1A35] line-clamp-2">{order.product_name}</p>
+          <p className="text-2xl font-bold bg-gradient-to-r from-[#B37C1C] to-[#D4AF37] bg-clip-text text-transparent mt-2">
             ZMW {order.total_price.toLocaleString()}
           </p>
         </div>
       </div>
 
-      {/* STATUS STEPPER */}
-      <div className="px-6 py-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <StatusStep
-            label="Locked"
-            active={statusConfig.stepIndex >= 0}
-            index={0}
-          />
-          <div className="flex-1 h-1 mx-2 rounded-full bg-gray-200" />
-          <StatusStep
-            label="Processing"
-            active={statusConfig.stepIndex >= 1}
-            index={1}
-          />
-          <div className="flex-1 h-1 mx-2 rounded-full bg-gray-200" />
-          <StatusStep
-            label="Ready"
-            active={statusConfig.stepIndex >= 2}
-            index={2}
-          />
+      {/* STATUS STEPPER - Premium */}
+      <div className="px-6 md:px-8 py-7 border-b border-[#B37C1C]/10">
+        <div className="flex items-center justify-between mb-4">
+          <StatusStep label="Locked" active={statusConfig.stepIndex >= 0} index={0} />
+          <div className="flex-1 h-1.5 mx-3 rounded-full bg-gradient-to-r from-gray-200 to-transparent" />
+          <StatusStep label="Processing" active={statusConfig.stepIndex >= 1} index={1} />
+          <div className="flex-1 h-1.5 mx-3 rounded-full bg-gradient-to-r from-gray-200 to-transparent" />
+          <StatusStep label="Ready" active={statusConfig.stepIndex >= 2} index={2} />
         </div>
-        <p className="text-center text-xs text-gray-600 mt-3 font-medium">
-          {statusConfig.label}
-        </p>
+        <div className="text-center">
+          <p className="text-sm font-bold text-[#0F1A35]">{statusConfig.label}</p>
+        </div>
       </div>
 
-      {/* SECURE OTP VAULT */}
-      <div className="px-6 py-6 border-b border-gray-100">
-        <div className="border-2 border-dashed border-[#B37C1C] rounded-lg p-6 bg-[#FFFBF2]">
-          <div className="text-center mb-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-4">
-              🔒 Secure PIN
+      {/* SECURE OTP VAULT - Elite Design */}
+      <div className="px-6 md:px-8 py-8 border-b border-[#B37C1C]/10">
+        <div className="relative rounded-2xl border-2 border-dashed border-[#B37C1C] bg-gradient-to-br from-[#FFFBF2] to-[#F9F6F0] p-8">
+          {/* Decorative corners */}
+          <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#B37C1C] rounded-tl-lg opacity-50" />
+          <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#B37C1C] rounded-tr-lg opacity-50" />
+          <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#B37C1C] rounded-bl-lg opacity-50" />
+          <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#B37C1C] rounded-br-lg opacity-50" />
+
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#0F1A35]/70 mb-6 flex items-center justify-center gap-2">
+              <span>🔒</span>
+              <span>Secure Handoff PIN</span>
             </p>
 
             {/* PIN DISPLAY */}
-            <div className="relative inline-block">
+            <motion.div
+              initial={false}
+              className="mb-6"
+            >
               <p
-                className={`font-mono text-3xl font-bold tracking-[0.3em] select-none transition-all duration-300 ${
-                  isRevealed ? "text-[#0F1A35]" : "text-gray-400 blur-lg"
+                className={`font-mono text-4xl md:text-5xl font-black tracking-[0.5em] select-none transition-all duration-500 ${
+                  isRevealed
+                    ? "text-[#B37C1C]"
+                    : "text-[#0F1A35]/20"
                 }`}
               >
-                {isRevealed
-                  ? order.otp_code
-                    .split("")
-                    .join(" ")
-                  : "•••• •••• •••• ••••"}
+                {isRevealed ? order.otp_code.split("").join(" ") : "• • • •"}
               </p>
-            </div>
+            </motion.div>
 
             {/* REVEAL BUTTON */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={onToggleReveal}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white border border-[#B37C1C] text-[#B37C1C] font-semibold text-xs hover:bg-[#B37C1C]/5 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#B37C1C]/10 to-[#D4AF37]/10 border-2 border-[#B37C1C] text-[#B37C1C] font-bold text-sm hover:bg-gradient-to-r hover:from-[#B37C1C]/20 hover:to-[#D4AF37]/20 transition-all shadow-md"
             >
               {isRevealed ? (
                 <>
-                  <EyeOff size={14} /> Hide PIN
+                  <EyeOff size={16} /> Hide PIN
                 </>
               ) : (
                 <>
-                  <Eye size={14} /> Tap to Reveal
+                  <Eye size={16} /> Tap to Reveal
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
 
-          {/* WARNING */}
-          <div className="bg-white rounded border-l-4 border-red-500 p-3">
-            <p className="text-xs text-red-700 italic font-medium">
-              ⚠️ <strong>Crucial:</strong> Supply this 4-Digit Secure Handoff PIN
-              to the courier <strong>ONLY AFTER</strong> physically inspecting
-              your items.
+          {/* WARNING - Prominent */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-8 bg-gradient-to-r from-red-50 to-red-50/50 rounded-lg border-l-4 border-red-500 p-4 border-2 border-red-200"
+          >
+            <p className="text-xs text-red-700 font-bold leading-relaxed">
+              ⚠️ <strong>CRITICAL:</strong> Supply this Secure Handoff PIN to the courier{" "}
+              <strong>ONLY AFTER</strong> physically inspecting your items for damage or defects.
             </p>
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* ACTION BUTTONS */}
-      <div className="flex flex-col sm:flex-row gap-3 px-6 py-4">
-        <a
+      {/* ACTION BUTTONS - Premium */}
+      <div className="flex flex-col sm:flex-row gap-3 px-6 md:px-8 py-6">
+        <motion.a
+          whileHover={{ scale: 1.02, boxShadow: "0 10px 30px rgba(179, 124, 28, 0.2)" }}
           href={`https://wa.me/?text=Order%20%23${order.id}%20-%20Need%20support`}
           target="_blank"
           rel="noreferrer"
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-[#0F1A35] text-[#0F1A35] font-semibold hover:bg-[#0F1A35]/5 transition-colors text-sm"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-r from-[#0F1A35] to-[#1a2741] text-white font-bold hover:shadow-lg transition-all text-sm border border-[#0F1A35]/50"
         >
           <MessageCircle size={16} /> Hive Digital Secretary
-        </a>
+        </motion.a>
 
-        <button
+        <motion.button
+          whileHover={canCancel ? { scale: 1.02 } : {}}
           disabled={!canCancel}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 font-semibold text-sm transition-all ${
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm transition-all border-2 ${
             canCancel
-              ? "border-red-500 text-red-600 hover:bg-red-500/5 cursor-pointer"
-              : "border-gray-300 text-gray-400 opacity-50 cursor-not-allowed"
+              ? "border-red-500 text-red-600 hover:bg-red-50 hover:shadow-lg"
+              : "border-gray-300 text-gray-400 opacity-40 cursor-not-allowed"
           }`}
         >
           <X size={16} /> Request Cancellation
-        </button>
+        </motion.button>
       </div>
     </motion.div>
   );
@@ -465,21 +501,26 @@ interface StatusStepProps {
 }
 
 const StatusStep = ({ label, active, index }: StatusStepProps) => (
-  <div className="flex flex-col items-center">
+  <motion.div className="flex flex-col items-center">
     <motion.div
       initial={false}
       animate={{
-        backgroundColor: active ? "#B37C1C" : "#e5e7eb",
-        borderColor: active ? "#B37C1C" : "#d1d5db",
+        background: active
+          ? "linear-gradient(135deg, #B37C1C 0%, #D4AF37 100%)"
+          : "linear-gradient(135deg, #E5E7EB 0%, #F3F4F6 100%)",
+        borderColor: active ? "#B37C1C" : "#D1D5DB",
+        boxShadow: active ? "0 4px 12px rgba(179, 124, 28, 0.3)" : "none",
       }}
-      className="w-8 h-8 rounded-full border-2 flex items-center justify-center mb-2"
+      className="w-10 h-10 rounded-full border-2 flex items-center justify-center mb-2 font-bold transition-all"
     >
-      <span className={`text-xs font-bold ${active ? "text-white" : "text-gray-500"}`}>
-        {index + 1}
-      </span>
+      <span className={active ? "text-white" : "text-gray-500"}>{index + 1}</span>
     </motion.div>
-    <span className="text-xs text-gray-600 text-center whitespace-nowrap">{label}</span>
-  </div>
+    <span className={`text-xs font-semibold text-center whitespace-nowrap ${
+      active ? "text-[#B37C1C]" : "text-[#0F1A35]/60"
+    }`}>
+      {label}
+    </span>
+  </motion.div>
 );
 
 export default MyOrders;
