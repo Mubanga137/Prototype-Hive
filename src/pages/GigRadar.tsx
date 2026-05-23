@@ -218,7 +218,7 @@ const GigRadar = () => {
         .from("orders")
         .update({
           status: "in_transit",
-          rider_id: user.id,
+          rider_user_id: user.id,
         })
         .in("id", batch.orderIds)
         .abortSignal(AbortSignal.timeout(8000));
