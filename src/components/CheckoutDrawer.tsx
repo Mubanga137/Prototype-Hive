@@ -164,60 +164,52 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
     setState("submitting");
 
-    const otp = generateOtpCode();
     const cleanedPhone = cleanZambianPhone(phone) || phone;
     const detailsForMsg = isService
       ? `${scheduledDate}${serviceNotes ? " · " + serviceNotes : ""}`
       : address.trim();
 
-    // Insert into orders. Only use fields confirmed to exist in the schema.
-    // buyer_id will be null for guests, user?.id for authenticated users
-    const insertPayload: Record<string, any> = {
-      buyer_id: user?.id ?? null,  // ✅ Allow null for guests
-      sme_id: item.sme_id ?? null,
-      store_id: item.store_id ?? item.sme_id ?? null,
-      item_id: item.id,
-      total_amount: totalAmount,
-      total_price: totalAmount,
-      quantity: isService ? 1 : quantity,
-      otp_code: otp,
-      status: "pending_payment",  // ✅ Updated status
-      customer_phone: cleanedPhone,
-      customer_name: name.trim(),
-      delivery_address: address.trim(),
-      scheduled_date: isService ? scheduledDate : null,
-      service_notes: isService ? serviceNotes : null,
-    };
-
-    // Try to insert and return tracking info. For guests, SELECT might fail due to RLS.
-    let orderId: any = null;
-    let trackingToken: any = null;
-
-    const { data, error } = await (supabase.from("orders") as any)
-      .insert(insertPayload)
-      .select("id, tracking_token")
-      .single();
+    // Call secure_place_order RPC to atomically validate & create order
+    const { data, error } = await supabase.rpc("secure_place_order", {
+      p_buyer_id: user?.id ?? null,
+      p_item_id: item.id,
+      p_sme_id: item.sme_id ?? null,
+      p_store_id: item.store_id ?? item.sme_id ?? null,
+      p_quantity: isService ? 1 : quantity,
+      p_customer_name: name.trim(),
+      p_customer_phone: cleanedPhone,
+      p_delivery_address: isService ? null : address.trim(),
+      p_scheduled_date: isService ? scheduledDate : null,
+      p_service_notes: isService ? serviceNotes : null,
+      p_item_type: item.item_type || "product",
+    });
 
     if (error) {
-      // If the error is 42501 (permission denied) and the user is a guest,
-      // the INSERT likely succeeded but SELECT failed due to RLS.
-      // In that case, we still inserted the order, so proceed gracefully.
-      if (error.code === '42501' && !user?.id) {
-        // INSERT succeeded, SELECT blocked by RLS (expected for guests)
-        // We'll redirect to tracking without the ID, which uses localStorage + token
-        toast.info("Order placed! Redirecting to tracking...");
-      } else {
-        // This is a real error (not an RLS issue), so reject it
-        logCheckoutError(error, insertPayload);
-        const userMessage = getUserFriendlyErrorMessage(error);
-        toast.error(`⚠️ ${userMessage}`);
-        setState("idle");
-        return;
-      }
-    } else {
-      orderId = (data as any)?.id ?? "—";
-      trackingToken = (data as any)?.tracking_token;
+      logCheckoutError(error, {
+        p_buyer_id: user?.id ?? null,
+        p_item_id: item.id,
+        p_sme_id: item.sme_id,
+        p_quantity: isService ? 1 : quantity,
+      });
+      const userMessage = getUserFriendlyErrorMessage(error);
+      toast.error(`⚠️ ${userMessage}`);
+      setState("idle");
+      return;
     }
+
+    const result = data?.[0];
+    if (!result || result.status !== "success") {
+      toast.error(`⚠️ ${result?.message || "Order creation failed"}`);
+      if (result?.status === "insufficient_stock") {
+        toast.error("Not enough stock available. Please adjust quantity.");
+      }
+      setState("idle");
+      return;
+    }
+
+    let orderId: any = result.order_id ?? "—";
+    let trackingToken: any = result.tracking_token;
+    const otp = result.otp_code;
 
     // ✅ For guests, save tracking session to localStorage
     // If we couldn't SELECT, we use the OTP as a fallback identifier
