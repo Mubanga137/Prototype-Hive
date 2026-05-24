@@ -34,8 +34,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
   const fullSidebarItems = [
     { label: "Home", icon: LayoutDashboard },
     { label: "Marketplace", icon: ShoppingBag },
-    { label: "Order History", icon: FileText },
-    { label: "Track My Orders", icon: MapPin },
+    { label: "My Orders", icon: FileText },
     { label: "Wallet", icon: Wallet },
     { label: "Categories", icon: FolderOpen },
     { label: "Messages", icon: MessageSquare },
