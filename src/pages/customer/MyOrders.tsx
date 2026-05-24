@@ -159,7 +159,7 @@ const MyOrders = () => {
                       The Hive Ledger
                     </p>
                     <p className="text-white font-display text-xl font-bold mt-0.5">
-                      {user.user_metadata?.full_name || user.email?.split("@")[0] || "Buyer"}
+                      {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest"}
                     </p>
                   </div>
                 </div>
