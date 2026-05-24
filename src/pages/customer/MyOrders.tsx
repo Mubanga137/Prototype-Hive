@@ -135,62 +135,6 @@ const MyOrders = () => {
       <HoneycombBackground />
 
       <div className="relative z-10">
-        {/* PREMIUM HEADER */}
-        <motion.div
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="sticky top-0 z-40"
-        >
-          <div className="backdrop-blur-xl bg-gradient-to-r from-[#0F1A35] via-[#1a2741] to-[#0F1A35] border-b border-[#B37C1C]/20 shadow-2xl">
-            <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
-              <div className="flex items-center justify-between gap-6">
-                {/* Left: Logo + Greeting */}
-                <div className="flex items-center gap-4 flex-1">
-                  <motion.div
-                    whileHover={{ scale: 1.05, rotate: 2 }}
-                    className="w-12 h-12 rounded-xl border-2 border-[#B37C1C]/50 overflow-hidden shadow-lg flex items-center justify-center bg-[#B37C1C]/10 backdrop-blur"
-                  >
-                    <img src={hiveLogo} alt="The Hive" className="w-full h-full object-cover" />
-                  </motion.div>
-
-                  <div className="flex-1">
-                    <p className="text-[#B37C1C] text-xs font-bold uppercase tracking-widest">
-                      The Hive Ledger
-                    </p>
-                    <p className="text-white font-display text-xl font-bold mt-0.5">
-                      {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right: Premium Stats */}
-                <div className="flex gap-8">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="text-right backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg border border-[#B37C1C]/20"
-                  >
-                    <p className="text-[#B37C1C]/80 text-xs font-semibold uppercase tracking-wider">
-                      Active Orders
-                    </p>
-                    <p className="text-[#B37C1C] text-2xl font-bold mt-1">{activeCount}</p>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="text-right backdrop-blur-sm bg-white/5 px-4 py-2 rounded-lg border border-[#B37C1C]/20"
-                  >
-                    <p className="text-[#B37C1C]/80 text-xs font-semibold uppercase tracking-wider">
-                      Delivery Tokens
-                    </p>
-                    <p className="text-[#B37C1C] text-2xl font-bold mt-1">{deliveryTokens}</p>
-                  </motion.div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
         {/* FILTER TOGGLE */}
         <motion.div
           initial={{ opacity: 0 }}
