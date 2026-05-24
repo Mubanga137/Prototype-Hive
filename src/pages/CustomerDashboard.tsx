@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import { useAuth } from "@/hooks/useAuth";
 import CustomerDashboardSidebar from "@/components/CustomerDashboardSidebar";
@@ -7,7 +7,7 @@ import DashboardHomeSection from "@/components/DashboardHomeSection";
 
 // Subpages
 import Marketplace from "@/pages/customer/Marketplace";
-import OrderHistory from "@/pages/customer/OrderHistory";
+import MyOrders from "@/pages/customer/MyOrders";
 import TrackOrders from "@/pages/customer/TrackOrders";
 import CustomerWallet from "@/pages/customer/CustomerWallet";
 import Categories from "@/pages/customer/Categories";
@@ -25,15 +25,24 @@ const getGreeting = () => {
 const CustomerDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState("Home");
 
   const greeting = useMemo(() => getGreeting(), []);
   const firstName = user?.email?.split("@")[0] || profile?.full_name?.split(" ")[0] || "Guest";
 
+  // Handle section parameter from URL
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section) {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
+
   const renderContent = () => {
     switch (activeSection) {
       case "Marketplace": return <Marketplace />;
-      case "Order History": return <OrderHistory />;
+      case "My Orders": return <MyOrders />;
       case "Track My Orders": return <TrackOrders />;
       case "Wallet": return <CustomerWallet />;
       case "Categories": return <Categories />;

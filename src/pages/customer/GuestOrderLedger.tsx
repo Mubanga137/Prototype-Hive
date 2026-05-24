@@ -9,7 +9,8 @@ interface GuestOrder {
   tracking_token: string;
   customer_phone: string;
   customer_name: string;
-  total_to_pay: number;
+  total_price: number;
+  total_amount?: number;
   otp_code: string;
   status: string;
   item_name?: string;
@@ -46,8 +47,8 @@ export default function GuestOrderLedger() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          `id, tracking_token, customer_phone, customer_name, total_to_pay,
-           total_price, otp_code, status, item_type, delivery_address,
+          `id, tracking_token, customer_phone, customer_name, total_price,
+           total_amount, otp_code, status, item_type, delivery_address,
            scheduled_date, created_at, item_id`
         )
         .eq("tracking_token", trackingToken)
@@ -60,7 +61,7 @@ export default function GuestOrderLedger() {
         const errorDetails = (error as any).details || "";
         const errorHint = (error as any).hint || "";
 
-        console.error("[GuestOrderLedger] Fetch error details:", {
+        console.error("[GuestOrderLedger] Fetch error details:", JSON.stringify({
           message: errorMessage,
           code: errorCode,
           status: errorStatus,
@@ -68,7 +69,7 @@ export default function GuestOrderLedger() {
           hint: errorHint,
           token: trackingToken,
           timestamp: new Date().toISOString(),
-        });
+        }, null, 2));
 
         // Distinguish between "not found" and other errors
         if (errorCode === "PGRST116" || errorMessage.includes("no rows")) {
@@ -110,7 +111,8 @@ export default function GuestOrderLedger() {
           tracking_token: data.tracking_token,
           customer_phone: data.customer_phone,
           customer_name: data.customer_name,
-          total_to_pay: data.total_to_pay || data.total_price,
+          total_price: data.total_price || data.total_amount || 0,
+          total_amount: data.total_amount,
           otp_code: data.otp_code,
           status: data.status,
           item_name: itemName,
@@ -296,7 +298,7 @@ export default function GuestOrderLedger() {
                 Total Amount
               </p>
               <p className="text-2xl font-bold text-primary">
-                ZMW {Number(order.total_to_pay).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                ZMW {Number(order.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </p>
             </div>
 
@@ -407,7 +409,7 @@ export default function GuestOrderLedger() {
             Continue Shopping
           </button>
           <button
-            onClick={() => navigate("/messages")}
+            onClick={() => navigate("/customer-dash?section=Messages")}
             className="w-full py-3 border border-border rounded-lg font-medium text-foreground hover:bg-slate-50 transition"
           >
             View Messages
