@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import { useAuth } from "@/hooks/useAuth";
 import CustomerDashboardSidebar from "@/components/CustomerDashboardSidebar";
@@ -25,10 +25,19 @@ const getGreeting = () => {
 const CustomerDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState("Home");
 
   const greeting = useMemo(() => getGreeting(), []);
   const firstName = user?.email?.split("@")[0] || profile?.full_name?.split(" ")[0] || "Guest";
+
+  // Handle section parameter from URL
+  useEffect(() => {
+    const section = searchParams.get("section");
+    if (section) {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
 
   const renderContent = () => {
     switch (activeSection) {

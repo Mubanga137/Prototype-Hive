@@ -409,7 +409,7 @@ export default function GuestOrderLedger() {
             Continue Shopping
           </button>
           <button
-            onClick={() => navigate("/messages")}
+            onClick={() => navigate("/customer-dash?section=Messages")}
             className="w-full py-3 border border-border rounded-lg font-medium text-foreground hover:bg-slate-50 transition"
           >
             View Messages
