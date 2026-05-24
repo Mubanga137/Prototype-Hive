@@ -60,7 +60,7 @@ export default function GuestOrderLedger() {
         const errorDetails = (error as any).details || "";
         const errorHint = (error as any).hint || "";
 
-        console.error("[GuestOrderLedger] Fetch error details:", {
+        console.error("[GuestOrderLedger] Fetch error details:", JSON.stringify({
           message: errorMessage,
           code: errorCode,
           status: errorStatus,
@@ -68,7 +68,7 @@ export default function GuestOrderLedger() {
           hint: errorHint,
           token: trackingToken,
           timestamp: new Date().toISOString(),
-        });
+        }, null, 2));
 
         // Distinguish between "not found" and other errors
         if (errorCode === "PGRST116" || errorMessage.includes("no rows")) {
