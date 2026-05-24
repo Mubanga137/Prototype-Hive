@@ -7,6 +7,7 @@ import DashboardHomeSection from "@/components/DashboardHomeSection";
 
 // Subpages
 import Marketplace from "@/pages/customer/Marketplace";
+import MyOrders from "@/pages/customer/MyOrders";
 import TrackOrders from "@/pages/customer/TrackOrders";
 import CustomerWallet from "@/pages/customer/CustomerWallet";
 import Categories from "@/pages/customer/Categories";
@@ -32,7 +33,8 @@ const CustomerDashboard = () => {
   const renderContent = () => {
     switch (activeSection) {
       case "Marketplace": return <Marketplace />;
-      case "My Orders": return <TrackOrders />;
+      case "My Orders": return <MyOrders />;
+      case "Track My Orders": return <TrackOrders />;
       case "Wallet": return <CustomerWallet />;
       case "Categories": return <Categories />;
       case "Messages": return <Messages />;
