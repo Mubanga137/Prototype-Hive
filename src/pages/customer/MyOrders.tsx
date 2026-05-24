@@ -30,13 +30,14 @@ const MyOrders = () => {
   const [revealedOtps, setRevealedOtps] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
     const fetchOrders = async () => {
       setLoading(true);
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("orders")
         .select(
@@ -128,24 +129,6 @@ const MyOrders = () => {
     return configs[status || "pending_payment"] || configs.pending_payment;
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] to-[#F5F1ED] flex items-center justify-center relative overflow-hidden">
-        <HoneycombBackground />
-        <div className="text-center relative z-10">
-          <p className="text-[#0F1A35] text-lg font-semibold mb-4">
-            Please sign in to view your orders
-          </p>
-          <a
-            href="/login"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-[#B37C1C] to-[#9b6816] text-white rounded-lg font-semibold hover:shadow-lg transition-all hover:scale-105"
-          >
-            Sign In
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED] relative overflow-hidden">
