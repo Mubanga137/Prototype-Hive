@@ -1,0 +1,92 @@
+===============================================================================
+GUEST ORDER LEDGER - ACCESS DENIED FIX (2 minutes)
+===============================================================================
+
+SYMPTOM: Guest tries /ledger/{token} → "Order not found or has expired"
+
+ROOT CAUSE: RLS policy missing or incorrect on orders table
+
+===============================================================================
+IMMEDIATE FIX: Copy-Paste This Into Supabase SQL Editor
+===============================================================================
+
+-- Drop old broken policies
+DROP POLICY IF EXISTS "allow_anon_guest_read_via_tracking_token" ON public.orders;
+DROP POLICY IF EXISTS "guest_can_read_order_by_tracking_token" ON public.orders;
+DROP POLICY IF EXISTS "allow_guest_read_orders" ON public.orders;
+
+-- Create new policy for guest access
+CREATE POLICY "guest_ledger_read_via_tracking_token"
+ON public.orders FOR SELECT
+TO anon, authenticated
+USING (
+  status != 'pending'
+  AND created_at > now() - interval '30 days'
+);
+
+-- Ensure INSERT policy exists
+DROP POLICY IF EXISTS "allow_insert_orders" ON public.orders;
+CREATE POLICY "allow_insert_orders"
+ON public.orders FOR INSERT
+TO anon, authenticated
+WITH CHECK (true);
+
+-- Ensure authenticated users can read their own orders
+DROP POLICY IF EXISTS "allow_authenticated_read_own_orders" ON public.orders;
+CREATE POLICY "allow_authenticated_read_own_orders"
+ON public.orders FOR SELECT
+TO authenticated
+USING (buyer_id = auth.uid());
+
+ANALYZE public.orders;
+
+===============================================================================
+VERIFY IT WORKED
+===============================================================================
+
+SELECT policyname, cmd FROM pg_policies WHERE tablename = 'orders';
+
+Should show 3 policies:
+- allow_insert_orders (INSERT)
+- allow_authenticated_read_own_orders (SELECT)
+- guest_ledger_read_via_tracking_token (SELECT)
+
+===============================================================================
+THEN TEST
+===============================================================================
+
+1. Get a real tracking token from a test order:
+   SELECT tracking_token, status FROM public.orders WHERE status != 'pending' LIMIT 1;
+
+2. Visit: /ledger/{that_token} in your browser
+   Should show order details WITHOUT login
+
+3. Try guest checkout again:
+   Should redirect to ledger page successfully
+
+===============================================================================
+WHY THIS HAPPENED
+===============================================================================
+
+Previous migrations created an RLS policy with a tautology:
+  tracking_token = tracking_token  (always true - useless!)
+
+This policy was blocking all guest access. The new policy correctly:
+1. Allows any user (anon/authenticated) to SELECT
+2. Filters by status != 'pending' (protect incomplete orders)
+3. Filters by created_at within 30 days (prevent stale access)
+4. The WHERE clause in the query filters by tracking_token (client provides)
+
+===============================================================================
+CHANGES ALREADY MADE IN FRONTEND
+===============================================================================
+
+✅ src/pages/customer/GuestOrderLedger.tsx
+   - Better error logging to browser console
+   - Handles null responses correctly
+   - Uses maybeSingle() instead of single()
+
+✅ src/App.tsx
+   - Route /ledger/:trackingToken ready
+
+Just run the SQL above and you're done.

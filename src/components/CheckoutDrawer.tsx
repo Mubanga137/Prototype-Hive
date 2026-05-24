@@ -153,132 +153,154 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
-    // Validate before attempting checkout
+    // STEP 1: Input validation (client-side only - no business logic)
     const err = validate();
     if (err) {
       toast.error(err);
       return;
     }
 
-    if (state !== "idle") return; // hard-block duplicate clicks
+    // Hard-block duplicate concurrent submissions
+    if (state !== "idle") return;
 
     setState("submitting");
 
-    const cleanedPhone = cleanZambianPhone(phone) || phone;
-    const detailsForMsg = isService
-      ? `${scheduledDate}${serviceNotes ? " · " + serviceNotes : ""}`
-      : address.trim();
+    try {
+      const cleanedPhone = cleanZambianPhone(phone) || phone;
 
-    // Call secure_place_order RPC to atomically validate & create order
-    const { data, error } = await supabase.rpc("secure_place_order", {
-      p_buyer_id: user?.id ?? null,
-      p_item_id: item.id,
-      p_sme_id: item.sme_id ?? null,
-      p_store_id: item.store_id ?? item.sme_id ?? null,
-      p_quantity: isService ? 1 : quantity,
-      p_customer_name: name.trim(),
-      p_customer_phone: cleanedPhone,
-      p_delivery_address: isService ? null : address.trim(),
-      p_scheduled_date: isService ? scheduledDate : null,
-      p_service_notes: isService ? serviceNotes : null,
-      p_item_type: item.item_type || "product",
-    });
-
-    if (error) {
-      logCheckoutError(error, {
-        p_buyer_id: user?.id ?? null,
-        p_item_id: item.id,
-        p_sme_id: item.sme_id,
-        p_quantity: isService ? 1 : quantity,
+      // STEP 2: Invoke backend RPC with strict parameter type-casting
+      // The browser acts as sterile input terminal only
+      const { data, error } = await supabase.rpc("secure_place_order", {
+        p_buyer_id: user?.id || null,                                      // UUID or null for guests
+        p_item_id: parseInt(String(item.id), 10),                          // BIGINT: explicit int cast
+        p_sme_id: item.sme_id ? parseInt(String(item.sme_id), 10) : null,  // BIGINT or null
+        p_store_id: item.store_id
+          ? parseInt(String(item.store_id), 10)
+          : (item.sme_id ? parseInt(String(item.sme_id), 10) : null),     // BIGINT fallback to sme_id
+        p_quantity: isService ? 1 : parseInt(String(quantity), 10),        // INT: explicit cast
+        p_customer_name: name.trim(),                                      // TEXT: sterile string
+        p_customer_phone: cleanedPhone,                                    // TEXT: sterile string
+        p_delivery_address: isService ? null : address.trim(),             // TEXT or null
+        p_scheduled_date: isService ? scheduledDate : null,                // DATE or null
+        p_service_notes: isService ? serviceNotes : null,                  // TEXT or null
+        p_item_type: item.item_type || "product",                          // TEXT: product|service
       });
-      const userMessage = getUserFriendlyErrorMessage(error);
-      toast.error(`⚠️ ${userMessage}`);
-      setState("idle");
-      return;
-    }
 
-    const result = data?.[0];
-    if (!result || result.status !== "success") {
-      toast.error(`⚠️ ${result?.message || "Order creation failed"}`);
-      if (result?.status === "insufficient_stock") {
-        toast.error("Not enough stock available. Please adjust quantity.");
-      }
-      setState("idle");
-      return;
-    }
-
-    let orderId: any = result.order_id ?? "—";
-    let trackingToken: any = result.tracking_token;
-    const otp = result.otp_code;
-
-    // ✅ For guests, save tracking session to localStorage
-    // If we couldn't SELECT, we use the OTP as a fallback identifier
-    if (!user?.id) {
-      localStorage.setItem(
-        "hive_guest_orders",
-        JSON.stringify({
-          orderId: orderId || "pending",
-          otp: otp,
-          timestamp: Date.now(),
-        })
-      );
-    }
-
-    // Brief success state
-    setState("success");
-
-    if (isService) {
-      toast.success("✅ Funds Secured in Escrow. Notifying your Service Provider!", {
-        action: {
-          label: "View Booking",
-          onClick: () => window.location.href = "/messages"
-        }
-      });
-    } else {
-      // ✅ For guests, redirect to tracking page (use token if available, else use OTP)
-      if (!user?.id) {
-        setTimeout(() => {
-          const trackingPath = trackingToken
-            ? `/track-order/${orderId}?token=${trackingToken}`
-            : `/track-orders?otp=${otp}`;
-          navigate(trackingPath, { replace: true });
-          onOpenChange(false);
-        }, 1000);
+      // STEP 3: Handle network/authentication errors from Supabase
+      if (error) {
+        logCheckoutError(error, {
+          p_item_id: item.id,
+          p_sme_id: item.sme_id,
+          p_quantity: isService ? 1 : quantity,
+        });
+        // Display server's sterile error message
+        toast.error(`⚠️ ${error.message || "Order submission failed"}`);
+        setState("idle");
         return;
       }
 
+      // STEP 4: Parse RPC response (direct JSON object, not table array)
+      // The RPC returns a single result object due to SECURITY DEFINER
+      const result = data?.[0] || data;
+
+      // Debug logging to diagnose response issues
+      if (!result) {
+        console.error("[Checkout] Empty RPC response", {
+          rawData: data,
+          dataArray: data?.[0],
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (!result || result.status !== "success") {
+        const errorMsg = result?.message || "Order creation failed. Please try again.";
+
+        // Enhanced error logging
+        console.error("[Checkout] Order creation failed", {
+          result: result,
+          status: result?.status,
+          message: result?.message,
+          orderId: result?.order_id,
+          rawResponse: data,
+          timestamp: new Date().toISOString(),
+        });
+
+        toast.error(`⚠️ ${errorMsg}`);
+
+        if (result?.status === "insufficient_stock") {
+          toast.error("Not enough stock available. Please reduce quantity.");
+        }
+        setState("idle");
+        return;
+      }
+
+      // STEP 5: Extract response payload (all computed server-side)
+      const orderId = result.order_id;
+      const trackingToken = result.tracking_token;  // UUID for guest ledger access
+      const totalToPay = result.total_to_pay;      // NUMERIC: server-computed price
+      const otpCode = result.otp_code;             // 4-digit OTP for verification
+
+      // STEP 6: Secure guest continuity - cache order data in localStorage
+      // Protects against network drops in in-app webviews
+      if (!user?.id) {
+        const guestOrderData = {
+          order_id: orderId,
+          tracking_token: trackingToken,
+          customer_phone: cleanedPhone,
+          total_to_pay: totalToPay,
+          otp_code: otpCode,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem("hive_guest_active_cart", JSON.stringify(guestOrderData));
+      }
+
+      // STEP 7: Update UI to success state
+      setState("success");
+
+      // STEP 8a: Route service bookings to messages/communications channel
+      if (isService) {
+        toast.success("✅ Funds Secured in Escrow. Notifying your Service Provider!", {
+          action: {
+            label: "View Booking",
+            onClick: () => window.location.href = "/messages"
+          }
+        });
+
+        // Auto-redirect after brief delay for UX feedback
+        setTimeout(() => {
+          window.location.href = "/messages";
+        }, 2000);
+        return;
+      }
+
+      // STEP 8b: Route product orders - guests go to ledger, authenticated users to dashboard
+      if (!user?.id) {
+        // Guest user: redirect to secure ledger tracker with unguessable token
+        setTimeout(() => {
+          navigate(`/ledger/${trackingToken}`, { replace: true });
+          onOpenChange(false);
+        }, 1500);
+        return;
+      }
+
+      // Authenticated user: show success and redirect to orders dashboard
       toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
         action: {
           label: "Track Order",
           onClick: () => window.location.href = "/track-orders"
         }
       });
-    }
 
-    const message = buildOrderMessage({
-      orderId,
-      itemName: item.item_name,
-      quantity: isService ? 1 : quantity,
-      totalAmount,
-      customerName: name.trim(),
-      customerPhone: cleanedPhone,
-      details: detailsForMsg,
-      otpCode: otp,
-    });
-
-    const targetPhone = cleanZambianPhone(item.store_whatsapp);
-
-    setTimeout(() => {
-      // If WhatsApp is available, redirect. If not, just close the drawer.
-      if (targetPhone) {
-        // Same-tab redirect, per spec
-        window.location.href = buildWhatsAppUrl(targetPhone, message);
-      } else {
-        // WhatsApp is missing - gracefully close without blocking
-        console.warn("[checkout] WhatsApp number missing for store:", item.store_name);
+      setTimeout(() => {
+        navigate("/track-orders", { replace: true });
         onOpenChange(false);
-      }
-    }, 1000);
+      }, 2000);
+
+    } catch (err) {
+      console.error("[checkout] Unexpected error:", err);
+      toast.error("⚠️ An unexpected error occurred. Please try again.");
+      setState("idle");
+    }
   };
 
   const submitting = state === "submitting";
