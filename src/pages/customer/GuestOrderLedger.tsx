@@ -41,21 +41,36 @@ export default function GuestOrderLedger() {
       setLoading(true);
 
       // Query orders table using the tracking token (public read access)
+      // RLS policy allows reading non-pending orders created within 30 days
       const { data, error } = await supabase
         .from("orders")
         .select(
-          `id, tracking_token, customer_phone, customer_name, total_to_pay, 
-           total_price, otp_code, status, item_type, delivery_address, 
-           scheduled_date, created_at, 
+          `id, tracking_token, customer_phone, customer_name, total_to_pay,
+           total_price, otp_code, status, item_type, delivery_address,
+           scheduled_date, created_at, item_id,
            hive_catalogue!orders_item_id_fkey(product_name)`
         )
         .eq("tracking_token", trackingToken)
-        .neq("status", "pending")
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.error("[GuestOrderLedger] Fetch error:", error);
-        toast.error("Order not found or has expired");
+        console.error("[GuestOrderLedger] Fetch error:", {
+          message: error.message,
+          code: (error as any).code,
+          status: (error as any).status,
+          details: (error as any).details,
+          hint: (error as any).hint,
+          fullError: error,
+        });
+
+        // Distinguish between "not found" and other errors
+        if ((error as any).code === "PGRST116" || error.message?.includes("not found")) {
+          toast.error("Order not found. Check your tracking token and try again.");
+        } else if ((error as any).status === 403) {
+          toast.error("Access denied. Order may have expired.");
+        } else {
+          toast.error(`Error: ${error.message || "Failed to load order"}`);
+        }
         navigate("/");
         return;
       }
@@ -76,6 +91,11 @@ export default function GuestOrderLedger() {
           item_type: data.item_type,
           created_at: data.created_at,
         });
+      } else {
+        // No data returned (order not found or filtered by RLS)
+        console.warn("[GuestOrderLedger] No order found for token:", trackingToken);
+        toast.error("Order not found. Check your tracking token and try again.");
+        navigate("/");
       }
     } catch (err) {
       console.error("[GuestOrderLedger] Error:", err);
