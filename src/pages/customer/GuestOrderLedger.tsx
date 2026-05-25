@@ -411,13 +411,13 @@ export default function GuestOrderLedger() {
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 max-w-md mx-auto">
           <button
-            onClick={() => navigate("/marketplace")}
+            onClick={() => navigate("/")}
             className="btn-gold w-full py-3"
           >
             Continue Shopping
           </button>
           <button
-            onClick={() => navigate("/my-orders")}
+            onClick={() => navigate("/track-orders")}
             className="w-full py-3 font-medium text-foreground hover:bg-opacity-80 transition rounded-lg"
             style={{
               backgroundColor: "#FFFBF2",
