@@ -6,6 +6,7 @@ import hiveLogo from "@/assets/hive-logo.jpeg";
 import HoneycombBackground from "@/components/HoneycombBackground";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { linkGuestOrdersToAccount } from "@/utils/guestOrderLinkage";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -64,6 +65,13 @@ const Login = () => {
           // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, 500));
         }
+      }
+
+      // Link guest orders to authenticated account if they exist
+      try {
+        await linkGuestOrdersToAccount(user.id);
+      } catch (linkError) {
+        console.warn("[Login] Guest order linkage failed (non-blocking):", linkError);
       }
 
       const role = profile?.role || "customer";
