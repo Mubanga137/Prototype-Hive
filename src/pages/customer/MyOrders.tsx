@@ -38,6 +38,7 @@ const MyOrders = () => {
   const [filterTab, setFilterTab] = useState<FilterTab>("active");
   const [revealedOtps, setRevealedOtps] = useState<Set<number>>(new Set());
   const [guestOrderCount, setGuestOrderCount] = useState(0);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -50,6 +51,7 @@ const MyOrders = () => {
 
         if (isAuthenticated) {
           // AUTHENTICATED PATH: Fetch orders by buyer_id
+          setIsGuestMode(false);
           const { data, error: fetchError } = await supabase
             .from("orders")
             .select(
@@ -107,9 +109,14 @@ const MyOrders = () => {
           if (guestTokens.length === 0) {
             setOrders([]);
             setGuestOrderCount(0);
+            setIsGuestMode(false);
             setLoading(false);
             return;
           }
+
+          // Set guest mode - no redirect needed
+          setIsGuestMode(true);
+          setGuestOrderCount(guestTokens.length);
 
           // Query orders by tracking tokens
           const { data, error: fetchError } = await supabase
@@ -154,7 +161,6 @@ const MyOrders = () => {
           }));
 
           setOrders(mapped);
-          setGuestOrderCount(mapped.length);
         }
       } catch (err) {
         console.error("[MyOrders] Unexpected error:", err);
@@ -268,6 +274,31 @@ const MyOrders = () => {
             </motion.button>
           </div>
         </motion.div>
+
+        {/* GUEST INFO BANNER */}
+        {isGuestMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-7xl mx-auto px-4 md:px-8 py-4"
+          >
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <span className="text-2xl">🔑</span>
+                <div>
+                  <p className="font-bold text-[#0F1A35]">Tracking Guest Orders</p>
+                  <p className="text-sm text-[#0F1A35]/70">To save these permanently to a profile, create an account</p>
+                </div>
+              </div>
+              <a
+                href="/signup"
+                className="px-6 py-2 bg-gradient-to-r from-[#B37C1C] to-[#9b6816] text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all hover:scale-105 whitespace-nowrap"
+              >
+                Sign Up Free
+              </a>
+            </div>
+          </motion.div>
+        )}
 
         {/* ORDERS CONTENT */}
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
