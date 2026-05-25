@@ -18,6 +18,7 @@ interface GuestOrder {
   scheduled_date?: string;
   item_type?: string;
   created_at?: string;
+  item_count?: number;
 }
 
 export default function GuestOrderLedger() {
@@ -120,6 +121,7 @@ export default function GuestOrderLedger() {
           scheduled_date: data.scheduled_date,
           item_type: data.item_type,
           created_at: data.created_at,
+          item_count: 1,
         });
       } else {
         // No data returned (order not found or filtered by RLS)
@@ -178,6 +180,12 @@ export default function GuestOrderLedger() {
       .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
+  };
+
+  const maskToken = (token: string): string => {
+    if (!token || token.length < 7) return token;
+    const suffix = token.slice(-7);
+    return `HIVE-TOKEN-...${suffix}`;
   };
 
   if (loading) {
@@ -361,7 +369,7 @@ export default function GuestOrderLedger() {
             </p>
             <div className="flex items-center gap-2">
               <code className="font-mono text-xs bg-white px-2 py-1 rounded flex-1 break-all text-muted-foreground">
-                {order.tracking_token}
+                {maskToken(order.tracking_token)}
               </code>
               <button
                 onClick={() => copyToClipboard(order.tracking_token, "Tracking Token")}
@@ -401,12 +409,23 @@ export default function GuestOrderLedger() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 max-w-md mx-auto">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/marketplace")}
             className="btn-gold w-full py-3"
           >
             Continue Shopping
+          </button>
+          <button
+            onClick={() => navigate("/my-orders")}
+            className="w-full py-3 font-medium text-foreground hover:bg-opacity-80 transition rounded-lg"
+            style={{
+              backgroundColor: "#FFFBF2",
+              color: "#1a1a1a",
+              border: "1px solid #FFFBF2"
+            }}
+          >
+            {order?.item_count === 1 ? "View Order" : "View Orders"}
           </button>
           <button
             onClick={() => navigate("/customer-dash?section=Messages")}
