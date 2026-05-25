@@ -240,18 +240,21 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       const totalToPay = result.total_to_pay;      // NUMERIC: server-computed price
       const otpCode = result.otp_code;             // 4-digit OTP for verification
 
-      // STEP 6: Secure guest continuity - cache order data in localStorage
-      // Protects against network drops in in-app webviews
+      // STEP 6: Secure guest continuity - persist tracking token to localStorage
+      // Allows guest users to retrieve orders across browser sessions
       if (!user?.id) {
-        const guestOrderData = {
-          order_id: orderId,
-          tracking_token: trackingToken,
-          customer_phone: cleanedPhone,
-          total_to_pay: totalToPay,
-          otp_code: otpCode,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem("hive_guest_active_cart", JSON.stringify(guestOrderData));
+        try {
+          const existing = JSON.parse(localStorage.getItem("hive_guest_active_cart") || "[]");
+          const tokenArray = Array.isArray(existing) ? existing : [];
+          if (!tokenArray.includes(trackingToken)) {
+            tokenArray.push(trackingToken);
+          }
+          const deduped = Array.from(new Set(tokenArray));
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify(deduped));
+        } catch (e) {
+          console.warn("[Checkout] localStorage token persistence failed:", e);
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify([trackingToken]));
+        }
       }
 
       // STEP 7: Update UI to success state

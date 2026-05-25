@@ -11,6 +11,7 @@ import CustomerOnboarding from "@/components/CustomerOnboarding";
 import LoadingScreen from "@/components/LoadingScreen";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { linkGuestOrdersToAccount } from "@/utils/guestOrderLinkage";
 
 type AccountType = "customer" | "vendor" | "wholesaler" | "gig_worker";
 type GigRole = "runner" | "city_rider" | "hive_node";
@@ -174,6 +175,16 @@ const Signup = () => {
         gig_worker: "/gig-radar",
       };
 
+      // Link guest orders to authenticated account if they exist
+      const userId = user?.id;
+      if (userId) {
+        try {
+          await linkGuestOrdersToAccount(userId);
+        } catch (linkError) {
+          console.warn("[Signup] Guest order linkage failed (non-blocking):", linkError);
+        }
+      }
+
       // Keep loading screen visible while navigating
       setTimeout(() => {
         navigate(routes[role] || "/", { replace: true });
@@ -186,7 +197,16 @@ const Signup = () => {
     }
   };
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
+    // Link guest orders to the newly created account
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      try {
+        await linkGuestOrdersToAccount(user.id);
+      } catch (linkError) {
+        console.warn("[Signup Onboarding] Guest order linkage failed (non-blocking):", linkError);
+      }
+    }
     navigate("/customer-dash", { replace: true });
   };
 

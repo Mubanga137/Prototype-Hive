@@ -60,7 +60,7 @@ const AppContent = () => {
 
         {/* Customer — open to guests and authenticated users */}
         <Route path="/customer-dash" element={<ProtectedRoute allowGuests><CustomerDashboard /></ProtectedRoute>} />
-        <Route path="/customer-dash/my-orders" element={<ProtectedRoute><MyOrders /></ProtectedRoute>} />
+        <Route path="/customer-dash/my-orders" element={<ProtectedRoute allowGuestTokens><MyOrders /></ProtectedRoute>} />
         <Route path="/track-orders" element={<ProtectedRoute allowGuests><TrackOrders /></ProtectedRoute>} />
         <Route path="/ledger/:trackingToken" element={<GuestOrderLedger />} />
 

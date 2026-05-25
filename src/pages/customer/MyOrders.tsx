@@ -18,66 +18,156 @@ interface Order {
   product_name?: string;
   brand_name?: string;
   image_url?: string;
+  tracking_token?: string;
+  is_guest_order?: boolean;
 }
 
 type FilterTab = "active" | "history";
+
+const maskToken = (token: string): string => {
+  if (!token || token.length < 7) return token;
+  const suffix = token.slice(-7);
+  return `HIVE-...${suffix}`;
+};
 
 const MyOrders = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterTab, setFilterTab] = useState<FilterTab>("active");
   const [revealedOtps, setRevealedOtps] = useState<Set<number>>(new Set());
+  const [guestOrderCount, setGuestOrderCount] = useState(0);
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   useEffect(() => {
     const fetchOrders = async () => {
       setLoading(true);
+      setError(null);
 
-      if (!user) {
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const isAuthenticated = !!session?.user?.id;
+
+        if (isAuthenticated) {
+          // AUTHENTICATED PATH: Fetch orders by buyer_id
+          setIsGuestMode(false);
+          const { data, error: fetchError } = await supabase
+            .from("orders")
+            .select(
+              `
+              id,
+              item_id,
+              sme_id,
+              total_price,
+              status,
+              otp_code,
+              tracking_token,
+              created_at,
+              hive_catalogue!orders_item_id_fkey(product_name, image_url),
+              sme_stores!orders_sme_id_fkey(brand_name)
+            `
+            )
+            .eq("buyer_id", session.user.id)
+            .order("created_at", { ascending: false });
+
+          if (fetchError) {
+            console.error("[MyOrders] Authenticated fetch error:", fetchError);
+            setError("Failed to load your orders");
+            setLoading(false);
+            return;
+          }
+
+          const mapped = (data || []).map((o: any) => ({
+            id: o.id,
+            item_id: o.item_id,
+            sme_id: o.sme_id,
+            total_price: o.total_price,
+            status: o.status,
+            otp_code: o.otp_code,
+            tracking_token: o.tracking_token,
+            created_at: o.created_at,
+            product_name: o.hive_catalogue?.product_name || "Unknown Product",
+            brand_name: o.sme_stores?.brand_name || "Unknown Vendor",
+            image_url: o.hive_catalogue?.image_url || null,
+            is_guest_order: false,
+          }));
+
+          setOrders(mapped);
+        } else {
+          // GUEST PATH: Fetch orders by localStorage tokens
+          let guestTokens: string[] = [];
+          try {
+            const stored = localStorage.getItem("hive_guest_active_cart");
+            guestTokens = stored ? JSON.parse(stored) : [];
+          } catch (parseError) {
+            console.warn("[MyOrders] localStorage parse failed, clearing:", parseError);
+            localStorage.removeItem("hive_guest_active_cart");
+            guestTokens = [];
+          }
+
+          if (guestTokens.length === 0) {
+            setOrders([]);
+            setGuestOrderCount(0);
+            setIsGuestMode(false);
+            setLoading(false);
+            return;
+          }
+
+          // Set guest mode - no redirect needed
+          setIsGuestMode(true);
+          setGuestOrderCount(guestTokens.length);
+
+          // Query orders by tracking tokens
+          const { data, error: fetchError } = await supabase
+            .from("orders")
+            .select(
+              `
+              id,
+              item_id,
+              sme_id,
+              total_price,
+              status,
+              otp_code,
+              tracking_token,
+              created_at,
+              hive_catalogue!orders_item_id_fkey(product_name, image_url),
+              sme_stores!orders_sme_id_fkey(brand_name)
+            `
+            )
+            .in("tracking_token", guestTokens)
+            .order("created_at", { ascending: false });
+
+          if (fetchError) {
+            console.error("[MyOrders] Guest fetch error:", fetchError);
+            setError("Failed to load your orders");
+            setLoading(false);
+            return;
+          }
+
+          const mapped = (data || []).map((o: any) => ({
+            id: o.id,
+            item_id: o.item_id,
+            sme_id: o.sme_id,
+            total_price: o.total_price,
+            status: o.status,
+            otp_code: o.otp_code,
+            tracking_token: o.tracking_token,
+            created_at: o.created_at,
+            product_name: o.hive_catalogue?.product_name || "Unknown Product",
+            brand_name: o.sme_stores?.brand_name || "Unknown Vendor",
+            image_url: o.hive_catalogue?.image_url || null,
+            is_guest_order: true,
+          }));
+
+          setOrders(mapped);
+        }
+      } catch (err) {
+        console.error("[MyOrders] Unexpected error:", err);
+        setError("An unexpected error occurred");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          `
-          id,
-          item_id,
-          sme_id,
-          total_price,
-          status,
-          otp_code,
-          created_at,
-          hive_catalogue!orders_item_id_fkey(product_name, image_url),
-          sme_stores!orders_sme_id_fkey(brand_name)
-        `
-        )
-        .eq("buyer_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching orders:", error);
-        toast.error("Failed to load orders");
-        setLoading(false);
-        return;
-      }
-
-      const mapped = (data || []).map((o: any) => ({
-        id: o.id,
-        item_id: o.item_id,
-        sme_id: o.sme_id,
-        total_price: o.total_price,
-        status: o.status,
-        otp_code: o.otp_code,
-        created_at: o.created_at,
-        product_name: o.hive_catalogue?.product_name || "Unknown Product",
-        brand_name: o.sme_stores?.brand_name || "Unknown Vendor",
-        image_url: o.hive_catalogue?.image_url || null,
-      }));
-
-      setOrders(mapped);
-      setLoading(false);
     };
 
     fetchOrders();
@@ -185,6 +275,31 @@ const MyOrders = () => {
           </div>
         </motion.div>
 
+        {/* GUEST INFO BANNER */}
+        {isGuestMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-7xl mx-auto px-4 md:px-8 py-4"
+          >
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <span className="text-2xl">🔑</span>
+                <div>
+                  <p className="font-bold text-[#0F1A35]">Tracking Guest Orders</p>
+                  <p className="text-sm text-[#0F1A35]/70">To save these permanently to a profile, create an account</p>
+                </div>
+              </div>
+              <a
+                href="/signup"
+                className="px-6 py-2 bg-gradient-to-r from-[#B37C1C] to-[#9b6816] text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all hover:scale-105 whitespace-nowrap"
+              >
+                Sign Up Free
+              </a>
+            </div>
+          </motion.div>
+        )}
+
         {/* ORDERS CONTENT */}
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
           {loading ? (
@@ -200,22 +315,26 @@ const MyOrders = () => {
               animate={{ opacity: 1, y: 0 }}
               className="text-center py-24"
             >
-              <div className="text-6xl mb-4">
-                {filterTab === "active" ? "📦" : "📜"}
-              </div>
+              <div className="text-6xl mb-4">📭</div>
               <p className="text-2xl font-bold text-[#0F1A35] mb-2">
-                {filterTab === "active" ? "No active orders yet" : "No order history"}
+                {guestOrderCount === 0
+                  ? "Your order list is empty"
+                  : filterTab === "active"
+                  ? "No active orders"
+                  : "No order history"}
               </p>
               <p className="text-[#0F1A35]/60 mb-8">
-                {filterTab === "active"
-                  ? "Start shopping to see your orders here!"
-                  : "Your completed orders will appear here."}
+                {guestOrderCount === 0
+                  ? "Start shopping to create your first order!"
+                  : filterTab === "active"
+                  ? "All your orders have been completed!"
+                  : "Your order history will appear here."}
               </p>
               <a
-                href="/customer-dash"
+                href="/"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#B37C1C] to-[#9b6816] text-white rounded-xl font-bold hover:shadow-2xl transition-all hover:scale-105"
               >
-                <Zap size={18} /> Continue Shopping
+                <Zap size={18} /> Explore Marketplace
               </a>
             </motion.div>
           ) : (
@@ -275,8 +394,20 @@ const OrderCard = ({
             <Zap size={18} className="text-[#B37C1C]" />
           </div>
           <div>
-            <h3 className="font-bold text-[#0F1A35] text-lg">Order #{order.id}</h3>
-            <p className="text-xs text-[#0F1A35]/60 font-medium">{order.brand_name}</p>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-[#0F1A35] text-lg">Order #{order.id}</h3>
+              {order.is_guest_order && (
+                <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-bold">
+                  Guest
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-[#0F1A35]/60 font-medium">{order.brand_name}</p>
+              {order.tracking_token && (
+                <p className="text-xs text-[#0F1A35]/40 font-mono">{maskToken(order.tracking_token)}</p>
+              )}
+            </div>
           </div>
         </div>
         <motion.button
