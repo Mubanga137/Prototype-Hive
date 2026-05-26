@@ -217,11 +217,11 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
         // Enhanced error logging
         console.error("[Checkout] Order creation failed", {
-          result: serializeError(result),
+          result,
           status: result?.status,
           message: result?.message,
           orderId: result?.order_id,
-          rawResponse: serializeError(data),
+          rawResponse: data,
           timestamp: new Date().toISOString(),
         });
 
