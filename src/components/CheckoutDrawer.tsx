@@ -278,9 +278,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 8b: Route product orders - guests go to ledger, authenticated users to dashboard
       if (!user?.id) {
-        // Guest user: redirect to secure ledger tracker with unguessable token
+        // Guest user: redirect to secure parameterless ledger (token already in localStorage)
         setTimeout(() => {
-          navigate(`/ledger/${trackingToken}`, { replace: true });
+          navigate("/ledger", { replace: true });
           onOpenChange(false);
         }, 1500);
         return;

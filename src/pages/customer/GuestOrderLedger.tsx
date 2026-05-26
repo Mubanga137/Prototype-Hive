@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, CheckCircle, Clock, Package, Phone, MapPin, Lock } from "lucide-react";
-import { cleanZambianPhone } from "@/lib/whatsapp";
+import { Copy, CheckCircle, Clock, Package, Phone, MapPin, ArrowLeft } from "lucide-react";
 
 interface GuestOrder {
   order_id: number;
@@ -20,139 +19,120 @@ interface GuestOrder {
   item_type?: string;
   created_at?: string;
   item_count?: number;
+  brand_name?: string;
+  whatsapp_number?: string;
 }
 
 export default function GuestOrderLedger() {
-  const { trackingToken } = useParams<{ trackingToken: string }>();
   const navigate = useNavigate();
   const [order, setOrder] = useState<GuestOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [hasLocalToken, setHasLocalToken] = useState(false);
-  const [verificationPhone, setVerificationPhone] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const [trackingToken, setTrackingToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!trackingToken) {
-      toast.error("Invalid tracking token");
-      navigate("/");
-      return;
-    }
+    initializeFromLocalStorage();
+  }, []);
 
-    // Check if token exists in localStorage (zero-trust verification)
-    checkLocalToken();
-    fetchOrder();
-  }, [trackingToken]);
-
-  const checkLocalToken = () => {
+  const initializeFromLocalStorage = () => {
     try {
       const stored = localStorage.getItem("hive_guest_active_cart");
       const tokens = stored ? JSON.parse(stored) : [];
-      const tokenExists = Array.isArray(tokens) && tokens.includes(trackingToken);
-      setHasLocalToken(tokenExists);
-      if (tokenExists) {
-        setVerified(true);
+      
+      if (!Array.isArray(tokens) || tokens.length === 0) {
+        setLoading(false);
+        return;
       }
+
+      // Get the most recent token (last in array)
+      const mostRecentToken = tokens[tokens.length - 1];
+      setTrackingToken(mostRecentToken);
+      fetchOrder(mostRecentToken);
     } catch (e) {
-      setHasLocalToken(false);
+      console.error("[GuestOrderLedger] localStorage initialization failed:", e);
+      setLoading(false);
     }
   };
 
-  const fetchOrder = async () => {
+  const fetchOrder = async (token: string) => {
+    if (!token) return;
+
     try {
       setLoading(true);
 
-      // Query orders table using the tracking token (public read access)
-      // RLS policy allows reading non-pending orders created within 30 days
-      // Note: Start without foreign key join, add it only if needed
       const { data, error } = await supabase
         .from("orders")
         .select(
           `id, tracking_token, customer_phone, customer_name, total_price,
            total_amount, otp_code, status, item_type, delivery_address,
-           scheduled_date, created_at, item_id`
+           scheduled_date, created_at, item_id, sme_id`
         )
-        .eq("tracking_token", trackingToken)
+        .eq("tracking_token", token)
         .maybeSingle();
 
       if (error) {
-        const errorCode = (error as any).code;
-        const errorStatus = (error as any).status;
-        const errorMessage = error.message || "Unknown error";
-        const errorDetails = (error as any).details || "";
-        const errorHint = (error as any).hint || "";
-
-        console.error("[GuestOrderLedger] Fetch error details:", JSON.stringify({
-          message: errorMessage,
-          code: errorCode,
-          status: errorStatus,
-          details: errorDetails,
-          hint: errorHint,
-          token: trackingToken,
-          timestamp: new Date().toISOString(),
-        }, null, 2));
-
-        // Distinguish between "not found" and other errors
-        if (errorCode === "PGRST116" || errorMessage.includes("no rows")) {
-          toast.error("Order not found. Verify your tracking token.");
-        } else if (errorStatus === 403 || errorMessage.includes("permission") || errorMessage.includes("policy")) {
-          toast.error("Access denied. The order may not be ready for tracking yet. Please try again in a moment.");
-        } else if (errorStatus === 400) {
-          toast.error(`Invalid request: ${errorMessage}`);
-        } else {
-          toast.error(`Error loading order: ${errorMessage}`);
-        }
-        navigate("/");
+        console.error("[GuestOrderLedger] Fetch error:", {
+          message: error.message,
+          code: (error as any).code,
+          status: (error as any).status,
+        });
+        toast.error("Failed to load order details");
         return;
       }
 
-      if (data) {
-        console.log("[GuestOrderLedger] Order loaded successfully:", {
-          orderId: data.id,
-          status: data.status,
-          itemId: data.item_id,
-        });
-
-        // Fetch item name separately (avoid foreign key join issues)
-        let itemName = "Order Item";
-        if (data.item_id) {
-          const { data: itemData } = await supabase
-            .from("hive_catalogue")
-            .select("product_name")
-            .eq("id", data.item_id)
-            .maybeSingle();
-
-          if (itemData?.product_name) {
-            itemName = itemData.product_name;
-          }
-        }
-
-        setOrder({
-          order_id: data.id,
-          tracking_token: data.tracking_token,
-          customer_phone: data.customer_phone,
-          customer_name: data.customer_name,
-          total_price: data.total_price || data.total_amount || 0,
-          total_amount: data.total_amount,
-          otp_code: data.otp_code,
-          status: data.status,
-          item_name: itemName,
-          delivery_address: data.delivery_address,
-          scheduled_date: data.scheduled_date,
-          item_type: data.item_type,
-          created_at: data.created_at,
-          item_count: 1,
-        });
-      } else {
-        // No data returned (order not found or filtered by RLS)
-        console.warn("[GuestOrderLedger] No order found", {
-          trackingToken,
-          timestamp: new Date().toISOString(),
-        });
-        toast.error("Order not found. Check your tracking token and try again.");
-        navigate("/");
+      if (!data) {
+        console.warn("[GuestOrderLedger] No order found for token:", token);
+        return;
       }
+
+      // Fetch item details
+      let itemName = "Order Item";
+      if (data.item_id) {
+        const { data: itemData } = await supabase
+          .from("hive_catalogue")
+          .select("product_name")
+          .eq("id", data.item_id)
+          .maybeSingle();
+
+        if (itemData?.product_name) {
+          itemName = itemData.product_name;
+        }
+      }
+
+      // Fetch store details
+      let brandName = "Unknown Vendor";
+      let whatsappNumber = null;
+      if (data.sme_id) {
+        const { data: storeData } = await supabase
+          .from("sme_stores")
+          .select("brand_name, whatsapp_number")
+          .eq("id", data.sme_id)
+          .maybeSingle();
+
+        if (storeData) {
+          brandName = storeData.brand_name || brandName;
+          whatsappNumber = storeData.whatsapp_number || null;
+        }
+      }
+
+      setOrder({
+        order_id: data.id,
+        tracking_token: data.tracking_token,
+        customer_phone: data.customer_phone,
+        customer_name: data.customer_name,
+        total_price: data.total_price || data.total_amount || 0,
+        total_amount: data.total_amount,
+        otp_code: data.otp_code,
+        status: data.status,
+        item_name: itemName,
+        delivery_address: data.delivery_address,
+        scheduled_date: data.scheduled_date,
+        item_type: data.item_type,
+        created_at: data.created_at,
+        item_count: 1,
+        brand_name: brandName,
+        whatsapp_number: whatsappNumber,
+      });
     } catch (err) {
       console.error("[GuestOrderLedger] Error:", err);
       toast.error("Failed to load order details");
@@ -166,49 +146,6 @@ export default function GuestOrderLedger() {
     setCopied(true);
     toast.success(`${label} copied!`);
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handlePhoneVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!verificationPhone.trim()) {
-      toast.error("Please enter your phone number");
-      return;
-    }
-
-    setVerifying(true);
-    try {
-      // Clean the phone number
-      const cleanedPhone = cleanZambianPhone(verificationPhone) || verificationPhone;
-
-      // Verify against order's customer phone
-      if (order && cleanedPhone === cleanZambianPhone(order.customer_phone)) {
-        setVerified(true);
-
-        // Persist token to localStorage for future access
-        try {
-          const existing = JSON.parse(localStorage.getItem("hive_guest_active_cart") || "[]");
-          const tokenArray = Array.isArray(existing) ? existing : [];
-          if (!tokenArray.includes(trackingToken)) {
-            tokenArray.push(trackingToken);
-          }
-          const deduped = Array.from(new Set(tokenArray));
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify(deduped));
-          setHasLocalToken(true);
-        } catch (e) {
-          console.warn("[GuestOrderLedger] localStorage persistence failed:", e);
-        }
-
-        toast.success("Phone verified! Order details unlocked.");
-      } else {
-        toast.error("Phone number doesn't match this order. Please try again.");
-      }
-    } catch (err) {
-      console.error("[GuestOrderLedger] Verification error:", err);
-      toast.error("Verification failed. Please try again.");
-    } finally {
-      setVerifying(false);
-    }
   };
 
   const getStatusColor = (status: string) => {
@@ -257,87 +194,28 @@ export default function GuestOrderLedger() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
           <div className="inline-flex animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">Loading your order...</p>
+          <p className="mt-4 text-muted-foreground">Loading your receipt...</p>
         </div>
       </div>
     );
   }
 
-  if (!order) {
+  if (!order || !trackingToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 px-4">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">📭</div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Order Not Found</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">No Active Receipt Found</h1>
           <p className="text-muted-foreground mb-6">
-            This order link may have expired or doesn't exist.
+            No active receipt found in this session.
           </p>
           <button
-            onClick={() => navigate("/")}
-            className="btn-gold px-6 py-2"
+            onClick={() => navigate("/marketplace")}
+            className="btn-gold px-6 py-2 inline-flex items-center gap-2"
           >
-            Return to Home
+            <ArrowLeft size={16} />
+            Back to Marketplace
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show verification gate if token not in localStorage and not yet verified
-  if (!verified && !hasLocalToken) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-border">
-            {/* Lock Icon */}
-            <div className="flex justify-center mb-6">
-              <div className="p-4 bg-amber-100 rounded-full">
-                <Lock className="w-8 h-8 text-amber-600" />
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-2xl font-bold text-center text-foreground mb-2">Verify Your Identity</h1>
-            <p className="text-center text-muted-foreground mb-6">
-              For security, please verify your phone number to view order details.
-            </p>
-
-            {/* Verification Form */}
-            <form onSubmit={handlePhoneVerification} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={verificationPhone}
-                  onChange={(e) => setVerificationPhone(e.target.value)}
-                  placeholder="0977 123 456"
-                  disabled={verifying}
-                  inputMode="tel"
-                  className="w-full rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Enter the phone number associated with this order
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={verifying}
-                className="btn-gold w-full py-3 disabled:opacity-80"
-              >
-                {verifying ? "Verifying..." : "Verify & Unlock"}
-              </button>
-            </form>
-
-            {/* Info */}
-            <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground">
-                <span className="font-semibold">Why verify?</span> This prevents unauthorized access to your order details. We only match your phone number—no data is stored beyond this session.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -346,13 +224,23 @@ export default function GuestOrderLedger() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-block p-3 bg-primary/10 rounded-full mb-4">
-            <CheckCircle className="w-8 h-8 text-primary" />
+        {/* Header with Back Button */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-primary hover:opacity-80 transition font-medium mb-6"
+          >
+            <ArrowLeft size={18} />
+            Back
+          </button>
+
+          <div className="text-center">
+            <div className="inline-block p-3 bg-primary/10 rounded-full mb-4">
+              <CheckCircle className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Order Confirmed</h1>
+            <p className="text-muted-foreground">Your order has been received and is being processed</p>
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Order Confirmed</h1>
-          <p className="text-muted-foreground">Your order has been received and is being processed</p>
         </div>
 
         {/* Main Card */}
@@ -372,7 +260,6 @@ export default function GuestOrderLedger() {
 
           {/* Order ID & Token */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pb-6 border-b border-border">
-            {/* Order ID */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Order ID
@@ -391,7 +278,6 @@ export default function GuestOrderLedger() {
               </div>
             </div>
 
-            {/* OTP Code */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Verification Code
@@ -414,9 +300,8 @@ export default function GuestOrderLedger() {
             </div>
           </div>
 
-          {/* Customer & Item Details */}
+          {/* Order Details */}
           <div className="space-y-4 mb-6 pb-6 border-b border-border">
-            {/* Item */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Item
@@ -424,7 +309,15 @@ export default function GuestOrderLedger() {
               <p className="text-base font-semibold text-foreground">{order.item_name}</p>
             </div>
 
-            {/* Total Amount */}
+            {order.brand_name && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Vendor
+                </p>
+                <p className="text-foreground">{order.brand_name}</p>
+              </div>
+            )}
+
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Total Amount
@@ -434,7 +327,6 @@ export default function GuestOrderLedger() {
               </p>
             </div>
 
-            {/* Customer Name */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Ordered By
@@ -442,7 +334,6 @@ export default function GuestOrderLedger() {
               <p className="text-foreground">{order.customer_name}</p>
             </div>
 
-            {/* Delivery Address or Scheduled Date */}
             {order.item_type === "service" ? (
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -474,7 +365,6 @@ export default function GuestOrderLedger() {
               </div>
             )}
 
-            {/* Customer Phone */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-muted-foreground" />
@@ -504,7 +394,7 @@ export default function GuestOrderLedger() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Save this token to retrieve your order later
+              Stored securely in your session
             </p>
           </div>
         </div>
@@ -549,7 +439,7 @@ export default function GuestOrderLedger() {
               border: "1px solid #FFFBF2"
             }}
           >
-            {order?.item_count === 1 ? "View Order" : "View Orders"}
+            View My Orders
           </button>
           <button
             onClick={() => navigate("/customer-dash?section=Messages")}
