@@ -118,7 +118,7 @@ const CartDrawer = ({
     const payload = lines.map((l) => ({
       buyer_id: user?.id ?? null,  // ✅ Allow null for guests
       sme_id: smeId,
-      store_id: smeId,
+      store_id: storeId,
       item_id: l.offer_id,
       total_amount: l.unit_price * l.quantity,
       total_price: l.unit_price * l.quantity,
