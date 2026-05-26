@@ -213,6 +213,7 @@ export type Database = {
           system_fee: number | null
           total_amount: number | null
           total_price: number | null
+          tracking_token: string | null
         }
         Insert: {
           buyer_id?: string | null
@@ -239,6 +240,7 @@ export type Database = {
           system_fee?: number | null
           total_amount?: number | null
           total_price?: number | null
+          tracking_token?: string | null
         }
         Update: {
           buyer_id?: string | null
@@ -265,6 +267,7 @@ export type Database = {
           system_fee?: number | null
           total_amount?: number | null
           total_price?: number | null
+          tracking_token?: string | null
         }
         Relationships: [
           {
