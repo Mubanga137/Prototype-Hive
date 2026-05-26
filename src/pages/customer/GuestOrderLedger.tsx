@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Copy, CheckCircle, Clock, Package, Phone, MapPin } from "lucide-react";
+import { Copy, CheckCircle, Clock, Package, Phone, MapPin, Lock } from "lucide-react";
+import { cleanZambianPhone } from "@/lib/whatsapp";
 
 interface GuestOrder {
   order_id: number;
@@ -27,6 +28,10 @@ export default function GuestOrderLedger() {
   const [order, setOrder] = useState<GuestOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [hasLocalToken, setHasLocalToken] = useState(false);
+  const [verificationPhone, setVerificationPhone] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     if (!trackingToken) {
@@ -35,8 +40,24 @@ export default function GuestOrderLedger() {
       return;
     }
 
+    // Check if token exists in localStorage (zero-trust verification)
+    checkLocalToken();
     fetchOrder();
   }, [trackingToken]);
+
+  const checkLocalToken = () => {
+    try {
+      const stored = localStorage.getItem("hive_guest_active_cart");
+      const tokens = stored ? JSON.parse(stored) : [];
+      const tokenExists = Array.isArray(tokens) && tokens.includes(trackingToken);
+      setHasLocalToken(tokenExists);
+      if (tokenExists) {
+        setVerified(true);
+      }
+    } catch (e) {
+      setHasLocalToken(false);
+    }
+  };
 
   const fetchOrder = async () => {
     try {
@@ -147,6 +168,49 @@ export default function GuestOrderLedger() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handlePhoneVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!verificationPhone.trim()) {
+      toast.error("Please enter your phone number");
+      return;
+    }
+
+    setVerifying(true);
+    try {
+      // Clean the phone number
+      const cleanedPhone = cleanZambianPhone(verificationPhone) || verificationPhone;
+
+      // Verify against order's customer phone
+      if (order && cleanedPhone === cleanZambianPhone(order.customer_phone)) {
+        setVerified(true);
+
+        // Persist token to localStorage for future access
+        try {
+          const existing = JSON.parse(localStorage.getItem("hive_guest_active_cart") || "[]");
+          const tokenArray = Array.isArray(existing) ? existing : [];
+          if (!tokenArray.includes(trackingToken)) {
+            tokenArray.push(trackingToken);
+          }
+          const deduped = Array.from(new Set(tokenArray));
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify(deduped));
+          setHasLocalToken(true);
+        } catch (e) {
+          console.warn("[GuestOrderLedger] localStorage persistence failed:", e);
+        }
+
+        toast.success("Phone verified! Order details unlocked.");
+      } else {
+        toast.error("Phone number doesn't match this order. Please try again.");
+      }
+    } catch (err) {
+      console.error("[GuestOrderLedger] Verification error:", err);
+      toast.error("Verification failed. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending_payment":
@@ -214,6 +278,66 @@ export default function GuestOrderLedger() {
           >
             Return to Home
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show verification gate if token not in localStorage and not yet verified
+  if (!verified && !hasLocalToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-border">
+            {/* Lock Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="p-4 bg-amber-100 rounded-full">
+                <Lock className="w-8 h-8 text-amber-600" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-2xl font-bold text-center text-foreground mb-2">Verify Your Identity</h1>
+            <p className="text-center text-muted-foreground mb-6">
+              For security, please verify your phone number to view order details.
+            </p>
+
+            {/* Verification Form */}
+            <form onSubmit={handlePhoneVerification} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={verificationPhone}
+                  onChange={(e) => setVerificationPhone(e.target.value)}
+                  placeholder="0977 123 456"
+                  disabled={verifying}
+                  inputMode="tel"
+                  className="w-full rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Enter the phone number associated with this order
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifying}
+                className="btn-gold w-full py-3 disabled:opacity-80"
+              >
+                {verifying ? "Verifying..." : "Verify & Unlock"}
+              </button>
+            </form>
+
+            {/* Info */}
+            <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold">Why verify?</span> This prevents unauthorized access to your order details. We only match your phone number—no data is stored beyond this session.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
