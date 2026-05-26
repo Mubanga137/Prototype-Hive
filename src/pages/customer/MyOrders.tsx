@@ -118,7 +118,7 @@ const MyOrders = () => {
           setIsGuestMode(true);
           setGuestOrderCount(guestTokens.length);
 
-          // Query orders by tracking tokens
+          // Query orders by tracking tokens (basic fields only to avoid RLS issues with joins)
           const { data, error: fetchError } = await supabase
             .from("orders")
             .select(
@@ -130,37 +130,75 @@ const MyOrders = () => {
               status,
               otp_code,
               tracking_token,
-              created_at,
-              hive_catalogue!orders_item_id_fkey(product_name, image_url),
-              sme_stores!orders_sme_id_fkey(brand_name)
+              created_at
             `
             )
             .in("tracking_token", guestTokens)
             .order("created_at", { ascending: false });
 
           if (fetchError) {
-            console.error("[MyOrders] Guest fetch error:", fetchError);
+            console.error("[MyOrders] Guest fetch error:", {
+              message: fetchError.message,
+              code: (fetchError as any).code,
+              status: (fetchError as any).status,
+              details: (fetchError as any).details,
+              hint: (fetchError as any).hint,
+            });
             setError("Failed to load your orders");
             setLoading(false);
             return;
           }
 
-          const mapped = (data || []).map((o: any) => ({
-            id: o.id,
-            item_id: o.item_id,
-            sme_id: o.sme_id,
-            total_price: o.total_price,
-            status: o.status,
-            otp_code: o.otp_code,
-            tracking_token: o.tracking_token,
-            created_at: o.created_at,
-            product_name: o.hive_catalogue?.product_name || "Unknown Product",
-            brand_name: o.sme_stores?.brand_name || "Unknown Vendor",
-            image_url: o.hive_catalogue?.image_url || null,
-            is_guest_order: true,
-          }));
+          // Fetch related data separately for each order
+          const enrichedOrders = await Promise.all(
+            (data || []).map(async (o: any) => {
+              let productName = "Unknown Product";
+              let imageUrl = null;
+              let brandName = "Unknown Vendor";
 
-          setOrders(mapped);
+              // Fetch item details
+              if (o.item_id) {
+                const { data: itemData } = await supabase
+                  .from("hive_catalogue")
+                  .select("product_name, image_url")
+                  .eq("id", o.item_id)
+                  .maybeSingle();
+                if (itemData) {
+                  productName = itemData.product_name || productName;
+                  imageUrl = itemData.image_url || imageUrl;
+                }
+              }
+
+              // Fetch store details
+              if (o.sme_id) {
+                const { data: storeData } = await supabase
+                  .from("sme_stores")
+                  .select("brand_name")
+                  .eq("id", o.sme_id)
+                  .maybeSingle();
+                if (storeData) {
+                  brandName = storeData.brand_name || brandName;
+                }
+              }
+
+              return {
+                id: o.id,
+                item_id: o.item_id,
+                sme_id: o.sme_id,
+                total_price: o.total_price,
+                status: o.status,
+                otp_code: o.otp_code,
+                tracking_token: o.tracking_token,
+                created_at: o.created_at,
+                product_name: productName,
+                brand_name: brandName,
+                image_url: imageUrl,
+                is_guest_order: true,
+              };
+            })
+          );
+
+          setOrders(enrichedOrders);
         }
       } catch (err) {
         console.error("[MyOrders] Unexpected error:", err);

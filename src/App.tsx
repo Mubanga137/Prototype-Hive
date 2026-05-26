@@ -62,7 +62,7 @@ const AppContent = () => {
         <Route path="/customer-dash" element={<ProtectedRoute allowGuests><CustomerDashboard /></ProtectedRoute>} />
         <Route path="/customer-dash/my-orders" element={<ProtectedRoute allowGuestTokens><MyOrders /></ProtectedRoute>} />
         <Route path="/track-orders" element={<ProtectedRoute allowGuests><TrackOrders /></ProtectedRoute>} />
-        <Route path="/ledger/:trackingToken" element={<GuestOrderLedger />} />
+        <Route path="/ledger" element={<GuestOrderLedger />} />
 
         {/* Vendor / SME — temporarily open */}
         <Route path="/retailer-studio" element={<RetailerStudioDashboard />} />
