@@ -477,6 +477,42 @@ export type Database = {
         }
         Relationships: []
       }
+      sme_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: number
+          is_read: boolean
+          metadata: Json | null
+          order_id: number | null
+          sme_id: number | null
+          store_id: number | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: number
+          is_read?: boolean
+          metadata?: Json | null
+          order_id?: number | null
+          sme_id?: number | null
+          store_id?: number | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: number
+          is_read?: boolean
+          metadata?: Json | null
+          order_id?: number | null
+          sme_id?: number | null
+          store_id?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
       vendor_cloned_items: {
         Row: {
           catalogue_item_id: number

@@ -30,7 +30,7 @@ import {
   cleanZambianPhone,
   generateOtpCode,
 } from "@/lib/whatsapp";
-import { logCheckoutError, getUserFriendlyErrorMessage } from "@/utils/errorUtils";
+import { logCheckoutError, getUserFriendlyErrorMessage, serializeError } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
 
 export interface CheckoutItem {
@@ -217,11 +217,11 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
         // Enhanced error logging
         console.error("[Checkout] Order creation failed", {
-          result: result,
+          result: serializeError(result),
           status: result?.status,
           message: result?.message,
           orderId: result?.order_id,
-          rawResponse: data,
+          rawResponse: serializeError(data),
           timestamp: new Date().toISOString(),
         });
 
