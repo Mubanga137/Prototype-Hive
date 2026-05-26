@@ -541,7 +541,7 @@ export default function GuestOrderLedger() {
             Continue Shopping
           </button>
           <button
-            onClick={() => navigate("/customer-dash/my-orders")}
+            onClick={() => navigate("/customer-dash?section=My Orders")}
             className="w-full py-3 font-medium text-foreground hover:bg-opacity-80 transition rounded-lg"
             style={{
               backgroundColor: "#FFFBF2",
