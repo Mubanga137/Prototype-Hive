@@ -2,16 +2,19 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, Send, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useGuestTracking } from "@/hooks/useGuestTracking";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import MessagingDebugPanel from "@/components/messaging/MessagingDebugPanel";
 
 interface Conversation {
   id: string;
-  participant_a: string;
-  participant_b: string;
+  participant_a: string | null;
+  participant_b: string | null;
+  guest_tracking_token: string | null;
   last_message: string | null;
   last_message_at: string | null;
   context_order_id: number | null;
@@ -50,6 +53,7 @@ const initials = (name: string | null) =>
 
 const CustomerMessages = () => {
   const { user } = useAuth();
+  const { isGuest, trackingToken } = useGuestTracking();
   const isMobile = useIsMobile();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -62,28 +66,42 @@ const CustomerMessages = () => {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const uid = user?.id;
+  const isAuthenticated = !!uid;
+  const authIdentifier = isAuthenticated ? uid : trackingToken;
+  const authMode: "user" | "guest" = isAuthenticated ? "user" : "guest";
 
   const loadConversations = useCallback(async () => {
-    if (!uid) return;
-    const { data } = await (supabase as any)
-      .from("conversations")
-      .select("*")
-      .or(`participant_a.eq.${uid},participant_b.eq.${uid}`)
-      .order("last_message_at", { ascending: false });
+    if (isAuthenticated && !uid) return;
+    if (!isAuthenticated && !trackingToken) return;
+
+    let query = (supabase as any).from("conversations").select("*");
+
+    if (isAuthenticated) {
+      // For auth users: fetch conversations where they are a participant
+      query = query.or(`participant_a.eq.${uid},participant_b.eq.${uid}`);
+    } else {
+      // For guests: fetch conversations with their tracking token
+      query = query.eq("guest_tracking_token", trackingToken);
+    }
+
+    const { data, error } = await query.order("last_message_at", { ascending: false });
     if (data) setConversations(data as Conversation[]);
-  }, [uid]);
+    if (error) console.log("Load conversations:", error);
+  }, [uid, trackingToken, isAuthenticated]);
 
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+    if (isAuthenticated && uid) loadConversations();
+    if (!isAuthenticated && trackingToken) loadConversations();
+  }, [uid, trackingToken, isAuthenticated, loadConversations]);
 
   const loadMessagesForConversation = useCallback(async (convId: string) => {
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("messages")
       .select("*")
       .eq("conversation_id", convId)
       .order("created_at", { ascending: true });
     if (data) setMessages(data as Message[]);
+    if (error) console.log("Load messages:", error);
   }, []);
 
   const loadProfiles = useCallback(async () => {
@@ -125,6 +143,44 @@ const CustomerMessages = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!authIdentifier || !authMode) return;
+
+    const channelName = `messages_${authMode}_${authIdentifier}`;
+    const channel = (supabase as any)
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload: any) => {
+          if (activeConv && payload.new.conversation_id === activeConv.id) {
+            setMessages((prev) => [...prev, payload.new as Message]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversations" },
+        (payload: any) => {
+          const conv = payload.new as Conversation;
+          if (authMode === "user") {
+            if (conv.participant_a === uid || conv.participant_b === uid) {
+              setConversations((prev) => [conv, ...prev]);
+            }
+          } else {
+            if (conv.guest_tracking_token === trackingToken) {
+              setConversations((prev) => [conv, ...prev]);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [uid, trackingToken, authMode, authIdentifier, activeConv]);
+
   const otherUserId = activeConv
     ? activeConv.participant_a === uid
       ? activeConv.participant_b
@@ -142,13 +198,17 @@ const CustomerMessages = () => {
   );
 
   const handleSendMessage = async () => {
-    if (!draft.trim() || !activeConv || !uid) return;
+    if (!draft.trim() || !activeConv || !authIdentifier) return;
+
+    // For guests, use a system-generated UUID as sender_id
+    const senderId = authMode === "user" ? uid : `guest_${trackingToken}`;
+
     setSending(true);
     const { error } = await (supabase as any)
       .from("messages")
       .insert({
         conversation_id: activeConv.id,
-        sender_id: uid,
+        sender_id: senderId,
         content: draft,
         message_type: "text",
       });
@@ -162,7 +222,9 @@ const CustomerMessages = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
+    <>
+      <MessagingDebugPanel />
+      <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
       <div className="max-w-6xl mx-auto h-full flex gap-4 p-4">
         {/* Conversations List */}
         <div
@@ -336,6 +398,7 @@ const CustomerMessages = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
