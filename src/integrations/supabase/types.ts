@@ -554,8 +554,9 @@ export type Database = {
       conversations: {
         Row: {
           id: string
-          participant_a: string
-          participant_b: string
+          participant_a: string | null
+          participant_b: string | null
+          guest_tracking_token: string | null
           last_message: string | null
           last_message_at: string | null
           context_order_id: number | null
@@ -564,8 +565,9 @@ export type Database = {
         }
         Insert: {
           id?: string
-          participant_a: string
-          participant_b: string
+          participant_a?: string | null
+          participant_b?: string | null
+          guest_tracking_token?: string | null
           last_message?: string | null
           last_message_at?: string | null
           context_order_id?: number | null
@@ -574,8 +576,9 @@ export type Database = {
         }
         Update: {
           id?: string
-          participant_a?: string
-          participant_b?: string
+          participant_a?: string | null
+          participant_b?: string | null
+          guest_tracking_token?: string | null
           last_message?: string | null
           last_message_at?: string | null
           context_order_id?: number | null

@@ -1,14 +1,19 @@
--- Create conversations table
+-- Create conversations table (supports both auth users and guest buyers)
 CREATE TABLE IF NOT EXISTS public.conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  participant_a UUID NOT NULL,
-  participant_b UUID NOT NULL,
+  participant_a UUID,
+  participant_b UUID,
+  guest_tracking_token TEXT,
   last_message TEXT,
   last_message_at TIMESTAMP WITH TIME ZONE,
   context_order_id INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT different_participants CHECK (participant_a != participant_b)
+  CONSTRAINT valid_participants CHECK (
+    (participant_a IS NOT NULL OR guest_tracking_token IS NOT NULL) AND
+    (participant_b IS NOT NULL OR guest_tracking_token IS NOT NULL)
+  ),
+  CONSTRAINT different_participants CHECK (participant_a IS NULL OR participant_b IS NULL OR participant_a != participant_b)
 );
 
 -- Create messages table
@@ -33,10 +38,15 @@ CREATE INDEX IF NOT EXISTS messages_created_at_idx ON public.messages(created_at
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policies for conversations (allow users to see their own conversations)
+-- Create RLS policies for conversations (auth users and guests)
 CREATE POLICY "Users can view their conversations" ON public.conversations
   FOR SELECT USING (
     auth.uid() = participant_a OR auth.uid() = participant_b
+  );
+
+CREATE POLICY "Guests can view conversations by tracking token" ON public.conversations
+  FOR SELECT USING (
+    guest_tracking_token IS NOT NULL
   );
 
 CREATE POLICY "Users can create conversations" ON public.conversations
@@ -44,9 +54,20 @@ CREATE POLICY "Users can create conversations" ON public.conversations
     auth.uid() = participant_a OR auth.uid() = participant_b
   );
 
+CREATE POLICY "Guests can create conversations with token" ON public.conversations
+  FOR INSERT WITH CHECK (
+    guest_tracking_token IS NOT NULL AND
+    (auth.uid() = participant_a OR auth.uid() = participant_b OR guest_tracking_token IS NOT NULL)
+  );
+
 CREATE POLICY "Users can update their conversations" ON public.conversations
   FOR UPDATE USING (
     auth.uid() = participant_a OR auth.uid() = participant_b
+  );
+
+CREATE POLICY "Guests can update conversations by token" ON public.conversations
+  FOR UPDATE USING (
+    guest_tracking_token IS NOT NULL
   );
 
 -- Create RLS policies for messages (allow users to see messages in their conversations)
