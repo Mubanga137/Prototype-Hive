@@ -77,30 +77,57 @@ const CustomerMessages = () => {
   // ========== DUAL-STATE FALLBACK: Load Conversations ==========
   const loadConversations = useCallback(async () => {
     if (!isAuthenticated && !trackingToken) {
+      console.debug("[CustomerMessages] No auth identifier, clearing conversations");
       setConversations([]);
       return;
     }
 
     setLoading(true);
-    let query = (supabase as any).from("conversations").select("*");
+    try {
+      let query = (supabase as any).from("conversations").select("*");
 
-    if (isAuthenticated && uid) {
-      // Fallback Check 1: If customer session is logged in
-      // Select conversations where participant_a === auth.uid() OR participant_b === auth.uid()
-      query = query.or(`participant_a.eq.${uid},participant_b.eq.${uid}`);
-    } else if (!isAuthenticated && trackingToken) {
-      // Fallback Check 2: If anonymous Guest Buyer is active
-      // Extract 36-character token from localStorage and fetch row where guest_tracking_token === token
-      query = query.eq("guest_tracking_token", trackingToken);
-    }
+      if (isAuthenticated && uid) {
+        // Fallback Check 1: If customer session is logged in
+        // Select conversations where participant_a === auth.uid() OR participant_b === auth.uid()
+        console.debug(`[CustomerMessages] Loading conversations for user: ${uid}`);
+        query = query.or(`participant_a.eq.${uid},participant_b.eq.${uid}`);
+      } else if (!isAuthenticated && trackingToken) {
+        // Fallback Check 2: If anonymous Guest Buyer is active
+        // Extract 36-character token from localStorage and fetch row where guest_tracking_token === token
+        console.debug(`[CustomerMessages] Loading conversations for guest token: ${trackingToken.slice(0, 8)}...`);
+        query = query.eq("guest_tracking_token", trackingToken);
+      }
 
-    const { data, error } = await query.order("last_message_at", { ascending: false });
-    if (data) setConversations(data as Conversation[]);
-    if (error) {
-      console.error("[CustomerMessages] Load conversations error:", error);
-      toast.error("Failed to load conversations");
+      const { data, error } = await query.order("last_message_at", { ascending: false });
+
+      if (error) {
+        console.error("[CustomerMessages] Load conversations error:", {
+          message: error.message,
+          code: error.code,
+          hint: error.hint,
+          details: error.details,
+          status: error.status,
+        });
+        toast.error(`Failed to load conversations: ${error.message || "Unknown error"}`);
+        setConversations([]);
+      } else if (data) {
+        console.log(`[CustomerMessages] Loaded ${data.length} conversations`);
+        setConversations(data as Conversation[]);
+      } else {
+        console.warn("[CustomerMessages] No data returned from conversation query");
+        setConversations([]);
+      }
+    } catch (err: any) {
+      console.error("[CustomerMessages] Exception loading conversations:", {
+        message: err.message,
+        stack: err.stack,
+        code: err.code,
+      });
+      toast.error(`Failed to load conversations: ${err.message}`);
+      setConversations([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [uid, trackingToken, isAuthenticated]);
 
   useEffect(() => {
@@ -109,46 +136,91 @@ const CustomerMessages = () => {
 
   // ========== Load Messages for Active Conversation ==========
   const loadMessagesForConversation = useCallback(async (convId: string) => {
-    const { data, error } = await (supabase as any)
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", convId)
-      .order("created_at", { ascending: true });
+    try {
+      console.debug(`[CustomerMessages] Loading messages for conversation: ${convId}`);
+      const { data, error } = await (supabase as any)
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", convId)
+        .order("created_at", { ascending: true });
 
-    if (data) setMessages(data as Message[]);
-    if (error) {
-      console.error("[CustomerMessages] Load messages error:", error);
-      toast.error("Failed to load messages");
+      if (error) {
+        console.error("[CustomerMessages] Load messages error:", {
+          message: error.message,
+          code: error.code,
+          hint: error.hint,
+          conversationId: convId,
+        });
+        toast.error(`Failed to load messages: ${error.message || "Unknown error"}`);
+        setMessages([]);
+      } else if (data) {
+        console.log(`[CustomerMessages] Loaded ${data.length} messages for conversation`);
+        setMessages(data as Message[]);
+      } else {
+        console.warn("[CustomerMessages] No data returned from messages query");
+        setMessages([]);
+      }
+    } catch (err: any) {
+      console.error("[CustomerMessages] Exception loading messages:", {
+        message: err.message,
+        stack: err.stack,
+        conversationId: convId,
+      });
+      toast.error(`Failed to load messages: ${err.message}`);
+      setMessages([]);
     }
   }, []);
 
   // ========== Load Profiles ==========
   const loadProfiles = useCallback(async () => {
-    if (conversations.length === 0) return;
+    if (conversations.length === 0) {
+      console.debug("[CustomerMessages] No conversations, skipping profile load");
+      return;
+    }
 
-    const allUserIds = new Set<string>();
-    conversations.forEach((c) => {
-      if (c.participant_a) allUserIds.add(c.participant_a);
-      if (c.participant_b) allUserIds.add(c.participant_b);
-    });
+    try {
+      const allUserIds = new Set<string>();
+      conversations.forEach((c) => {
+        if (c.participant_a) allUserIds.add(c.participant_a);
+        if (c.participant_b) allUserIds.add(c.participant_b);
+      });
 
-    const userIds = Array.from(allUserIds);
-    if (userIds.length === 0) return;
+      const userIds = Array.from(allUserIds);
+      if (userIds.length === 0) {
+        console.debug("[CustomerMessages] No user IDs to fetch profiles for");
+        return;
+      }
 
-    const { data } = await (supabase as any)
-      .from("user_profiles")
-      .select("user_id, full_name, phone")
-      .in("user_id", userIds);
+      console.debug(`[CustomerMessages] Loading profiles for ${userIds.length} users`);
+      const { data, error } = await (supabase as any)
+        .from("user_profiles")
+        .select("user_id, full_name, phone")
+        .in("user_id", userIds);
 
-    if (data) {
-      const profileMap = data.reduce(
-        (acc: Record<string, ProfileSummary>, p: ProfileSummary) => {
-          acc[p.user_id] = p;
-          return acc;
-        },
-        {}
-      );
-      setProfiles(profileMap);
+      if (error) {
+        console.warn("[CustomerMessages] Load profiles error:", {
+          message: error.message,
+          code: error.code,
+          userIdCount: userIds.length,
+        });
+        // Don't show error toast for profiles - it's non-critical
+      } else if (data) {
+        console.log(`[CustomerMessages] Loaded profiles for ${data.length} users`);
+        const profileMap = data.reduce(
+          (acc: Record<string, ProfileSummary>, p: ProfileSummary) => {
+            acc[p.user_id] = p;
+            return acc;
+          },
+          {}
+        );
+        setProfiles(profileMap);
+      }
+    } catch (err: any) {
+      console.warn("[CustomerMessages] Exception loading profiles:", {
+        message: err.message,
+        stack: err.stack,
+      });
+      // Don't show error toast for profiles - it's non-critical
     }
   }, [conversations]);
 
@@ -171,14 +243,20 @@ const CustomerMessages = () => {
   // Once conversation_id is resolved, set up active real-time subscription
   // targeting the public.messages table, filtering strictly by conversation_id
   useEffect(() => {
-    if (!activeConv?.id) return;
+    if (!activeConv?.id) {
+      console.debug("[CustomerMessages] No active conversation, skipping message subscription");
+      return;
+    }
 
     const conversationId = activeConv.id;
     const channelName = `messages:${conversationId}`;
 
+    console.debug(`[CustomerMessages] Setting up real-time subscription for ${channelName}`);
+
     // Clean up old channel if exists
     const oldChannel = realtimeChannelsRef.current.get(channelName);
     if (oldChannel) {
+      console.debug(`[CustomerMessages] Cleaning up previous channel for conversation`);
       supabase.removeChannel(oldChannel);
       realtimeChannelsRef.current.delete(channelName);
     }
@@ -195,15 +273,34 @@ const CustomerMessages = () => {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload: any) => {
-          const newMsg = payload.new as Message;
-          setMessages((prev) =>
-            prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
-          );
+          try {
+            const newMsg = payload.new as Message;
+            console.debug(`[CustomerMessages] Received new message from real-time: ${newMsg.id.slice(0, 8)}...`);
+            setMessages((prev) => {
+              const isDuplicate = prev.some((m) => m.id === newMsg.id);
+              if (isDuplicate) {
+                console.debug(`[CustomerMessages] Skipping duplicate message: ${newMsg.id.slice(0, 8)}...`);
+                return prev;
+              }
+              console.log(`[CustomerMessages] Message appended to state`);
+              return [...prev, newMsg];
+            });
+          } catch (err: any) {
+            console.error("[CustomerMessages] Error processing real-time message:", {
+              message: err.message,
+              payloadId: payload.new?.id,
+            });
+          }
         }
       )
       .subscribe((status) => {
+        console.log(`[CustomerMessages] Real-time subscription status: ${status}`);
         if (status === "SUBSCRIBED") {
-          console.log(`[CustomerMessages] Real-time subscribed to ${channelName}`);
+          console.log(`[CustomerMessages] ✅ Real-time subscribed to ${channelName}`);
+        } else if (status === "CHANNEL_ERROR") {
+          console.error(`[CustomerMessages] ❌ Real-time channel error for ${channelName}`);
+        } else if (status === "TIMED_OUT") {
+          console.error(`[CustomerMessages] ❌ Real-time subscription timed out for ${channelName}`);
         }
       });
 
@@ -211,6 +308,7 @@ const CustomerMessages = () => {
 
     return () => {
       if (realtimeChannelsRef.current.has(channelName)) {
+        console.debug(`[CustomerMessages] Cleaning up real-time subscription for ${channelName}`);
         supabase.removeChannel(channel);
         realtimeChannelsRef.current.delete(channelName);
       }
@@ -296,39 +394,74 @@ const CustomerMessages = () => {
 
   // ========== Send Message Handler ==========
   const handleSendMessage = async () => {
-    if (!draft.trim() || !activeConv || !authIdentifier) return;
+    if (!draft.trim() || !activeConv || !authIdentifier) {
+      console.warn("[CustomerMessages] Send message validation failed", {
+        hasDraft: !!draft.trim(),
+        hasConv: !!activeConv,
+        hasAuth: !!authIdentifier,
+      });
+      return;
+    }
 
     // For guests, use guest_[trackingToken] as sender_id
     const senderId = authMode === "user" ? uid : `guest_${trackingToken}`;
+    const text = draft.trim();
 
     setSending(true);
-    const text = draft.trim();
     setDraft("");
     inputRef.current?.focus();
 
-    const { error } = await (supabase as any)
-      .from("messages")
-      .insert({
-        conversation_id: activeConv.id,
-        sender_id: senderId,
-        content: text,
-        message_type: "text",
-      });
+    try {
+      console.debug(`[CustomerMessages] Sending message to conversation ${activeConv.id}`);
+      const { error: insertError } = await (supabase as any)
+        .from("messages")
+        .insert({
+          conversation_id: activeConv.id,
+          sender_id: senderId,
+          content: text,
+          message_type: "text",
+        });
 
-    if (error) {
-      toast.error("Failed to send message");
+      if (insertError) {
+        console.error("[CustomerMessages] Message insert error:", {
+          message: insertError.message,
+          code: insertError.code,
+          hint: insertError.hint,
+          conversationId: activeConv.id,
+          senderId: senderId.slice(0, 8) + "...",
+        });
+        toast.error(`Failed to send message: ${insertError.message || "Unknown error"}`);
+        setDraft(text);
+      } else {
+        console.log("[CustomerMessages] Message sent successfully");
+        // Update conversation's last_message
+        const { error: updateError } = await (supabase as any)
+          .from("conversations")
+          .update({
+            last_message: text,
+            last_message_at: new Date().toISOString(),
+          })
+          .eq("id", activeConv.id);
+
+        if (updateError) {
+          console.warn("[CustomerMessages] Conversation update warning:", {
+            message: updateError.message,
+            code: updateError.code,
+          });
+          // Don't show error to user - message was sent, just metadata update failed
+        }
+      }
+    } catch (err: any) {
+      console.error("[CustomerMessages] Exception sending message:", {
+        message: err.message,
+        stack: err.stack,
+        conversationId: activeConv.id,
+      });
+      toast.error(`Failed to send message: ${err.message}`);
       setDraft(text);
-    } else {
-      // Update conversation's last_message
-      await (supabase as any)
-        .from("conversations")
-        .update({
-          last_message: text,
-          last_message_at: new Date().toISOString(),
-        })
-        .eq("id", activeConv.id);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   return (
