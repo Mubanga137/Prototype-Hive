@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import MessagingDebugPanel from "@/components/messaging/MessagingDebugPanel";
 
 interface Conversation {
   id: string;
@@ -65,25 +66,27 @@ const CustomerMessages = () => {
 
   const loadConversations = useCallback(async () => {
     if (!uid) return;
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("conversations")
       .select("*")
       .or(`participant_a.eq.${uid},participant_b.eq.${uid}`)
       .order("last_message_at", { ascending: false });
     if (data) setConversations(data as Conversation[]);
+    if (error) console.log("Load conversations:", error);
   }, [uid]);
 
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+    if (uid) loadConversations();
+  }, [uid, loadConversations]);
 
   const loadMessagesForConversation = useCallback(async (convId: string) => {
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("messages")
       .select("*")
       .eq("conversation_id", convId)
       .order("created_at", { ascending: true });
     if (data) setMessages(data as Message[]);
+    if (error) console.log("Load messages:", error);
   }, []);
 
   const loadProfiles = useCallback(async () => {
@@ -125,6 +128,36 @@ const CustomerMessages = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!uid) return;
+    const channel = (supabase as any)
+      .channel(`messages_${uid}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload: any) => {
+          if (activeConv && payload.new.conversation_id === activeConv.id) {
+            setMessages((prev) => [...prev, payload.new as Message]);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversations" },
+        (payload: any) => {
+          const conv = payload.new as Conversation;
+          if (conv.participant_a === uid || conv.participant_b === uid) {
+            setConversations((prev) => [conv, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [uid, activeConv]);
+
   const otherUserId = activeConv
     ? activeConv.participant_a === uid
       ? activeConv.participant_b
@@ -162,7 +195,9 @@ const CustomerMessages = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
+    <>
+      <MessagingDebugPanel />
+      <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
       <div className="max-w-6xl mx-auto h-full flex gap-4 p-4">
         {/* Conversations List */}
         <div
@@ -336,6 +371,7 @@ const CustomerMessages = () => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

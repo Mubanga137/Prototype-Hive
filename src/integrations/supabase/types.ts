@@ -551,6 +551,77 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          id: string
+          participant_a: string
+          participant_b: string
+          last_message: string | null
+          last_message_at: string | null
+          context_order_id: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          participant_a: string
+          participant_b: string
+          last_message?: string | null
+          last_message_at?: string | null
+          context_order_id?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          participant_a?: string
+          participant_b?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          context_order_id?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          content: string | null
+          message_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          sender_id: string
+          content?: string | null
+          message_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string
+          content?: string | null
+          message_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
