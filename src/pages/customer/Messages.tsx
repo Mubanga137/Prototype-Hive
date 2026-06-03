@@ -3,6 +3,7 @@ import { ArrowLeft, Send, Search, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useGuestTracking } from "@/hooks/useGuestTracking";
+import { useDualStateMessaging } from "@/hooks/useDualStateMessaging";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ const CustomerMessages = () => {
   const { user } = useAuth();
   const { isGuest, trackingToken } = useGuestTracking();
   const isMobile = useIsMobile();
+  const dualState = useDualStateMessaging();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileSummary>>({});
@@ -64,6 +66,7 @@ const CustomerMessages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [convLoading, setConvLoading] = useState(true);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,68 +74,49 @@ const CustomerMessages = () => {
 
   const uid = user?.id;
   const isAuthenticated = !!uid;
-  const authIdentifier = isAuthenticated ? uid : trackingToken;
-  const authMode: "user" | "guest" = isAuthenticated ? "user" : "guest";
+  const authIdentifier = dualState.context.authIdentifier;
+  const authMode = dualState.context.authMode;
 
-  // ========== DUAL-STATE FALLBACK: Load Conversations ==========
+  // ========== DUAL-STATE: Load Conversations (REFACTORED) ==========
   const loadConversations = useCallback(async () => {
-    if (!isAuthenticated && !trackingToken) {
-      console.debug("[CustomerMessages] No auth identifier, clearing conversations");
-      setConversations([]);
-      return;
-    }
-
-    setLoading(true);
+    setConvLoading(true);
     try {
-      let query = (supabase as any).from("conversations").select("*");
+      const result = await dualState.loadConversations();
 
-      if (isAuthenticated && uid) {
-        // Fallback Check 1: If customer session is logged in
-        // Select conversations where participant_a === auth.uid() OR participant_b === auth.uid()
-        console.debug(`[CustomerMessages] Loading conversations for user: ${uid}`);
-        query = query.or(`participant_a.eq.${uid},participant_b.eq.${uid}`);
-      } else if (!isAuthenticated && trackingToken) {
-        // Fallback Check 2: If anonymous Guest Buyer is active
-        // Extract 36-character token from localStorage and fetch row where guest_tracking_token === token
-        console.debug(`[CustomerMessages] Loading conversations for guest token: ${trackingToken.slice(0, 8)}...`);
-        query = query.eq("guest_tracking_token", trackingToken);
-      }
-
-      const { data, error } = await query.order("last_message_at", { ascending: false });
-
-      if (error) {
-        console.error("[CustomerMessages] Load conversations error:", {
-          message: error.message,
-          code: error.code,
-          hint: error.hint,
-          details: error.details,
-          status: error.status,
-        });
-        toast.error(`Failed to load conversations: ${error.message || "Unknown error"}`);
-        setConversations([]);
-      } else if (data) {
-        console.log(`[CustomerMessages] Loaded ${data.length} conversations`);
-        setConversations(data as Conversation[]);
+      if (result.success) {
+        console.log(
+          `[CustomerMessages] Loaded ${result.conversations.length} conversations`
+        );
+        setConversations(result.conversations);
       } else {
-        console.warn("[CustomerMessages] No data returned from conversation query");
+        console.warn("[CustomerMessages] Failed to load conversations:", result.error);
         setConversations([]);
+        if (result.error && !dualState.context.authIdentifier) {
+          // Silent fail if no auth context (guest not set up yet)
+          console.debug("[CustomerMessages] No auth identifier yet");
+        } else if (result.error) {
+          toast.error(`Failed to load conversations: ${result.error}`);
+        }
       }
     } catch (err: any) {
-      console.error("[CustomerMessages] Exception loading conversations:", {
-        message: err.message,
-        stack: err.stack,
-        code: err.code,
-      });
-      toast.error(`Failed to load conversations: ${err.message}`);
+      console.error("[CustomerMessages] Exception loading conversations:", err);
       setConversations([]);
+      toast.error(`Failed to load conversations: ${err.message}`);
     } finally {
-      setLoading(false);
+      setConvLoading(false);
     }
-  }, [uid, trackingToken, isAuthenticated]);
+  }, [dualState]);
 
+  // Load conversations when auth context changes
   useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
+    if (authIdentifier && authMode) {
+      loadConversations();
+    } else {
+      console.debug("[CustomerMessages] No auth identifier, skipping load");
+      setConversations([]);
+      setConvLoading(false);
+    }
+  }, [authIdentifier, authMode, loadConversations]);
 
   // ========== Load Messages for Active Conversation ==========
   const loadMessagesForConversation = useCallback(async (convId: string) => {
