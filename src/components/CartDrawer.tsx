@@ -18,6 +18,7 @@ import {
 import { useStoreCart, type CartLine } from "@/hooks/useStoreCart";
 import { logCheckoutError, getUserFriendlyErrorMessage } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
+import { sendOrderConfirmationReceipt } from "@/lib/systemMessaging";
 
 interface CartDrawerProps {
   open: boolean;
@@ -158,8 +159,10 @@ const CartDrawer = ({
       orderIds = orders.map((r) => r.id);
     }
 
-    // ✅ For guests, save first order's tracking session and redirect
+    // ✅ For guests, save first order's tracking session and send system receipt
     if (!user?.id) {
+      const guestToken = orders.length > 0 ? orders[0].tracking_token : null;
+
       localStorage.setItem(
         "hive_guest_orders",
         JSON.stringify({
@@ -167,6 +170,31 @@ const CartDrawer = ({
           timestamp: Date.now(),
         })
       );
+
+      // Send system receipts for each order
+      for (const order of orders) {
+        try {
+          const receiptDetails = `
+Order #${order.id}
+Items: ${lines.map((l) => `${l.quantity}x ${l.item_name}`).join(", ")}
+Total: K${subtotal.toFixed(2)}
+
+Delivery to: ${address.trim()}
+
+Your order is confirmed and will be processed shortly.
+          `.trim();
+
+          await sendOrderConfirmationReceipt(
+            order.id.toString(),
+            order.id,
+            receiptDetails,
+            true,  // isGuest
+            guestToken  // guestToken
+          );
+        } catch (msgErr) {
+          console.warn("[CartDrawer] System message send failed (non-blocking):", msgErr);
+        }
+      }
 
       setState("success");
       setTimeout(() => {
@@ -177,6 +205,30 @@ const CartDrawer = ({
         onOpenChange(false);
       }, 1000);
       return;
+    }
+
+    // Send system receipts for authenticated users
+    for (const order of orders) {
+      try {
+        const receiptDetails = `
+Order #${order.id}
+Items: ${lines.map((l) => `${l.quantity}x ${l.item_name}`).join(", ")}
+Total: K${subtotal.toFixed(2)}
+
+Delivery to: ${address.trim()}
+
+Your order is confirmed and will be processed shortly.
+        `.trim();
+
+        await sendOrderConfirmationReceipt(
+          user.id,
+          order.id,
+          receiptDetails,
+          false  // isGuest
+        );
+      } catch (msgErr) {
+        console.warn("[CartDrawer] System message send failed (non-blocking):", msgErr);
+      }
     }
 
     setState("success");
