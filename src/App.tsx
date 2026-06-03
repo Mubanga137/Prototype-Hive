@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleVerificationWrapper from "@/components/RoleVerificationWrapper";
 import { setupGlobalErrorHandlers } from "@/lib/globalErrorHandler";
 import { logSupabaseHealth } from "@/lib/supabaseHealthCheck";
+import { useGlobalMessageListener } from "@/hooks/useGlobalMessageListener";
 import Index from "./pages/Index.tsx";
 import RetailerStudioDashboard from "./pages/RetailerStudioDashboard.tsx";
 import RechargeStore from "./pages/RechargeStore.tsx";
@@ -45,6 +46,7 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   const hideBot = location.pathname === "/gig-radar";
+  useGlobalMessageListener();
 
   return (
     <>
