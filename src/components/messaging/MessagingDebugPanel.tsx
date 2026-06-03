@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ChevronDown, RotateCw, Trash2, Plus } from "lucide-react";
+import { ChevronDown, RotateCw, Trash2, Plus, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useGuestTracking } from "@/hooks/useGuestTracking";
 import {
   verifyMessagingTables,
   getAllConversations,
@@ -8,9 +9,15 @@ import {
   createTestConversation,
   sendTestMessage,
 } from "@/lib/messaging-setup";
+import {
+  createTestSystemConversationsAndMessages,
+  createTestVendorNotification,
+  createTestRiderNotification,
+} from "@/lib/testSystemMessages";
 
 const MessagingDebugPanel = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { isGuest, trackingToken } = useGuestTracking();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
@@ -80,6 +87,72 @@ const MessagingDebugPanel = () => {
     setLoading(false);
   };
 
+  const handleCreateSystemReceipt = async () => {
+    if (!user?.id) {
+      addLog("No user logged in");
+      return;
+    }
+    setLoading(true);
+    try {
+      addLog("Creating system receipt for customer...");
+      const result = await createTestSystemConversationsAndMessages(user.id);
+      if (result.success) {
+        addLog(result.message);
+        addLog(`Conversation: ${result.conversationId}`);
+        addLog("Check Messages page - you should see the receipt!");
+      } else {
+        addLog(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      addLog(`Exception: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    setLoading(false);
+  };
+
+  const handleCreateVendorNotification = async () => {
+    if (!user?.id) {
+      addLog("No user logged in");
+      return;
+    }
+    setLoading(true);
+    try {
+      addLog("Creating vendor notification...");
+      const result = await createTestVendorNotification(user.id);
+      if (result.success) {
+        addLog(result.message);
+        addLog(`Conversation: ${result.conversationId}`);
+        addLog("You should see a toast notification!");
+      } else {
+        addLog(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      addLog(`Exception: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    setLoading(false);
+  };
+
+  const handleCreateRiderNotification = async () => {
+    if (!user?.id) {
+      addLog("No user logged in");
+      return;
+    }
+    setLoading(true);
+    try {
+      addLog("Creating rider notification...");
+      const result = await createTestRiderNotification(user.id);
+      if (result.success) {
+        addLog(result.message);
+        addLog(`Conversation: ${result.conversationId}`);
+        addLog("You should see a toast notification!");
+      } else {
+        addLog(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      addLog(`Exception: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    setLoading(false);
+  };
+
   const handleClearLogs = () => {
     setLogs([]);
   };
@@ -104,7 +177,8 @@ const MessagingDebugPanel = () => {
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
+            <div className="text-xs text-[#FFFBF2]/70 font-semibold">Basic Actions:</div>
             <button
               onClick={handleVerify}
               disabled={loading}
@@ -137,6 +211,34 @@ const MessagingDebugPanel = () => {
             >
               <Plus size={14} />
               Create Test Data
+            </button>
+
+            <div className="text-xs text-[#FFFBF2]/70 font-semibold pt-1">System Messages:</div>
+            <button
+              onClick={handleCreateSystemReceipt}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50 transition"
+            >
+              <Zap size={14} />
+              Create Receipt 🐝
+            </button>
+
+            <button
+              onClick={handleCreateVendorNotification}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 disabled:opacity-50 transition"
+            >
+              <Zap size={14} />
+              Create Order 📦
+            </button>
+
+            <button
+              onClick={handleCreateRiderNotification}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 disabled:opacity-50 transition"
+            >
+              <Zap size={14} />
+              Create Delivery 🚀
             </button>
 
             <button
