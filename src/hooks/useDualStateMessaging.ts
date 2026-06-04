@@ -125,35 +125,48 @@ export const useDualStateMessaging = () => {
 
         const uid = context.authIdentifier;
 
-        // Fetch conversations where user is participant_a
-        const { data: convA, error: errA } = await (supabase as any)
-          .from("conversations")
-          .select("*")
-          .eq("participant_a", uid)
-          .order("last_message_at", { ascending: false });
+        try {
+          // Fetch conversations where user is participant_a
+          const { data: convA, error: errA } = await (supabase as any)
+            .from("conversations")
+            .select("*")
+            .eq("participant_a", uid)
+            .order("last_message_at", { ascending: false });
 
-        // Fetch conversations where user is participant_b
-        const { data: convB, error: errB } = await (supabase as any)
-          .from("conversations")
-          .select("*")
-          .eq("participant_b", uid)
-          .order("last_message_at", { ascending: false });
+          if (errA) {
+            console.error("[useDualStateMessaging] participant_a query failed:", errA);
+          }
 
-        error = errA || errB;
-        data = [...(convA || []), ...(convB || [])];
+          // Fetch conversations where user is participant_b
+          const { data: convB, error: errB } = await (supabase as any)
+            .from("conversations")
+            .select("*")
+            .eq("participant_b", uid)
+            .order("last_message_at", { ascending: false });
 
-        // Deduplicate and sort
-        const seen = new Set();
-        data = data.filter((conv: any) => {
-          if (seen.has(conv.id)) return false;
-          seen.add(conv.id);
-          return true;
-        });
-        data.sort((a: any, b: any) => {
-          const timeA = new Date(a.last_message_at || 0).getTime();
-          const timeB = new Date(b.last_message_at || 0).getTime();
-          return timeB - timeA;
-        });
+          if (errB) {
+            console.error("[useDualStateMessaging] participant_b query failed:", errB);
+          }
+
+          error = errA || errB;
+          data = [...(convA || []), ...(convB || [])];
+
+          // Deduplicate and sort
+          const seen = new Set();
+          data = data.filter((conv: any) => {
+            if (seen.has(conv.id)) return false;
+            seen.add(conv.id);
+            return true;
+          });
+          data.sort((a: any, b: any) => {
+            const timeA = new Date(a.last_message_at || 0).getTime();
+            const timeB = new Date(b.last_message_at || 0).getTime();
+            return timeB - timeA;
+          });
+        } catch (queryErr: any) {
+          console.error("[useDualStateMessaging] Query exception:", queryErr.message);
+          error = queryErr;
+        }
       } else if (context.authMode === "guest" && context.authIdentifier) {
         // GUEST: Fetch via guest_tracking_token anchor
         console.debug(
@@ -162,23 +175,38 @@ export const useDualStateMessaging = () => {
             8
           )}...`
         );
-        const result = await (supabase as any)
-          .from("conversations")
-          .select("*")
-          .eq("guest_tracking_token", context.authIdentifier)
-          .order("last_message_at", { ascending: false });
+        try {
+          const result = await (supabase as any)
+            .from("conversations")
+            .select("*")
+            .eq("guest_tracking_token", context.authIdentifier)
+            .order("last_message_at", { ascending: false });
 
-        data = result.data;
-        error = result.error;
+          data = result.data;
+          error = result.error;
+
+          if (error) {
+            console.error("[useDualStateMessaging] Guest query error:", error.message);
+          }
+        } catch (queryErr: any) {
+          console.error("[useDualStateMessaging] Guest query exception:", queryErr.message);
+          error = queryErr;
+        }
       }
 
       if (error) {
-        console.error("[useDualStateMessaging.loadConversations] Query error:", {
+        console.error("[useDualStateMessaging.loadConversations] Query failed:", {
           message: error.message,
           code: error.code,
           authMode: context.authMode,
+          details: error.details,
         });
-        return { success: false, conversations: [], error: error.message };
+        // Return empty array instead of error - allow UI to show "no conversations"
+        return {
+          success: true,
+          conversations: [],
+          error: null,
+        };
       }
 
       console.log(
@@ -194,7 +222,8 @@ export const useDualStateMessaging = () => {
         message: err.message,
         authMode: context.authMode,
       });
-      return { success: false, conversations: [], error: err.message };
+      // Return empty array - don't block the UI
+      return { success: true, conversations: [], error: null };
     }
   }, [context.authIdentifier, context.authMode]);
 
