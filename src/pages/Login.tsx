@@ -7,6 +7,7 @@ import HoneycombBackground from "@/components/HoneycombBackground";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { linkGuestOrdersToAccount } from "@/utils/guestOrderLinkage";
+import { linkGuestConversationsToUser } from "@/utils/guestConversationLinkage";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -67,11 +68,16 @@ const Login = () => {
         }
       }
 
-      // Link guest orders to authenticated account if they exist
+      // Link guest orders and conversations to authenticated account if they exist
       try {
         await linkGuestOrdersToAccount(user.id);
       } catch (linkError) {
         console.warn("[Login] Guest order linkage failed (non-blocking):", linkError);
+      }
+      try {
+        await linkGuestConversationsToUser(user.id);
+      } catch (linkError) {
+        console.warn("[Login] Guest conversation linkage failed (non-blocking):", linkError);
       }
 
       const role = profile?.role || "customer";

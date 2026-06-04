@@ -12,6 +12,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { linkGuestOrdersToAccount } from "@/utils/guestOrderLinkage";
+import { linkGuestConversationsToUser } from "@/utils/guestConversationLinkage";
 
 type AccountType = "customer" | "vendor" | "wholesaler" | "gig_worker";
 type GigRole = "runner" | "city_rider" | "hive_node";
@@ -175,13 +176,18 @@ const Signup = () => {
         gig_worker: "/gig-radar",
       };
 
-      // Link guest orders to authenticated account if they exist
+      // Link guest orders and conversations to authenticated account if they exist
       const userId = user?.id;
       if (userId) {
         try {
           await linkGuestOrdersToAccount(userId);
         } catch (linkError) {
           console.warn("[Signup] Guest order linkage failed (non-blocking):", linkError);
+        }
+        try {
+          await linkGuestConversationsToUser(userId);
+        } catch (linkError) {
+          console.warn("[Signup] Guest conversation linkage failed (non-blocking):", linkError);
         }
       }
 
@@ -198,13 +204,18 @@ const Signup = () => {
   };
 
   const handleOnboardingComplete = async () => {
-    // Link guest orders to the newly created account
+    // Link guest orders and conversations to the newly created account
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.id) {
       try {
         await linkGuestOrdersToAccount(user.id);
       } catch (linkError) {
         console.warn("[Signup Onboarding] Guest order linkage failed (non-blocking):", linkError);
+      }
+      try {
+        await linkGuestConversationsToUser(user.id);
+      } catch (linkError) {
+        console.warn("[Signup Onboarding] Guest conversation linkage failed (non-blocking):", linkError);
       }
     }
     navigate("/customer-dash", { replace: true });

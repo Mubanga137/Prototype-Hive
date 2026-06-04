@@ -32,6 +32,7 @@ import {
 } from "@/lib/whatsapp";
 import { logCheckoutError, getUserFriendlyErrorMessage, serializeError } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
+import { sendOrderConfirmationReceipt } from "@/lib/systemMessaging";
 
 export interface CheckoutItem {
   id: number;
@@ -259,6 +260,31 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 7: Update UI to success state
       setState("success");
+
+      // STEP 7.5: Send system receipt message (guest or authenticated)
+      try {
+        const receiptDetails = `
+Order #${orderId}
+${item.item_name}
+Quantity: ${isService ? "1 booking" : quantity}
+Total: K${totalToPay.toFixed(2)}
+
+${isService ? `Scheduled: ${scheduledDate}` : `Delivery to: ${address}`}
+
+Your order is confirmed and will be processed shortly.
+        `.trim();
+
+        await sendOrderConfirmationReceipt(
+          user?.id || orderId.toString(),
+          orderId,
+          receiptDetails,
+          !user?.id,  // isGuest
+          trackingToken  // guestToken (only used if guest)
+        );
+      } catch (msgErr) {
+        console.warn("[Checkout] System message send failed (non-blocking):", msgErr);
+        // Don't fail the entire flow if system messaging fails
+      }
 
       // STEP 8a: Route service bookings to messages/communications channel
       if (isService) {

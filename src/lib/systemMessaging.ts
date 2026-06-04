@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// System bot ID (reserved UUID for all platform/system alerts)
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+
 /**
  * Creates or gets a system message conversation for order receipts/notifications
  * For guests: uses guest_tracking_token
@@ -60,6 +63,7 @@ export const createOrGetSystemConversation = async (
 
 /**
  * Sends a system receipt message to a conversation
+ * Uses reserved SYSTEM_BOT_ID for all platform alerts
  */
 export const sendSystemReceipt = async (
   conversationId: string,
@@ -71,7 +75,7 @@ export const sendSystemReceipt = async (
       .from("messages")
       .insert({
         conversation_id: conversationId,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content,
         message_type: messageType,
       })

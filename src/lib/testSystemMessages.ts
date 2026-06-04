@@ -1,8 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+
 export const createTestSystemConversationsAndMessages = async (userId: string) => {
   try {
-    console.log("[testSystemMessages] Creating test data for user:", userId);
+    console.log("[testSystemMessages] Creating test data for user:", userId?.slice(0, 8) + "...");
 
     // Create a test conversation for this user
     const { data: conv, error: convError } = await (supabase as any)
@@ -18,8 +20,18 @@ export const createTestSystemConversationsAndMessages = async (userId: string) =
       .single();
 
     if (convError) {
-      console.error("[testSystemMessages] Failed to create conversation:", convError);
-      return { success: false, error: convError.message };
+      console.error("[testSystemMessages] Conversation INSERT failed:", {
+        code: convError.code,
+        message: convError.message,
+        details: convError.details,
+        hint: convError.hint,
+      });
+      return { success: false, error: `INSERT failed: ${convError.message}` };
+    }
+
+    if (!conv) {
+      console.error("[testSystemMessages] Conversation returned null");
+      return { success: false, error: "Conversation creation returned no data" };
     }
 
     console.log("[testSystemMessages] Conversation created:", conv.id);
@@ -29,7 +41,7 @@ export const createTestSystemConversationsAndMessages = async (userId: string) =
       .from("messages")
       .insert({
         conversation_id: conv.id,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content: `🐝 Hive System Receipt\n\nOrder #1001\nTotal: K450.00\nEstimated Delivery: 2-3 hours\n\nYour order is confirmed and will be prepared shortly.`,
         message_type: "system_receipt",
       })
@@ -37,11 +49,21 @@ export const createTestSystemConversationsAndMessages = async (userId: string) =
       .single();
 
     if (msgError) {
-      console.error("[testSystemMessages] Failed to insert message:", msgError);
-      return { success: false, error: msgError.message };
+      console.error("[testSystemMessages] Message INSERT failed:", {
+        code: msgError.code,
+        message: msgError.message,
+        details: msgError.details,
+        hint: msgError.hint,
+      });
+      return { success: false, error: `Message INSERT failed: ${msgError.message}` };
     }
 
-    console.log("[testSystemMessages] Message created:", msg.id);
+    if (!msg) {
+      console.error("[testSystemMessages] Message returned null");
+      return { success: false, error: "Message creation returned no data" };
+    }
+
+    console.log("[testSystemMessages] ✅ Success! Conversation:", conv.id, "Message:", msg.id);
 
     return {
       success: true,
@@ -50,8 +72,8 @@ export const createTestSystemConversationsAndMessages = async (userId: string) =
       message: "✅ Test conversation and system receipt created successfully!",
     };
   } catch (error: any) {
-    console.error("[testSystemMessages] Exception:", error);
-    return { success: false, error: error.message };
+    console.error("[testSystemMessages] Exception:", error.message, error.stack);
+    return { success: false, error: `Exception: ${error.message}` };
   }
 };
 
@@ -73,8 +95,12 @@ export const createTestVendorNotification = async (vendorId: string) => {
       .single();
 
     if (convError) {
-      console.error("[testSystemMessages] Failed to create vendor conversation:", convError);
+      console.error("[testSystemMessages] Vendor conversation INSERT failed:", convError.message);
       return { success: false, error: convError.message };
+    }
+
+    if (!conv) {
+      return { success: false, error: "Vendor conversation returned null" };
     }
 
     // Insert a test retailer notification
@@ -82,7 +108,7 @@ export const createTestVendorNotification = async (vendorId: string) => {
       .from("messages")
       .insert({
         conversation_id: conv.id,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content: `📦 Retailer Notification\n\nNew order from Jane Smith\n\nItems:\n• 2x Fresh Bread\n• 1x Milk (1L)\n• 1x Butter (500g)\n\nTotal: K285.00\nPickup Location: Store Address`,
         message_type: "retailer_notification",
       })
@@ -90,8 +116,12 @@ export const createTestVendorNotification = async (vendorId: string) => {
       .single();
 
     if (msgError) {
-      console.error("[testSystemMessages] Failed to insert vendor notification:", msgError);
+      console.error("[testSystemMessages] Vendor message INSERT failed:", msgError.message);
       return { success: false, error: msgError.message };
+    }
+
+    if (!msg) {
+      return { success: false, error: "Vendor message returned null" };
     }
 
     return {
@@ -124,8 +154,12 @@ export const createTestRiderNotification = async (riderId: string) => {
       .single();
 
     if (convError) {
-      console.error("[testSystemMessages] Failed to create rider conversation:", convError);
+      console.error("[testSystemMessages] Rider conversation INSERT failed:", convError.message);
       return { success: false, error: convError.message };
+    }
+
+    if (!conv) {
+      return { success: false, error: "Rider conversation returned null" };
     }
 
     // Insert a test delivery notification
@@ -133,7 +167,7 @@ export const createTestRiderNotification = async (riderId: string) => {
       .from("messages")
       .insert({
         conversation_id: conv.id,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content: `🚀 Delivery Route Claimed Successfully!\n\nOrder #3001 has been claimed for delivery.\nEstimated delivery time: 30 minutes`,
         message_type: "delivery_notification",
       })
@@ -141,8 +175,12 @@ export const createTestRiderNotification = async (riderId: string) => {
       .single();
 
     if (msgError) {
-      console.error("[testSystemMessages] Failed to insert rider notification:", msgError);
+      console.error("[testSystemMessages] Rider message INSERT failed:", msgError.message);
       return { success: false, error: msgError.message };
+    }
+
+    if (!msg) {
+      return { success: false, error: "Rider message returned null" };
     }
 
     return {

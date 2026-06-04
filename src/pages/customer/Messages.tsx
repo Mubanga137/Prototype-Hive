@@ -77,6 +77,18 @@ const CustomerMessages = () => {
   const authIdentifier = dualState.context.authIdentifier;
   const authMode = dualState.context.authMode;
 
+  // Debug auth state
+  useEffect(() => {
+    console.log("[CustomerMessages] Auth State Debug:", {
+      uid: uid?.slice(0, 8) + "..." || "null",
+      isAuthenticated,
+      authIdentifier: authIdentifier?.slice(0, 8) + "..." || "null",
+      authMode,
+      conversationCount: conversations.length,
+      convLoading,
+    });
+  }, [uid, isAuthenticated, authIdentifier, authMode, conversations.length, convLoading]);
+
   // ========== DUAL-STATE: Load Conversations (REFACTORED) ==========
   const loadConversations = useCallback(async () => {
     setConvLoading(true);
@@ -117,6 +129,17 @@ const CustomerMessages = () => {
       setConvLoading(false);
     }
   }, [authIdentifier, authMode, loadConversations]);
+
+  // Auto-retry if loading fails after timeout
+  useEffect(() => {
+    if (!convLoading && conversations.length === 0 && authIdentifier && authMode) {
+      const timer = setTimeout(() => {
+        console.log("[CustomerMessages] Retrying conversations load after timeout...");
+        loadConversations();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [convLoading, conversations.length, authIdentifier, authMode, loadConversations]);
 
   // ========== Load Messages for Active Conversation ==========
   const loadMessagesForConversation = useCallback(async (convId: string) => {
@@ -563,8 +586,28 @@ const CustomerMessages = () => {
                   </div>
                 </div>
 
-                {/* WhatsApp Receipt Button */}
-                {otherProfile?.phone && (
+                {/* WhatsApp Receipt Button with Transaction Token */}
+                {otherProfile?.phone && activeConv?.context_order_id && (
+                  <button
+                    onClick={() => {
+                      // RULE 3: Wire transaction verification token parameters securely
+                      // Encode order tracking token and pass as URL query parameter
+                      const orderTrackingToken = activeConv?.context_order_id?.toString() || "";
+                      const message = encodeURIComponent(
+                        `Hello Hive, send my receipt summary text for Token: ${orderTrackingToken}`
+                      );
+                      const phoneNumber = otherProfile.phone.replace(/\D/g, "");
+                      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+                      window.open(whatsappUrl, "_blank");
+                    }}
+                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95"
+                    style={{ backgroundColor: "#25D366" }}
+                    title="View WhatsApp Receipt"
+                  >
+                    <span className="text-lg">💬</span>
+                  </button>
+                )}
+                {otherProfile?.phone && !activeConv?.context_order_id && (
                   <a
                     href={`https://wa.me/${otherProfile.phone.replace(/\D/g, "")}`}
                     target="_blank"
@@ -589,7 +632,28 @@ const CustomerMessages = () => {
                   ) : (
                     messages.map((msg) => {
                       const isOwn = msg.sender_id === uid || msg.sender_id === `guest_${trackingToken}`;
+                      const isSystemAlert = msg.sender_id === dualState.SYSTEM_BOT_ID;
 
+                      // System alerts render as centered neutral banners
+                      if (isSystemAlert) {
+                        return (
+                          <div
+                            key={msg.id}
+                            className="flex justify-center py-3"
+                          >
+                            <div className="max-w-md px-4 py-3 rounded-lg bg-[#F0EDE6]/80 text-[#0F1A35]/70 border border-[#B37C1C]/15 italic text-center shadow-sm">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {msg.content}
+                              </p>
+                              <p className="text-[10px] mt-2 text-[#0F1A35]/50">
+                                {formatTime(msg.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Peer-to-peer messages
                       return (
                         <div
                           key={msg.id}
