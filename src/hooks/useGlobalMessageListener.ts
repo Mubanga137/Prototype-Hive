@@ -54,16 +54,34 @@ export const useGlobalMessageListener = () => {
 
               // CUSTOMER/GUEST: Check for order receipts
               if (isGuest && trackingToken) {
-                const cartToken = localStorage.getItem("hive_guest_active_cart");
-                if (
-                  content.startsWith("🐝 Hive System Receipt") &&
-                  cartToken &&
-                  content.includes(cartToken)
-                ) {
-                  toast.success("🐝 Order Confirmed! Check your receipt inbox details.", {
-                    duration: 6000,
-                  });
-                  console.log("[useGlobalMessageListener] Guest order receipt toast shown");
+                // Check if this receipt message matches the guest's current tokens
+                if (content.startsWith("🐝 Hive System Receipt")) {
+                  const stored = localStorage.getItem("hive_guest_active_cart");
+                  let tokenMatch = false;
+
+                  if (stored) {
+                    try {
+                      const parsed = JSON.parse(stored);
+                      let tokens: string[] = [];
+                      if (Array.isArray(parsed)) {
+                        tokens = parsed;
+                      } else if (parsed?.trackingTokens) {
+                        tokens = parsed.trackingTokens;
+                      }
+                      // Check if any guest token appears in the message content
+                      tokenMatch = tokens.some((t) => content.includes(t));
+                    } catch {
+                      // Fallback: check if current tracking token is in message
+                      tokenMatch = content.includes(trackingToken);
+                    }
+                  }
+
+                  if (tokenMatch) {
+                    toast.success("🐝 Order Confirmed! Check your receipt inbox details.", {
+                      duration: 6000,
+                    });
+                    console.log("[useGlobalMessageListener] Guest order receipt toast shown");
+                  }
                 }
               }
 

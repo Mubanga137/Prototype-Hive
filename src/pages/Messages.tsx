@@ -108,7 +108,26 @@ const Messages = () => {
     }
   }, [context.authMode, context.authIdentifier, dualLoadConversations]);
 
-  useEffect(() => { loadConversations(); }, [loadConversations]);
+  // Load conversations on mount, then auto-select conversation from ?c= parameter
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  // Auto-select conversation from URL parameter (?c=conversationId)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const convId = params.get("c");
+
+    if (convId && conversations.length > 0) {
+      const matchingConv = conversations.find((c) => c.id === convId);
+      if (matchingConv && matchingConv.id !== activeConv?.id) {
+        console.log("[Messages] Auto-selecting conversation from URL", {
+          conversationId: convId.slice(0, 8) + "...",
+        });
+        setActiveConv(matchingConv);
+      }
+    }
+  }, [location.search, conversations, activeConv]);
 
   // ---- Resolve profiles (only for authenticated users) ----
   useEffect(() => {
@@ -344,11 +363,21 @@ const Messages = () => {
         {/* Messages body */}
         <ScrollArea className="flex-1 px-4 py-4">
           <div className="space-y-2 max-w-2xl mx-auto">
+            {messages.length === 0 && (
+              <div className="h-64 flex items-center justify-center text-center text-muted-foreground">
+                <div>
+                  <MessageSquare className="mx-auto mb-3 opacity-30" size={40} />
+                  <p className="text-sm font-medium">No messages yet</p>
+                  <p className="text-xs opacity-70 mt-1">Your order activity will appear here</p>
+                </div>
+              </div>
+            )}
             {messages.map((msg) => {
               const isMine = msg.sender_id === uid;
+              const isSystemMessage = msg.sender_id === SYSTEM_BOT_ID || msg.message_type === "system" || msg.message_type === "system_receipt" || msg.message_type === "retailer_notification";
 
               // System / bot message
-              if (msg.message_type === "system" || msg.channel === "bot") {
+              if (isSystemMessage) {
                 return <SystemMessage key={msg.id} content={msg.content || ""} />;
               }
 

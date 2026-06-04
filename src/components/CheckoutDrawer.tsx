@@ -262,18 +262,44 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 6: Secure guest continuity - persist tracking token to localStorage
       // Allows guest users to retrieve orders across browser sessions
+      // Format: { trackingTokens: [uuid, uuid, ...], mostRecent: uuid }
       if (!user?.id) {
         try {
-          const existing = JSON.parse(localStorage.getItem("hive_guest_active_cart") || "[]");
-          const tokenArray = Array.isArray(existing) ? existing : [];
-          if (!tokenArray.includes(trackingToken)) {
-            tokenArray.push(trackingToken);
+          const stored = localStorage.getItem("hive_guest_active_cart");
+          let guestData = { trackingTokens: [] as string[], mostRecent: trackingToken };
+
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              // Handle both old array format and new object format
+              if (Array.isArray(parsed)) {
+                guestData.trackingTokens = [...new Set(parsed)];
+              } else if (parsed?.trackingTokens) {
+                guestData.trackingTokens = [...new Set(parsed.trackingTokens)];
+              }
+            } catch {
+              // Malformed JSON, start fresh
+            }
           }
-          const deduped = Array.from(new Set(tokenArray));
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify(deduped));
+
+          // Add new token
+          if (!guestData.trackingTokens.includes(trackingToken)) {
+            guestData.trackingTokens.push(trackingToken);
+          }
+          guestData.mostRecent = trackingToken;
+
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify(guestData));
+          console.log("[Checkout] Guest tokens persisted", {
+            tokenCount: guestData.trackingTokens.length,
+            mostRecent: trackingToken.slice(0, 8) + "...",
+          });
         } catch (e) {
           console.warn("[Checkout] localStorage token persistence failed:", e);
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify([trackingToken]));
+          // Fallback to minimal format
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify({
+            trackingTokens: [trackingToken],
+            mostRecent: trackingToken,
+          }));
         }
       }
 
@@ -343,13 +369,36 @@ Customer will contact you via WhatsApp or phone.
         (async () => {
           if (item.sme_id || item.store_id) {
             try {
-              const vendorId = user?.id || `vendor_${item.sme_id || item.store_id}`;
-              await sendRetailerOrderNotification(
-                vendorId,
-                orderId,
-                vendorNotificationDetails
-              );
-              console.log("[Checkout] VENDOR MESSAGE SENT", { orderId, vendorId, smeId: item.sme_id, storeId: item.store_id });
+              // CRITICAL FIX: Get the actual vendor/owner user ID from sme_stores
+              // NOT the customer's user ID
+              const storeId = item.store_id || item.sme_id;
+              const { data: storeData } = await supabase
+                .from("sme_stores")
+                .select("owner_user_id")
+                .eq("id", storeId)
+                .maybeSingle();
+
+              const vendorUserId = storeData?.owner_user_id || null;
+
+              if (vendorUserId) {
+                await sendRetailerOrderNotification(
+                  vendorUserId,
+                  orderId,
+                  vendorNotificationDetails
+                );
+                console.log("[Checkout] VENDOR MESSAGE SENT", {
+                  orderId,
+                  vendorUserId,
+                  smeId: item.sme_id,
+                  storeId: item.store_id,
+                });
+              } else {
+                console.warn("[Checkout] No vendor user ID found for order", {
+                  orderId,
+                  storeId,
+                  smeId: item.sme_id,
+                });
+              }
             } catch (err) {
               console.error("[Checkout] Vendor notification failed:", err);
               throw err;
