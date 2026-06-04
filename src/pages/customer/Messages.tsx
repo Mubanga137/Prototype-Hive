@@ -77,6 +77,18 @@ const CustomerMessages = () => {
   const authIdentifier = dualState.context.authIdentifier;
   const authMode = dualState.context.authMode;
 
+  // Debug auth state
+  useEffect(() => {
+    console.log("[CustomerMessages] Auth State Debug:", {
+      uid: uid?.slice(0, 8) + "..." || "null",
+      isAuthenticated,
+      authIdentifier: authIdentifier?.slice(0, 8) + "..." || "null",
+      authMode,
+      conversationCount: conversations.length,
+      convLoading,
+    });
+  }, [uid, isAuthenticated, authIdentifier, authMode, conversations.length, convLoading]);
+
   // ========== DUAL-STATE: Load Conversations (REFACTORED) ==========
   const loadConversations = useCallback(async () => {
     setConvLoading(true);
