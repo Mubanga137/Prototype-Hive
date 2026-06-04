@@ -114,19 +114,46 @@ export const useDualStateMessaging = () => {
         identifier: context.authIdentifier?.slice(0, 8) + "...",
       });
 
-      let query = (supabase as any)
-        .from("conversations")
-        .select("*")
-        .order("last_message_at", { ascending: false });
+      let data: any = [];
+      let error: any = null;
 
       if (context.authMode === "user" && context.authIdentifier) {
-        // AUTHENTICATED: Isolate by user participation
+        // AUTHENTICATED: Split into two separate queries (more reliable than .or())
         console.debug(
           `[useDualStateMessaging.loadConversations] User mode: ${context.authIdentifier}`
         );
-        query = query.or(
-          `participant_a.eq.${context.authIdentifier},participant_b.eq.${context.authIdentifier}`
-        );
+
+        const uid = context.authIdentifier;
+
+        // Fetch conversations where user is participant_a
+        const { data: convA, error: errA } = await (supabase as any)
+          .from("conversations")
+          .select("*")
+          .eq("participant_a", uid)
+          .order("last_message_at", { ascending: false });
+
+        // Fetch conversations where user is participant_b
+        const { data: convB, error: errB } = await (supabase as any)
+          .from("conversations")
+          .select("*")
+          .eq("participant_b", uid)
+          .order("last_message_at", { ascending: false });
+
+        error = errA || errB;
+        data = [...(convA || []), ...(convB || [])];
+
+        // Deduplicate and sort
+        const seen = new Set();
+        data = data.filter((conv: any) => {
+          if (seen.has(conv.id)) return false;
+          seen.add(conv.id);
+          return true;
+        });
+        data.sort((a: any, b: any) => {
+          const timeA = new Date(a.last_message_at || 0).getTime();
+          const timeB = new Date(b.last_message_at || 0).getTime();
+          return timeB - timeA;
+        });
       } else if (context.authMode === "guest" && context.authIdentifier) {
         // GUEST: Fetch via guest_tracking_token anchor
         console.debug(
@@ -135,10 +162,15 @@ export const useDualStateMessaging = () => {
             8
           )}...`
         );
-        query = query.eq("guest_tracking_token", context.authIdentifier);
-      }
+        const result = await (supabase as any)
+          .from("conversations")
+          .select("*")
+          .eq("guest_tracking_token", context.authIdentifier)
+          .order("last_message_at", { ascending: false });
 
-      const { data, error } = await query;
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         console.error("[useDualStateMessaging.loadConversations] Query error:", {

@@ -118,6 +118,17 @@ const CustomerMessages = () => {
     }
   }, [authIdentifier, authMode, loadConversations]);
 
+  // Auto-retry if loading fails after timeout
+  useEffect(() => {
+    if (!convLoading && conversations.length === 0 && authIdentifier && authMode) {
+      const timer = setTimeout(() => {
+        console.log("[CustomerMessages] Retrying conversations load after timeout...");
+        loadConversations();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [convLoading, conversations.length, authIdentifier, authMode, loadConversations]);
+
   // ========== Load Messages for Active Conversation ==========
   const loadMessagesForConversation = useCallback(async (convId: string) => {
     try {
