@@ -168,7 +168,7 @@ export const useDualStateMessaging = () => {
           error = queryErr;
         }
       } else if (context.authMode === "guest" && context.authIdentifier) {
-        // GUEST: Fetch via guest_tracking_token anchor
+        // GUEST: Fetch via service-role function (bypasses RLS restrictions)
         console.debug(
           `[useDualStateMessaging.loadConversations] Guest mode: ${context.authIdentifier.slice(
             0,
@@ -176,20 +176,19 @@ export const useDualStateMessaging = () => {
           )}...`
         );
         try {
-          const result = await (supabase as any)
-            .from("conversations")
-            .select("*")
-            .eq("guest_tracking_token", context.authIdentifier)
-            .order("last_message_at", { ascending: false });
+          const result = await (supabase as any).rpc(
+            "get_guest_conversations",
+            { p_guest_token: context.authIdentifier }
+          );
 
           data = result.data;
           error = result.error;
 
           if (error) {
-            console.error("[useDualStateMessaging] Guest query error:", error.message);
+            console.error("[useDualStateMessaging] Guest RPC error:", error.message);
           }
         } catch (queryErr: any) {
-          console.error("[useDualStateMessaging] Guest query exception:", queryErr.message);
+          console.error("[useDualStateMessaging] Guest RPC exception:", queryErr.message);
           error = queryErr;
         }
       }
@@ -230,6 +229,7 @@ export const useDualStateMessaging = () => {
   /**
    * Load all messages for a specific conversation
    * Includes system alerts (sender_id === SYSTEM_BOT_ID)
+   * Uses service-role function to bypass guest RLS restrictions
    */
   const loadMessages = useCallback(
     async (conversationId: string) => {
@@ -240,14 +240,14 @@ export const useDualStateMessaging = () => {
           `[useDualStateMessaging.loadMessages] Loading for conversation: ${conversationId}`
         );
 
-        const { data, error } = await (supabase as any)
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true });
+        // Use service-role function for safer access (works for guests too)
+        const { data, error } = await (supabase as any).rpc(
+          "get_conversation_messages",
+          { p_conversation_id: conversationId }
+        );
 
         if (error) {
-          console.error("[useDualStateMessaging.loadMessages] Query error:", {
+          console.error("[useDualStateMessaging.loadMessages] RPC error:", {
             message: error.message,
             conversationId,
           });

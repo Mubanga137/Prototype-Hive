@@ -163,11 +163,11 @@ const CustomerMessages = () => {
   const loadMessagesForConversation = useCallback(async (convId: string) => {
     try {
       console.debug(`[CustomerMessages] Loading messages for conversation: ${convId}`);
-      const { data, error } = await (supabase as any)
-        .from("messages")
-        .select("*")
-        .eq("conversation_id", convId)
-        .order("created_at", { ascending: true });
+      // Use service-role RPC function to bypass guest RLS restrictions
+      const { data, error } = await (supabase as any).rpc(
+        "get_conversation_messages",
+        { p_conversation_id: convId }
+      );
 
       if (error) {
         console.error("[CustomerMessages] Load messages error:", {
