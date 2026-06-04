@@ -37,15 +37,28 @@ export default function GuestOrderLedger() {
   const initializeFromLocalStorage = () => {
     try {
       const stored = localStorage.getItem("hive_guest_active_cart");
+
+      console.log("[GuestOrderLedger] localStorage check:", {
+        key: "hive_guest_active_cart",
+        stored,
+        allKeys: Object.keys(localStorage),
+      });
+
       const tokens = stored ? JSON.parse(stored) : [];
-      
+
       if (!Array.isArray(tokens) || tokens.length === 0) {
+        console.warn("[GuestOrderLedger] No tokens found in localStorage");
         setLoading(false);
         return;
       }
 
       // Get the most recent token (last in array)
       const mostRecentToken = tokens[tokens.length - 1];
+      console.log("[GuestOrderLedger] Found tracking token:", {
+        token: mostRecentToken,
+        totalTokens: tokens.length,
+      });
+
       setTrackingToken(mostRecentToken);
       fetchOrder(mostRecentToken);
     } catch (e) {
@@ -55,10 +68,15 @@ export default function GuestOrderLedger() {
   };
 
   const fetchOrder = async (token: string) => {
-    if (!token) return;
+    if (!token) {
+      console.error("[GuestOrderLedger] No token provided");
+      return;
+    }
 
     try {
       setLoading(true);
+
+      console.log("[GuestOrderLedger] Fetching order with token:", token);
 
       const { data, error } = await supabase
         .from("orders")
@@ -75,15 +93,26 @@ export default function GuestOrderLedger() {
           message: error.message,
           code: (error as any).code,
           status: (error as any).status,
+          hint: (error as any).hint,
+          token,
         });
         toast.error("Failed to load order details");
         return;
       }
 
       if (!data) {
-        console.warn("[GuestOrderLedger] No order found for token:", token);
+        console.warn("[GuestOrderLedger] No order found for token:", {
+          token,
+          dataReceived: data,
+        });
+        toast.error("Order not found. Please check your link and try again.");
         return;
       }
+
+      console.log("[GuestOrderLedger] Order fetched successfully:", {
+        orderId: data.id,
+        status: data.status,
+      });
 
       // Fetch item details
       let itemName = "Order Item";
@@ -206,16 +235,31 @@ export default function GuestOrderLedger() {
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">📭</div>
           <h1 className="text-2xl font-bold text-foreground mb-2">No Active Receipt Found</h1>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-4">
             No active receipt found in this session.
           </p>
-          <button
-            onClick={() => navigate("/marketplace")}
-            className="btn-gold px-6 py-2 inline-flex items-center gap-2"
-          >
-            <ArrowLeft size={16} />
-            Back to Marketplace
-          </button>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left text-sm">
+            <p className="text-amber-900 font-semibold mb-2">💡 What to do:</p>
+            <ul className="text-amber-800 space-y-1 text-xs">
+              <li>• Check your email or WhatsApp for order confirmation</li>
+              <li>• Your order data is saved under the tracking token</li>
+              <li>• Contact support if you need order details</li>
+            </ul>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate("/")}
+              className="btn-gold px-6 py-2 inline-flex items-center gap-2 flex-1"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => navigate("/track-orders")}
+              className="flex-1 px-6 py-2 border border-border rounded-lg font-medium text-foreground hover:bg-slate-50 transition"
+            >
+              Track Order
+            </button>
+          </div>
         </div>
       </div>
     );

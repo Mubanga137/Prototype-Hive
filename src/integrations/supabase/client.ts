@@ -8,6 +8,16 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Verify config on initialization
+console.log("[Supabase Init] Config verification:", {
+  urlValid: !!SUPABASE_URL && SUPABASE_URL.startsWith("https://"),
+  keyPresent: !!SUPABASE_PUBLISHABLE_KEY && SUPABASE_PUBLISHABLE_KEY.length > 50,
+  url: SUPABASE_URL,
+  keyPrefix: SUPABASE_PUBLISHABLE_KEY?.substring(0, 20) + "...",
+  builderPreview: !!window.location.hostname.includes("builder"),
+  hostname: window.location.hostname,
+});
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
@@ -54,11 +64,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
             message: error?.message,
             name: error?.name,
             code: error?.code,
+            status: error?.status,
+            details: error?.details,
+            hint: error?.hint,
+            context: {
+              builderPreview: window.location.hostname.includes("builder"),
+              hostname: window.location.hostname,
+              protocol: window.location.protocol,
+            },
             timestamp: new Date().toISOString(),
           };
 
-          // Only log timeouts and auth errors, not every error
-          if (isAborted || error?.message === 'Request timeout after 45 seconds') {
+          // Log "Failed to fetch" errors with full detail
+          if (error?.message === "Failed to fetch") {
+            console.error("[Supabase] CRITICAL: Failed to fetch - request didn't reach server", errorInfo);
+          } else if (isAborted || error?.message === 'Request timeout after 45 seconds') {
             console.warn("[Supabase] Request timeout (45s):", errorInfo);
           } else if (error?.status === 401 || error?.status === 403) {
             console.warn("[Supabase] Auth error:", errorInfo);

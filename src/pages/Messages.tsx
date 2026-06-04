@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Phone, Paperclip, Send, Search, MessageSquare } from "lucide-react";
+import { ArrowLeft, Phone, Paperclip, Send, Search, MessageSquare, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useDualStateMessaging } from "@/hooks/useDualStateMessaging";
 import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
 import hiveLogo from "@/assets/hive-logo.jpeg"
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import SystemMessage from "@/components/messaging/SystemMessage";
 import OrderStateOverlay from "@/components/messaging/OrderStateOverlay";
 import AttachProductModal from "@/components/messaging/AttachProductModal";
@@ -64,11 +66,19 @@ const initials = (name: string | null) =>
 
 // ---------- Component ----------
 
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+
 const Messages = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const {
+    context,
+    loadConversations: dualLoadConversations,
+    loadMessages: dualLoadMessages,
+    subscribeToMessages: dualSubscribeToMessages
+  } = useDualStateMessaging();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileSummary>>({});
@@ -79,29 +89,35 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [orderState, setOrderState] = useState<"waiting" | "success" | "dispatch" | null>(null);
+  const [sharingOrder, setSharingOrder] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uid = user?.id;
 
-  // ---- Fetch conversations ----
+  // ---- Fetch conversations using dual-state logic ----
   const loadConversations = useCallback(async () => {
-    if (!uid) return;
-    const { data } = await (supabase as any)
-      .from("conversations")
-      .select("*")
-      .or(`participant_a.eq.${uid},participant_b.eq.${uid}`)
-      .order("last_message_at", { ascending: false });
-    if (data) setConversations(data as Conversation[]);
-  }, [uid]);
+    if (!context.authMode || !context.authIdentifier) {
+      console.debug("[Messages] No auth context yet");
+      return;
+    }
+    const result = await dualLoadConversations();
+    if (result.success) {
+      setConversations(result.conversations);
+      console.log("[Messages] Loaded", result.conversations.length, "conversations");
+    }
+  }, [context.authMode, context.authIdentifier, dualLoadConversations]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // ---- Resolve profiles ----
+  // ---- Resolve profiles (only for authenticated users) ----
   useEffect(() => {
-    if (!conversations.length || !uid) return;
+    if (!conversations.length || !uid || context.authMode === "guest") return;
     const ids = new Set<string>();
-    conversations.forEach((c) => { ids.add(c.participant_a); ids.add(c.participant_b); });
+    conversations.forEach((c) => {
+      if (c.participant_a) ids.add(c.participant_a);
+      if (c.participant_b) ids.add(c.participant_b);
+    });
     ids.delete(uid);
     const missing = [...ids].filter((id) => !profiles[id]);
     if (!missing.length) return;
@@ -115,34 +131,38 @@ const Messages = () => {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, uid]);
+  }, [conversations, uid, context.authMode]);
 
-  // ---- Fetch messages ----
+  // ---- Fetch messages using dual-state logic ----
   useEffect(() => {
     if (!activeConv) return;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("messages").select("*").eq("conversation_id", activeConv.id)
-        .order("created_at", { ascending: true });
-      if (data) setMessages(data as Message[]);
+      const result = await dualLoadMessages(activeConv.id);
+      if (result.success) {
+        setMessages(result.messages);
+        console.log("[Messages] Loaded", result.messages.length, "messages");
+      }
     })();
-  }, [activeConv]);
+  }, [activeConv, dualLoadMessages]);
 
-  // ---- Real-time: messages ----
+  // ---- Real-time: messages using dual-state subscription ----
   useEffect(() => {
     if (!activeConv) return;
-    const channel = supabase
-      .channel(`messages:${activeConv.id}`)
-      .on("postgres_changes" as any, {
-        event: "INSERT", schema: "public", table: "messages",
-        filter: `conversation_id=eq.${activeConv.id}`,
-      }, (payload: any) => {
-        const newMsg = payload.new as Message;
-        setMessages((prev) => prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [activeConv]);
+
+    const channel = dualSubscribeToMessages(activeConv.id, (newMsg: Message) => {
+      setMessages((prev) =>
+        prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
+      );
+      // Auto-scroll to new message
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    });
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [activeConv, dualSubscribeToMessages]);
 
   // ---- Real-time: conversations list ----
   useEffect(() => {

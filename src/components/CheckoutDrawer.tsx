@@ -197,6 +197,22 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
           p_sme_id: item.sme_id,
           p_quantity: isService ? 1 : quantity,
         });
+
+        // CRITICAL: Log full error details for debugging network issues
+        console.error("[Checkout] RPC Error Details:", {
+          message: error.message,
+          code: error.code,
+          status: (error as any).status,
+          details: error.details,
+          hint: error.hint,
+          cause: (error as any).cause,
+          timestamp: new Date().toISOString(),
+          context: {
+            hostname: window.location.hostname,
+            builderPreview: window.location.hostname.includes("builder"),
+          },
+        });
+
         // Display server's sterile error message
         toast.error(`⚠️ ${error.message || "Order submission failed"}`);
         setState("idle");
