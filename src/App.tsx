@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -107,6 +107,40 @@ const AppContent = () => {
   );
 };
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[ErrorBoundary] Caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "20px", color: "red", fontFamily: "monospace" }}>
+          <h1>App Error</h1>
+          <p>{this.state.error?.message}</p>
+          <pre style={{ overflow: "auto", background: "#f0f0f0", padding: "10px" }}>
+            {this.state.error?.stack}
+          </pre>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const App = () => {
   // Initialize global error handlers and health checks once on mount
   useEffect(() => {
@@ -121,27 +155,33 @@ const App = () => {
       (window as any).printSystemStatus = printSystemStatus;
 
       // Make guest ledger diagnostic available
-      const { runGuestLedgerDiagnostic, testGuestLedgerQuery, checkLocalStorageTokens } =
-        require("@/lib/testGuestLedgerQuery");
-      (window as any).testGuestLedger = testGuestLedgerQuery;
-      (window as any).checkGuestTokens = checkLocalStorageTokens;
-      (window as any).diagnoseLedger = runGuestLedgerDiagnostic;
+      try {
+        const { runGuestLedgerDiagnostic, testGuestLedgerQuery, checkLocalStorageTokens } =
+          require("@/lib/testGuestLedgerQuery");
+        (window as any).testGuestLedger = testGuestLedgerQuery;
+        (window as any).checkGuestTokens = checkLocalStorageTokens;
+        (window as any).diagnoseLedger = runGuestLedgerDiagnostic;
+      } catch (err) {
+        console.warn("[App] Could not load guest ledger diagnostics:", err);
+      }
     }
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <RoleVerificationWrapper />
-            <Toaster />
-            <Sonner />
-            <AppContent />
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <RoleVerificationWrapper />
+              <Toaster />
+              <Sonner />
+              <AppContent />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
