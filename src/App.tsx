@@ -43,6 +43,7 @@ import MyOrders from "./pages/customer/MyOrders.tsx";
 import GuestOrderLedger from "./pages/customer/GuestOrderLedger.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
 import MessagingDiagnosticPanel from "@/components/messaging/MessagingDiagnosticPanel";
+import SupabaseDiagnostics from "@/components/SupabaseDiagnostics";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -101,6 +102,7 @@ const AppContent = () => {
       </Routes>
       <HiveBotWidget hidden={hideBot} />
       <MessagingDiagnosticPanel />
+      <SupabaseDiagnostics />
     </>
   );
 };
