@@ -82,6 +82,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentStore, setCurrentStore] = useState<StoreRow | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Safety timeout: if loading takes more than 10 seconds, show the app anyway
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.warn("[AuthProvider] Loading timeout - forcing app to show");
+        setLoading(false);
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   /** Fetch profile by user id with retry logic. Returns the row or null. */
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     const maxRetries = 3;
@@ -217,12 +228,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const sessionPromise = Promise.race([
       supabase.auth.getSession(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Session fetch timeout")), 8000)
+        setTimeout(() => reject(new Error("Session fetch timeout")), 5000)
       ),
     ]);
 
+    console.log("[useAuth] Fetching initial session...");
     sessionPromise
       .then((result: any) => {
+        console.log("[useAuth] Session fetch successful");
         const sess = result?.data?.session ?? null;
         void resolveSession(sess);
       })
@@ -234,6 +247,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (errorMsg.includes("fetch") || errorMsg.includes("Failed") || errorMsg.includes("timeout")) {
           console.error("[useAuth] Network connectivity issue: Supabase may be unreachable. Check CORS settings in Supabase dashboard.");
           console.error("[useAuth] Dev domain:", window.location.hostname);
+          console.error("[useAuth] The app will continue loading without auth.");
         }
 
         // If it's a refresh token error, clear tokens and reload
