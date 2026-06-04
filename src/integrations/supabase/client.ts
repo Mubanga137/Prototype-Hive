@@ -16,7 +16,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     fetch: (url: string, options?: RequestInit) => {
-      // Use 15 second timeout for Supabase queries
+      // Use 45 second timeout for Supabase queries (increased from 15s)
       const controller = new AbortController();
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
       let isAborted = false;
@@ -25,8 +25,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         timeoutId = setTimeout(() => {
           isAborted = true;
           controller.abort();
-          reject(new Error('Request timeout after 15 seconds'));
-        }, 15000);
+          reject(new Error('Request timeout after 45 seconds'));
+        }, 45000);
       });
 
       const fetchPromise = fetch(url, {
@@ -58,8 +58,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
           };
 
           // Only log timeouts and auth errors, not every error
-          if (isAborted || error?.message === 'Request timeout after 15 seconds') {
-            console.warn("[Supabase] Request timeout (15s):", errorInfo);
+          if (isAborted || error?.message === 'Request timeout after 45 seconds') {
+            console.warn("[Supabase] Request timeout (45s):", errorInfo);
           } else if (error?.status === 401 || error?.status === 403) {
             console.warn("[Supabase] Auth error:", errorInfo);
           } else if (error?.message && error?.name !== "AbortError") {

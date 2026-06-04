@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+
 export const createTestSystemConversationsAndMessages = async (userId: string) => {
   try {
     console.log("[testSystemMessages] Creating test data for user:", userId);
@@ -29,7 +31,7 @@ export const createTestSystemConversationsAndMessages = async (userId: string) =
       .from("messages")
       .insert({
         conversation_id: conv.id,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content: `🐝 Hive System Receipt\n\nOrder #1001\nTotal: K450.00\nEstimated Delivery: 2-3 hours\n\nYour order is confirmed and will be prepared shortly.`,
         message_type: "system_receipt",
       })
@@ -82,7 +84,7 @@ export const createTestVendorNotification = async (vendorId: string) => {
       .from("messages")
       .insert({
         conversation_id: conv.id,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content: `📦 Retailer Notification\n\nNew order from Jane Smith\n\nItems:\n• 2x Fresh Bread\n• 1x Milk (1L)\n• 1x Butter (500g)\n\nTotal: K285.00\nPickup Location: Store Address`,
         message_type: "retailer_notification",
       })
@@ -133,7 +135,7 @@ export const createTestRiderNotification = async (riderId: string) => {
       .from("messages")
       .insert({
         conversation_id: conv.id,
-        sender_id: "system",
+        sender_id: SYSTEM_BOT_ID,
         content: `🚀 Delivery Route Claimed Successfully!\n\nOrder #3001 has been claimed for delivery.\nEstimated delivery time: 30 minutes`,
         message_type: "delivery_notification",
       })
