@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { ArrowLeft, Send, Search, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +56,7 @@ const initials = (name: string | null) =>
 const CustomerMessages = () => {
   const { user } = useAuth();
   const { isGuest, trackingToken } = useGuestTracking();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const dualState = useDualStateMessaging();
 
@@ -129,6 +131,22 @@ const CustomerMessages = () => {
       setConvLoading(false);
     }
   }, [authIdentifier, authMode, loadConversations]);
+
+  // Auto-select conversation from URL parameter (?c=conversationId)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const convId = params.get("c");
+
+    if (convId && conversations.length > 0) {
+      const matchingConv = conversations.find((c) => c.id === convId);
+      if (matchingConv && matchingConv.id !== activeConv?.id) {
+        console.log("[CustomerMessages] Auto-selecting conversation from URL", {
+          conversationId: convId.slice(0, 8) + "...",
+        });
+        setActiveConv(matchingConv);
+      }
+    }
+  }, [location.search, conversations, activeConv]);
 
   // Auto-retry if loading fails after timeout
   useEffect(() => {
