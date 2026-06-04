@@ -183,15 +183,29 @@ const Messages = () => {
     };
   }, [activeConv, dualSubscribeToMessages]);
 
-  // ---- Real-time: conversations list ----
+  // ---- Real-time: conversations list (handles both user and guest modes) ----
   useEffect(() => {
-    if (!uid) return;
+    // Only subscribe if we have auth context
+    if (!context.authIdentifier || !context.authMode) return;
+
     const channel = supabase
-      .channel("conversations-list")
-      .on("postgres_changes" as any, { event: "*", schema: "public", table: "conversations" }, () => loadConversations())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [uid, loadConversations]);
+      .channel("conversations-list-realtime")
+      .on("postgres_changes" as any, {
+        event: "*",
+        schema: "public",
+        table: "conversations",
+      }, () => {
+        console.log("[Messages] Conversation list changed, reloading");
+        loadConversations();
+      })
+      .subscribe((status) => {
+        console.log("[Messages] Conversations realtime subscription status:", status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [context.authIdentifier, context.authMode, loadConversations]);
 
   // ---- Auto-scroll ----
   useEffect(() => {

@@ -18,8 +18,24 @@ const ProtectedRoute = ({ children, allowedRoles, allowGuests = false, allowGues
   const checkGuestTokens = () => {
     try {
       const stored = localStorage.getItem("hive_guest_active_cart");
-      const tokens = stored ? JSON.parse(stored) : [];
-      return Array.isArray(tokens) && tokens.length > 0;
+      if (!stored) return false;
+
+      try {
+        const parsed = JSON.parse(stored);
+
+        // Array format (primary)
+        if (Array.isArray(parsed)) {
+          return parsed.some((t) => typeof t === "string" && t.length >= 36);
+        }
+        // Object format (fallback from old code)
+        if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
+          return parsed.trackingTokens.some((t: any) => typeof t === "string" && t.length >= 36);
+        }
+        // String format
+        return typeof parsed === "string" && parsed.length >= 36;
+      } catch {
+        return false;
+      }
     } catch (e) {
       return false;
     }

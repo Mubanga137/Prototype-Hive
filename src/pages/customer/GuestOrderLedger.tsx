@@ -44,18 +44,38 @@ export default function GuestOrderLedger() {
         allKeys: Object.keys(localStorage),
       });
 
-      const tokens = stored ? JSON.parse(stored) : [];
-
-      if (!Array.isArray(tokens) || tokens.length === 0) {
+      if (!stored) {
         console.warn("[GuestOrderLedger] No tokens found in localStorage");
         setLoading(false);
         return;
       }
 
-      // Get the most recent token (last in array)
-      const mostRecentToken = tokens[tokens.length - 1];
+      let tokens: string[] = [];
+      try {
+        const parsed = JSON.parse(stored);
+
+        // Array format (primary)
+        if (Array.isArray(parsed)) {
+          tokens = parsed.filter((t) => typeof t === "string" && t.length >= 36);
+        }
+        // Object format (fallback from old code)
+        else if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
+          tokens = parsed.trackingTokens.filter((t: any) => typeof t === "string" && t.length >= 36);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+
+      if (tokens.length === 0) {
+        console.warn("[GuestOrderLedger] No valid tokens in localStorage");
+        setLoading(false);
+        return;
+      }
+
+      // Get the most recent token (first in array after normalization)
+      const mostRecentToken = tokens[0];
       console.log("[GuestOrderLedger] Found tracking token:", {
-        token: mostRecentToken,
+        token: mostRecentToken.slice(0, 8) + "...",
         totalTokens: tokens.length,
       });
 
