@@ -485,44 +485,14 @@ Customer will contact you via WhatsApp or phone.
         })),
       });
 
-      // STEP 8a: Route service bookings to messages/communications channel
-      if (isService) {
-        toast.success("✅ Funds Secured in Escrow. Notifying your Service Provider!", {
-          action: {
-            label: "View Booking",
-            onClick: () => window.location.href = "/messages"
-          }
-        });
+      // STEP 8: Route to ledger immediately with order context
+      // Ledger page handles both guest and authenticated users
+      // Use query params to pass order context
+      const ledgerUrl = `/ledger?orderId=${extractedOrderId}&trackingToken=${extractedTrackingToken}`;
 
-        // Auto-redirect after brief delay for UX feedback
-        setTimeout(() => {
-          window.location.href = "/messages";
-        }, 2000);
-        return;
-      }
-
-      // STEP 8b: Route product orders - guests go to ledger, authenticated users to dashboard
-      if (!user?.id) {
-        // Guest user: redirect to secure parameterless ledger (token already in localStorage)
-        setTimeout(() => {
-          navigate("/ledger", { replace: true });
-          onOpenChange(false);
-        }, 1500);
-        return;
-      }
-
-      // Authenticated user: show success and redirect to orders dashboard
-      toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
-        action: {
-          label: "Track Order",
-          onClick: () => window.location.href = "/track-orders"
-        }
-      });
-
-      setTimeout(() => {
-        navigate("/track-orders", { replace: true });
-        onOpenChange(false);
-      }, 2000);
+      // INSTANT redirect - no delays, no intermediate UI
+      navigate(ledgerUrl, { replace: true });
+      onOpenChange(false);
 
     } catch (err) {
       console.error("[checkout] Unexpected error:", err);
@@ -705,38 +675,6 @@ Customer will contact you via WhatsApp or phone.
                     </>
                   )}
                 </div>
-                {success && (
-                  <div className="mt-8 flex flex-col items-center justify-center gap-6 text-center">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                      className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl"
-                    >
-                      ✅
-                    </motion.div>
-
-                    <div className="space-y-2">
-                      <h2 className="text-2xl font-bold text-foreground">Order Confirmed!</h2>
-                      <p className="text-muted-foreground text-sm">
-                        Your order has been placed successfully and is being processed.
-                      </p>
-                    </div>
-
-                    <div className="w-full rounded-xl border border-green-200 bg-green-50 p-4 text-left space-y-2">
-                      <p className="text-sm"><strong>Order ID:</strong> #{orderId}</p>
-                      <p className="text-sm"><strong>Item:</strong> {item.item_name}</p>
-                      <p className="text-sm"><strong>Total:</strong> ZMW {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                      {otpCode && <p className="text-sm"><strong>OTP Code:</strong> {otpCode}</p>}
-                    </div>
-
-                    <p className="text-xs text-muted-foreground">
-                      {isService
-                        ? "Service provider will confirm your booking shortly."
-                        : "Vendor is preparing your order."}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -749,11 +687,9 @@ Customer will contact you via WhatsApp or phone.
                   </span>
                 </div>
 
-                {!success && (
-                <>
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || success}
+                  disabled={submitting}
                   className="btn-gold mt-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-80"
                 >
                   {submitting ? (
@@ -774,23 +710,6 @@ Customer will contact you via WhatsApp or phone.
                 <p className="mt-3 text-center text-[10px] text-muted-foreground">
                   After confirming we'll open WhatsApp so you can finalise with the store.
                 </p>
-                </>
-                )}
-
-                {success && (
-                <>
-                <a
-                  href="/messages"
-                  className="btn-gold mt-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm"
-                >
-                  🟢 VIEW RECEIPT
-                </a>
-
-                <p className="mt-3 text-center text-[10px] text-muted-foreground">
-                  Your order receipt and vendor notifications have been sent.
-                </p>
-                </>
-                )}
               </div>
             </div>
           </div>
