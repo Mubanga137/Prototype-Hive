@@ -243,13 +243,14 @@ export const sendRetailerOrderNotification = async (
     vendorId,
   });
 
-  const { data: existing, error: fetchError } = await (supabase as any)
+  const fetchQuery = (supabase as any)
     .from("conversations")
     .select("*")
     .eq("participant_a", vendorId)
     .eq("context_order_id", orderId)
-    .single()
-    .catch(() => ({ data: null, error: null }));
+    .maybeSingle();
+
+  const { data: existing, error: fetchError } = await fetchQuery;
 
   let convId = existing?.id;
 
@@ -322,13 +323,14 @@ export const sendDeliveryClaimedNotification = async (
     riderId,
   });
 
-  const { data: existing, error: fetchError } = await (supabase as any)
+  const fetchQuery = (supabase as any)
     .from("conversations")
     .select("*")
     .eq("participant_a", riderId)
     .eq("context_order_id", orderId)
-    .single()
-    .catch(() => ({ data: null, error: null }));
+    .maybeSingle();
+
+  const { data: existing, error: fetchError } = await fetchQuery;
 
   let convId = existing?.id;
 

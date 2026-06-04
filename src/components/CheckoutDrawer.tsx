@@ -77,6 +77,10 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   const [state, setState] = useState<SubmitState>("idle");
   const [showAuthGate, setShowAuthGate] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const [trackingToken, setTrackingToken] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState<string | null>(null);
+  const [totalToPay, setTotalToPay] = useState<number>(0);
 
   const isService = item?.item_type === "service";
 
@@ -92,6 +96,10 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       setState("idle");
       setShowAuthGate(false);
       setGuestMode(false);
+      setOrderId(null);
+      setTrackingToken(null);
+      setOtpCode(null);
+      setTotalToPay(0);
     }
   }, [open, item?.id]);
 
@@ -255,15 +263,32 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       }
 
       // STEP 5: Extract response payload (all computed server-side)
-      const orderId = result.order_id;
-      const trackingToken = result.tracking_token;  // UUID for guest ledger access
-      const totalToPay = result.total_to_pay;      // NUMERIC: server-computed price
-      const otpCode = result.otp_code;             // 4-digit OTP for verification
+      const extractedOrderId = result.order_id;
+      const extractedTrackingToken = result.tracking_token;  // UUID for guest ledger access
+      const extractedTotalToPay = result.total_to_pay;      // NUMERIC: server-computed price
+      const extractedOtpCode = result.otp_code;             // 4-digit OTP for verification
+
+      // Guard: Verify orderId exists before proceeding
+      if (!extractedOrderId) {
+        console.error("[Checkout] FATAL: orderId missing after checkout", {
+          result,
+          timestamp: new Date().toISOString(),
+        });
+        toast.error("⚠️ Order ID missing. Please contact support.");
+        setState("idle");
+        return;
+      }
+
+      // Store in component state for persistence across renders
+      setOrderId(extractedOrderId);
+      setTrackingToken(extractedTrackingToken);
+      setTotalToPay(extractedTotalToPay);
+      setOtpCode(extractedOtpCode);
 
       // STEP 6: Secure guest continuity - persist tracking token to localStorage
       // Format: UNIFIED ARRAY ONLY for compatibility across all readers
       // [uuid1, uuid2, ...] - most recent is always at index 0
-      if (!user?.id) {
+      if (!user?.id && extractedTrackingToken) {
         try {
           const stored = localStorage.getItem("hive_guest_active_cart");
           let tokens: string[] = [];
@@ -285,7 +310,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
           }
 
           // Add new token at front (most recent first)
-          tokens = [trackingToken, ...tokens.filter((t) => t !== trackingToken)];
+          tokens = [extractedTrackingToken, ...tokens.filter((t) => t !== extractedTrackingToken)];
 
           // Keep only 10 most recent
           tokens = tokens.slice(0, 10);
@@ -293,12 +318,12 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
           localStorage.setItem("hive_guest_active_cart", JSON.stringify(tokens));
           console.log("[Checkout] Guest tokens persisted (array format)", {
             tokenCount: tokens.length,
-            mostRecent: trackingToken.slice(0, 8) + "...",
+            mostRecent: extractedTrackingToken.slice(0, 8) + "...",
           });
         } catch (e) {
           console.warn("[Checkout] localStorage token persistence failed:", e);
           // Fallback: single token in array
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify([trackingToken]));
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify([extractedTrackingToken]));
         }
       }
 
@@ -307,9 +332,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 7.5: ORCHESTRATION LAYER — Run all downstream messaging in parallel
       console.log("[Checkout] ORDER CREATED", {
-        orderId,
-        trackingToken,
-        totalToPay,
+        orderId: extractedOrderId,
+        trackingToken: extractedTrackingToken,
+        totalToPay: extractedTotalToPay,
         smeId: item.sme_id,
         storeId: item.store_id,
         customerName: name,
@@ -320,10 +345,10 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // Prepare receipt details for customer
       const receiptDetails = `
-Order #${orderId}
+Order #${extractedOrderId}
 ${item.item_name}
 Quantity: ${isService ? "1 booking" : quantity}
-Total: K${totalToPay.toFixed(2)}
+Total: K${extractedTotalToPay.toFixed(2)}
 
 ${isService ? `Scheduled: ${scheduledDate}` : `Delivery to: ${address}`}
 
@@ -333,14 +358,14 @@ Your order is confirmed and will be processed shortly.
       // Prepare vendor notification details
       const vendorNotificationDetails = `
 📦 New Order Received
-Order #${orderId}
+Order #${extractedOrderId}
 Item: ${item.item_name}
 Customer: ${name}
 Phone: ${cleanedPhone}
 Quantity: ${isService ? "1 booking" : quantity}
-Total: K${totalToPay.toFixed(2)}
+Total: K${extractedTotalToPay.toFixed(2)}
 ${isService ? `Scheduled: ${scheduledDate}` : `Delivery: ${address}`}
-OTP: ${otpCode}
+OTP: ${extractedOtpCode}
 
 Customer will contact you via WhatsApp or phone.
       `.trim();
@@ -351,13 +376,13 @@ Customer will contact you via WhatsApp or phone.
         (async () => {
           try {
             await sendOrderConfirmationReceipt(
-              user?.id || orderId.toString(),
-              orderId,
+              user?.id || extractedOrderId.toString(),
+              extractedOrderId,
               receiptDetails,
               !user?.id,  // isGuest
-              trackingToken  // guestToken (only used if guest)
+              extractedTrackingToken  // guestToken (only used if guest)
             );
-            console.log("[Checkout] CUSTOMER MESSAGE SENT", { orderId, recipientType: user?.id ? "authenticated" : "guest" });
+            console.log("[Checkout] CUSTOMER MESSAGE SENT", { orderId: extractedOrderId, recipientType: user?.id ? "authenticated" : "guest" });
           } catch (err) {
             console.error("[Checkout] Customer message failed:", err);
             throw err;
@@ -382,18 +407,18 @@ Customer will contact you via WhatsApp or phone.
               if (vendorUserId) {
                 await sendRetailerOrderNotification(
                   vendorUserId,
-                  orderId,
+                  extractedOrderId,
                   vendorNotificationDetails
                 );
                 console.log("[Checkout] VENDOR MESSAGE SENT", {
-                  orderId,
+                  orderId: extractedOrderId,
                   vendorUserId,
                   smeId: item.sme_id,
                   storeId: item.store_id,
                 });
               } else {
                 console.warn("[Checkout] No vendor user ID found for order", {
-                  orderId,
+                  orderId: extractedOrderId,
                   storeId,
                   smeId: item.sme_id,
                 });
@@ -414,16 +439,16 @@ Customer will contact you via WhatsApp or phone.
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  orderId,
-                  trackingToken,
+                  orderId: extractedOrderId,
+                  trackingToken: extractedTrackingToken,
                   customerId: user?.id || null,
                   customerName: name,
                   customerPhone: cleanedPhone,
                   itemName: item.item_name,
                   smeId: item.sme_id,
                   storeId: item.store_id,
-                  totalAmount: totalToPay,
-                  otpCode,
+                  totalAmount: extractedTotalToPay,
+                  otpCode: extractedOtpCode,
                   itemType: isService ? "service" : "product",
                   deliveryAddress: isService ? null : address,
                   scheduledDate: isService ? scheduledDate : null,
@@ -431,7 +456,7 @@ Customer will contact you via WhatsApp or phone.
                 }),
               });
               if (response.ok) {
-                console.log("[Checkout] WEBHOOK SENT", { orderId, status: "success" });
+                console.log("[Checkout] WEBHOOK SENT", { orderId: extractedOrderId, status: "success" });
               } else {
                 console.warn("[Checkout] Webhook returned non-OK status:", response.status);
               }
@@ -450,7 +475,7 @@ Customer will contact you via WhatsApp or phone.
       const failureCount = results.filter(r => r.status === "rejected").length;
 
       console.log("[Checkout] MESSAGING ORCHESTRATION COMPLETE", {
-        orderId,
+        orderId: extractedOrderId,
         successCount,
         failureCount,
         results: results.map((r, i) => ({
@@ -460,44 +485,14 @@ Customer will contact you via WhatsApp or phone.
         })),
       });
 
-      // STEP 8a: Route service bookings to messages/communications channel
-      if (isService) {
-        toast.success("✅ Funds Secured in Escrow. Notifying your Service Provider!", {
-          action: {
-            label: "View Booking",
-            onClick: () => window.location.href = "/messages"
-          }
-        });
+      // STEP 8: Route to ledger immediately with order context
+      // Ledger page handles both guest and authenticated users
+      // Use query params to pass order context
+      const ledgerUrl = `/ledger?orderId=${extractedOrderId}&trackingToken=${extractedTrackingToken}`;
 
-        // Auto-redirect after brief delay for UX feedback
-        setTimeout(() => {
-          window.location.href = "/messages";
-        }, 2000);
-        return;
-      }
-
-      // STEP 8b: Route product orders - guests go to ledger, authenticated users to dashboard
-      if (!user?.id) {
-        // Guest user: redirect to secure parameterless ledger (token already in localStorage)
-        setTimeout(() => {
-          navigate("/ledger", { replace: true });
-          onOpenChange(false);
-        }, 1500);
-        return;
-      }
-
-      // Authenticated user: show success and redirect to orders dashboard
-      toast.success("✅ Funds Secured in Escrow. Notifying your Vendor!", {
-        action: {
-          label: "Track Order",
-          onClick: () => window.location.href = "/track-orders"
-        }
-      });
-
-      setTimeout(() => {
-        navigate("/track-orders", { replace: true });
-        onOpenChange(false);
-      }, 2000);
+      // INSTANT redirect - no delays, no intermediate UI
+      navigate(ledgerUrl, { replace: true });
+      onOpenChange(false);
 
     } catch (err) {
       console.error("[checkout] Unexpected error:", err);
@@ -680,38 +675,6 @@ Customer will contact you via WhatsApp or phone.
                     </>
                   )}
                 </div>
-                {success && (
-                  <div className="mt-8 flex flex-col items-center justify-center gap-6 text-center">
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                      className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl"
-                    >
-                      ✅
-                    </motion.div>
-
-                    <div className="space-y-2">
-                      <h2 className="text-2xl font-bold text-foreground">Order Confirmed!</h2>
-                      <p className="text-muted-foreground text-sm">
-                        Your order has been placed successfully and is being processed.
-                      </p>
-                    </div>
-
-                    <div className="w-full rounded-xl border border-green-200 bg-green-50 p-4 text-left space-y-2">
-                      <p className="text-sm"><strong>Order ID:</strong> #{orderId}</p>
-                      <p className="text-sm"><strong>Item:</strong> {item.item_name}</p>
-                      <p className="text-sm"><strong>Total:</strong> ZMW {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                      {otpCode && <p className="text-sm"><strong>OTP Code:</strong> {otpCode}</p>}
-                    </div>
-
-                    <p className="text-xs text-muted-foreground">
-                      {isService
-                        ? "Service provider will confirm your booking shortly."
-                        : "Vendor is preparing your order."}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -724,11 +687,9 @@ Customer will contact you via WhatsApp or phone.
                   </span>
                 </div>
 
-                {!success && (
-                <>
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || success}
+                  disabled={submitting}
                   className="btn-gold mt-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-80"
                 >
                   {submitting ? (
@@ -749,23 +710,6 @@ Customer will contact you via WhatsApp or phone.
                 <p className="mt-3 text-center text-[10px] text-muted-foreground">
                   After confirming we'll open WhatsApp so you can finalise with the store.
                 </p>
-                </>
-                )}
-
-                {success && (
-                <>
-                <a
-                  href="/messages"
-                  className="btn-gold mt-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm"
-                >
-                  🟢 VIEW RECEIPT
-                </a>
-
-                <p className="mt-3 text-center text-[10px] text-muted-foreground">
-                  Your order receipt and vendor notifications have been sent.
-                </p>
-                </>
-                )}
               </div>
             </div>
           </div>
