@@ -203,31 +203,48 @@ Customer will contact you via WhatsApp or phone.
 
         const messagingPromises = [
           // Customer receipt
-          sendOrderConfirmationReceipt(
-            order.id.toString(),
-            order.id,
-            receiptDetails,
-            true,  // isGuest
-            guestToken
-          ).then(() => {
-            console.log("[CartDrawer] CUSTOMER MESSAGE SENT", { orderId: order.id, type: "guest" });
-          }).catch(err => {
-            console.error("[CartDrawer] Customer message failed:", err);
-          }),
+          (async () => {
+            try {
+              await sendOrderConfirmationReceipt(
+                order.id.toString(),
+                order.id,
+                receiptDetails,
+                true,  // isGuest
+                guestToken
+              );
+              console.log("[CartDrawer] CUSTOMER MESSAGE SENT", { orderId: order.id, type: "guest" });
+            } catch (err) {
+              console.error("[CartDrawer] Customer message failed:", err);
+              throw err;
+            }
+          })(),
 
           // Vendor notification
-          (order.sme_id || order.store_id) ? sendRetailerOrderNotification(
-            `vendor_${order.sme_id || order.store_id}`,
-            order.id,
-            vendorNotificationDetails
-          ).then(() => {
-            console.log("[CartDrawer] VENDOR MESSAGE SENT", { orderId: order.id, smeId: order.sme_id });
-          }).catch(err => {
-            console.error("[CartDrawer] Vendor notification failed:", err);
-          }) : Promise.resolve(),
+          (async () => {
+            if (order.sme_id || order.store_id) {
+              try {
+                await sendRetailerOrderNotification(
+                  `vendor_${order.sme_id || order.store_id}`,
+                  order.id,
+                  vendorNotificationDetails
+                );
+                console.log("[CartDrawer] VENDOR MESSAGE SENT", { orderId: order.id, smeId: order.sme_id });
+              } catch (err) {
+                console.error("[CartDrawer] Vendor notification failed:", err);
+                throw err;
+              }
+            }
+          })(),
         ];
 
-        await Promise.allSettled(messagingPromises);
+        const results = await Promise.allSettled(messagingPromises);
+        console.log("[CartDrawer] Messaging for order complete", {
+          orderId: order.id,
+          results: results.map((r, i) => ({
+            index: i,
+            status: r.status,
+          })),
+        });
       }
 
       setState("success");
@@ -269,30 +286,47 @@ Customer will contact you via WhatsApp or phone.
 
       const messagingPromises = [
         // Customer receipt
-        sendOrderConfirmationReceipt(
-          user.id,
-          order.id,
-          receiptDetails,
-          false  // isGuest
-        ).then(() => {
-          console.log("[CartDrawer] CUSTOMER MESSAGE SENT", { orderId: order.id, type: "authenticated" });
-        }).catch(err => {
-          console.error("[CartDrawer] Customer message failed:", err);
-        }),
+        (async () => {
+          try {
+            await sendOrderConfirmationReceipt(
+              user.id,
+              order.id,
+              receiptDetails,
+              false  // isGuest
+            );
+            console.log("[CartDrawer] CUSTOMER MESSAGE SENT", { orderId: order.id, type: "authenticated" });
+          } catch (err) {
+            console.error("[CartDrawer] Customer message failed:", err);
+            throw err;
+          }
+        })(),
 
         // Vendor notification
-        (order.sme_id || order.store_id) ? sendRetailerOrderNotification(
-          user.id,
-          order.id,
-          vendorNotificationDetails
-        ).then(() => {
-          console.log("[CartDrawer] VENDOR MESSAGE SENT", { orderId: order.id, smeId: order.sme_id });
-        }).catch(err => {
-          console.error("[CartDrawer] Vendor notification failed:", err);
-        }) : Promise.resolve(),
+        (async () => {
+          if (order.sme_id || order.store_id) {
+            try {
+              await sendRetailerOrderNotification(
+                user.id,
+                order.id,
+                vendorNotificationDetails
+              );
+              console.log("[CartDrawer] VENDOR MESSAGE SENT", { orderId: order.id, smeId: order.sme_id });
+            } catch (err) {
+              console.error("[CartDrawer] Vendor notification failed:", err);
+              throw err;
+            }
+          }
+        })(),
       ];
 
-      await Promise.allSettled(messagingPromises);
+      const results = await Promise.allSettled(messagingPromises);
+      console.log("[CartDrawer] Messaging for order complete", {
+        orderId: order.id,
+        results: results.map((r, i) => ({
+          index: i,
+          status: r.status,
+        })),
+      });
     }
 
     setState("success");

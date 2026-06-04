@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleVerificationWrapper from "@/components/RoleVerificationWrapper";
 import { setupGlobalErrorHandlers } from "@/lib/globalErrorHandler";
 import { logSupabaseHealth } from "@/lib/supabaseHealthCheck";
+import { printSystemStatus } from "@/lib/systemStatusCheck";
 import { useGlobalMessageListener } from "@/hooks/useGlobalMessageListener";
 import Index from "./pages/Index.tsx";
 import RetailerStudioDashboard from "./pages/RetailerStudioDashboard.tsx";
@@ -41,6 +42,7 @@ import TrackOrders from "./pages/customer/TrackOrders.tsx";
 import MyOrders from "./pages/customer/MyOrders.tsx";
 import GuestOrderLedger from "./pages/customer/GuestOrderLedger.tsx";
 import HiveBotWidget from "@/components/messaging/HiveBotWidget";
+import MessagingDiagnosticPanel from "@/components/messaging/MessagingDiagnosticPanel";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -98,6 +100,7 @@ const AppContent = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <HiveBotWidget hidden={hideBot} />
+      <MessagingDiagnosticPanel />
     </>
   );
 };
@@ -111,6 +114,10 @@ const App = () => {
       .catch((err) => {
         console.warn("[App] Supabase health check skipped:", err?.message || err);
       });
+    // Make system status check available
+    if (import.meta.env.DEV) {
+      (window as any).printSystemStatus = printSystemStatus;
+    }
   }, []);
 
   return (
