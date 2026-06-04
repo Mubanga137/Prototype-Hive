@@ -15,6 +15,13 @@ export const createOrGetSystemConversation = async (
   guestToken?: string
 ) => {
   try {
+    console.log("[systemMessaging] Looking up conversation", {
+      orderId,
+      isGuest,
+      participantId,
+      guestToken: guestToken ? "***" : undefined,
+    });
+
     let query = (supabase as any)
       .from("conversations")
       .select("*")
@@ -32,8 +39,18 @@ export const createOrGetSystemConversation = async (
     }));
 
     if (existing) {
+      console.log("[systemMessaging] Found existing conversation", {
+        conversationId: existing.id,
+        orderId,
+      });
       return existing;
     }
+
+    console.log("[systemMessaging] Creating new conversation for order", {
+      orderId,
+      isGuest,
+      participantId,
+    });
 
     // Create new conversation
     const { data: newConv, error: createError } = await (supabase as any)
@@ -50,13 +67,28 @@ export const createOrGetSystemConversation = async (
       .single();
 
     if (createError) {
-      console.error("[systemMessaging] Create conversation error:", createError);
+      console.error("[systemMessaging] Create conversation error:", {
+        error: createError,
+        code: (createError as any)?.code,
+        message: (createError as any)?.message,
+        details: (createError as any)?.details,
+        orderId,
+      });
       return null;
     }
 
+    console.log("[systemMessaging] Conversation created successfully", {
+      conversationId: newConv?.id,
+      orderId,
+    });
+
     return newConv;
   } catch (err) {
-    console.error("[systemMessaging] Exception:", err);
+    console.error("[systemMessaging] Exception creating conversation:", {
+      error: err,
+      errorString: String(err),
+      orderId,
+    });
     return null;
   }
 };
@@ -71,6 +103,14 @@ export const sendSystemReceipt = async (
   messageType: string = "system_receipt"
 ) => {
   try {
+    console.log("[systemMessaging] Sending message", {
+      conversationId,
+      senderBotId: SYSTEM_BOT_ID,
+      messageType,
+      contentLength: content.length,
+      timestamp: new Date().toISOString(),
+    });
+
     const { data, error } = await (supabase as any)
       .from("messages")
       .insert({
@@ -83,22 +123,41 @@ export const sendSystemReceipt = async (
       .single();
 
     if (error) {
-      console.error("[systemMessaging] Send receipt error:", error);
+      console.error("[systemMessaging] Send receipt error:", {
+        error,
+        code: (error as any)?.code,
+        message: (error as any)?.message,
+        details: (error as any)?.details,
+        conversationId,
+      });
       return null;
     }
 
+    console.log("[systemMessaging] Message inserted successfully", {
+      messageId: data?.id,
+      conversationId,
+    });
+
     // Update conversation's last_message
-    await (supabase as any)
+    const { error: updateError } = await (supabase as any)
       .from("conversations")
       .update({
-        last_message: content,
+        last_message: content.substring(0, 100),
         last_message_at: new Date().toISOString(),
       })
       .eq("id", conversationId);
 
+    if (updateError) {
+      console.warn("[systemMessaging] Failed to update conversation last_message:", updateError);
+    }
+
     return data;
   } catch (err) {
-    console.error("[systemMessaging] Exception sending receipt:", err);
+    console.error("[systemMessaging] Exception sending receipt:", {
+      error: err,
+      conversationId,
+      errorString: String(err),
+    });
     return null;
   }
 };
@@ -113,6 +172,12 @@ export const sendOrderConfirmationReceipt = async (
   isGuest: boolean = false,
   guestToken?: string
 ) => {
+  console.log("[systemMessaging] Sending order confirmation receipt", {
+    orderId,
+    isGuest,
+    recipientType: isGuest ? "guest" : "authenticated",
+  });
+
   const conv = await createOrGetSystemConversation(
     participantId,
     orderId,
@@ -120,10 +185,25 @@ export const sendOrderConfirmationReceipt = async (
     guestToken
   );
 
-  if (!conv) return null;
+  if (!conv) {
+    console.error("[systemMessaging] Failed to create/get conversation for receipt", {
+      orderId,
+      isGuest,
+    });
+    return null;
+  }
 
   const receiptContent = `🐝 Hive System Receipt\n\n${receiptDetails}\n\n[Token: ${guestToken || orderId}]`;
-  return sendSystemReceipt(conv.id, receiptContent, "system_receipt");
+  const result = await sendSystemReceipt(conv.id, receiptContent, "system_receipt");
+
+  if (result) {
+    console.log("[systemMessaging] Order confirmation receipt sent successfully", {
+      orderId,
+      messageId: result.id,
+    });
+  }
+
+  return result;
 };
 
 /**
@@ -134,18 +214,28 @@ export const sendRetailerOrderNotification = async (
   orderId: number,
   orderDetails: string
 ) => {
-  const { data: existing } = await (supabase as any)
+  console.log("[systemMessaging] Sending retailer notification", {
+    orderId,
+    vendorId,
+  });
+
+  const { data: existing, error: fetchError } = await (supabase as any)
     .from("conversations")
     .select("*")
     .eq("participant_a", vendorId)
     .eq("context_order_id", orderId)
     .single()
-    .catch(() => ({ data: null }));
+    .catch(() => ({ data: null, error: null }));
 
   let convId = existing?.id;
 
   if (!convId) {
-    const { data: newConv } = await (supabase as any)
+    console.log("[systemMessaging] Creating conversation for vendor notification", {
+      orderId,
+      vendorId,
+    });
+
+    const { data: newConv, error: createError } = await (supabase as any)
       .from("conversations")
       .insert({
         participant_a: vendorId,
@@ -157,13 +247,43 @@ export const sendRetailerOrderNotification = async (
       .select()
       .single();
 
+    if (createError) {
+      console.error("[systemMessaging] Failed to create vendor conversation", {
+        orderId,
+        vendorId,
+        error: createError,
+      });
+      return null;
+    }
+
     convId = newConv?.id;
   }
 
-  if (!convId) return null;
+  if (!convId) {
+    console.error("[systemMessaging] No conversation ID for vendor notification", {
+      orderId,
+      vendorId,
+    });
+    return null;
+  }
+
+  console.log("[systemMessaging] Sending notification to vendor conversation", {
+    orderId,
+    vendorId,
+    conversationId: convId,
+  });
 
   const notificationContent = `📦 Retailer Notification\n\n${orderDetails}`;
-  return sendSystemReceipt(convId, notificationContent, "retailer_notification");
+  const result = await sendSystemReceipt(convId, notificationContent, "retailer_notification");
+
+  if (result) {
+    console.log("[systemMessaging] Vendor notification sent successfully", {
+      orderId,
+      messageId: result.id,
+    });
+  }
+
+  return result;
 };
 
 /**
@@ -173,18 +293,28 @@ export const sendDeliveryClaimedNotification = async (
   riderId: string,
   orderId: number
 ) => {
-  const { data: existing } = await (supabase as any)
+  console.log("[systemMessaging] Sending delivery claimed notification", {
+    orderId,
+    riderId,
+  });
+
+  const { data: existing, error: fetchError } = await (supabase as any)
     .from("conversations")
     .select("*")
     .eq("participant_a", riderId)
     .eq("context_order_id", orderId)
     .single()
-    .catch(() => ({ data: null }));
+    .catch(() => ({ data: null, error: null }));
 
   let convId = existing?.id;
 
   if (!convId) {
-    const { data: newConv } = await (supabase as any)
+    console.log("[systemMessaging] Creating conversation for delivery notification", {
+      orderId,
+      riderId,
+    });
+
+    const { data: newConv, error: createError } = await (supabase as any)
       .from("conversations")
       .insert({
         participant_a: riderId,
@@ -196,11 +326,41 @@ export const sendDeliveryClaimedNotification = async (
       .select()
       .single();
 
+    if (createError) {
+      console.error("[systemMessaging] Failed to create delivery conversation", {
+        orderId,
+        riderId,
+        error: createError,
+      });
+      return null;
+    }
+
     convId = newConv?.id;
   }
 
-  if (!convId) return null;
+  if (!convId) {
+    console.error("[systemMessaging] No conversation ID for delivery notification", {
+      orderId,
+      riderId,
+    });
+    return null;
+  }
+
+  console.log("[systemMessaging] Sending notification to delivery conversation", {
+    orderId,
+    riderId,
+    conversationId: convId,
+  });
 
   const content = `🚀 Delivery Route Claimed Successfully!\n\nOrder #${orderId} has been claimed for delivery.`;
-  return sendSystemReceipt(convId, content, "delivery_notification");
+  const result = await sendSystemReceipt(convId, content, "delivery_notification");
+
+  if (result) {
+    console.log("[systemMessaging] Delivery notification sent successfully", {
+      orderId,
+      messageId: result.id,
+    });
+  }
+
+  return result;
 };
