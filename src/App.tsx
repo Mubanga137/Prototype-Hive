@@ -119,6 +119,13 @@ const App = () => {
     // Make system status check available
     if (import.meta.env.DEV) {
       (window as any).printSystemStatus = printSystemStatus;
+
+      // Make guest ledger diagnostic available
+      const { runGuestLedgerDiagnostic, testGuestLedgerQuery, checkLocalStorageTokens } =
+        require("@/lib/testGuestLedgerQuery");
+      (window as any).testGuestLedger = testGuestLedgerQuery;
+      (window as any).checkGuestTokens = checkLocalStorageTokens;
+      (window as any).diagnoseLedger = runGuestLedgerDiagnostic;
     }
   }, []);
 
