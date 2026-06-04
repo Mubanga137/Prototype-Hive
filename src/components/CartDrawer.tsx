@@ -18,7 +18,10 @@ import {
 import { useStoreCart, type CartLine } from "@/hooks/useStoreCart";
 import { logCheckoutError, getUserFriendlyErrorMessage } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
-import { sendOrderConfirmationReceipt } from "@/lib/systemMessaging";
+import {
+  sendOrderConfirmationReceipt,
+  sendRetailerOrderNotification
+} from "@/lib/systemMessaging";
 
 interface CartDrawerProps {
   open: boolean;
@@ -171,10 +174,11 @@ const CartDrawer = ({
         })
       );
 
-      // Send system receipts for each order
+      // ORCHESTRATION: Send system receipts and vendor notifications in parallel
+      console.log("[CartDrawer] ORDERS CREATED", { orderCount: orders.length, guestMode: true });
+
       for (const order of orders) {
-        try {
-          const receiptDetails = `
+        const receiptDetails = `
 Order #${order.id}
 Items: ${lines.map((l) => `${l.quantity}x ${l.item_name}`).join(", ")}
 Total: K${subtotal.toFixed(2)}
@@ -182,18 +186,48 @@ Total: K${subtotal.toFixed(2)}
 Delivery to: ${address.trim()}
 
 Your order is confirmed and will be processed shortly.
-          `.trim();
+        `.trim();
 
-          await sendOrderConfirmationReceipt(
+        const vendorNotificationDetails = `
+📦 New Order Received
+Order #${order.id}
+Items: ${lines.map((l) => `${l.quantity}x ${l.item_name}`).join(", ")}
+Customer: ${name}
+Phone: ${cleanedPhone}
+Total: K${subtotal.toFixed(2)}
+Delivery: ${address.trim()}
+OTP: ${otp}
+
+Customer will contact you via WhatsApp or phone.
+        `.trim();
+
+        const messagingPromises = [
+          // Customer receipt
+          sendOrderConfirmationReceipt(
             order.id.toString(),
             order.id,
             receiptDetails,
             true,  // isGuest
-            guestToken  // guestToken
-          );
-        } catch (msgErr) {
-          console.warn("[CartDrawer] System message send failed (non-blocking):", msgErr);
-        }
+            guestToken
+          ).then(() => {
+            console.log("[CartDrawer] CUSTOMER MESSAGE SENT", { orderId: order.id, type: "guest" });
+          }).catch(err => {
+            console.error("[CartDrawer] Customer message failed:", err);
+          }),
+
+          // Vendor notification
+          (order.sme_id || order.store_id) ? sendRetailerOrderNotification(
+            `vendor_${order.sme_id || order.store_id}`,
+            order.id,
+            vendorNotificationDetails
+          ).then(() => {
+            console.log("[CartDrawer] VENDOR MESSAGE SENT", { orderId: order.id, smeId: order.sme_id });
+          }).catch(err => {
+            console.error("[CartDrawer] Vendor notification failed:", err);
+          }) : Promise.resolve(),
+        ];
+
+        await Promise.allSettled(messagingPromises);
       }
 
       setState("success");
@@ -207,10 +241,11 @@ Your order is confirmed and will be processed shortly.
       return;
     }
 
-    // Send system receipts for authenticated users
+    // ORCHESTRATION: Send system receipts and vendor notifications for authenticated users in parallel
+    console.log("[CartDrawer] ORDERS CREATED", { orderCount: orders.length, guestMode: false });
+
     for (const order of orders) {
-      try {
-        const receiptDetails = `
+      const receiptDetails = `
 Order #${order.id}
 Items: ${lines.map((l) => `${l.quantity}x ${l.item_name}`).join(", ")}
 Total: K${subtotal.toFixed(2)}
@@ -218,17 +253,46 @@ Total: K${subtotal.toFixed(2)}
 Delivery to: ${address.trim()}
 
 Your order is confirmed and will be processed shortly.
-        `.trim();
+      `.trim();
 
-        await sendOrderConfirmationReceipt(
+      const vendorNotificationDetails = `
+📦 New Order Received
+Order #${order.id}
+Items: ${lines.map((l) => `${l.quantity}x ${l.item_name}`).join(", ")}
+Customer: ${name}
+Phone: ${cleanedPhone}
+Total: K${subtotal.toFixed(2)}
+Delivery: ${address.trim()}
+
+Customer will contact you via WhatsApp or phone.
+      `.trim();
+
+      const messagingPromises = [
+        // Customer receipt
+        sendOrderConfirmationReceipt(
           user.id,
           order.id,
           receiptDetails,
           false  // isGuest
-        );
-      } catch (msgErr) {
-        console.warn("[CartDrawer] System message send failed (non-blocking):", msgErr);
-      }
+        ).then(() => {
+          console.log("[CartDrawer] CUSTOMER MESSAGE SENT", { orderId: order.id, type: "authenticated" });
+        }).catch(err => {
+          console.error("[CartDrawer] Customer message failed:", err);
+        }),
+
+        // Vendor notification
+        (order.sme_id || order.store_id) ? sendRetailerOrderNotification(
+          user.id,
+          order.id,
+          vendorNotificationDetails
+        ).then(() => {
+          console.log("[CartDrawer] VENDOR MESSAGE SENT", { orderId: order.id, smeId: order.sme_id });
+        }).catch(err => {
+          console.error("[CartDrawer] Vendor notification failed:", err);
+        }) : Promise.resolve(),
+      ];
+
+      await Promise.allSettled(messagingPromises);
     }
 
     setState("success");

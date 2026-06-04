@@ -32,7 +32,10 @@ import {
 } from "@/lib/whatsapp";
 import { logCheckoutError, getUserFriendlyErrorMessage, serializeError } from "@/utils/errorUtils";
 import AuthGateModal from "./modals/AuthGateModal";
-import { sendOrderConfirmationReceipt } from "@/lib/systemMessaging";
+import {
+  sendOrderConfirmationReceipt,
+  sendRetailerOrderNotification
+} from "@/lib/systemMessaging";
 
 export interface CheckoutItem {
   id: number;
@@ -261,9 +264,21 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       // STEP 7: Update UI to success state
       setState("success");
 
-      // STEP 7.5: Send system receipt message (guest or authenticated)
-      try {
-        const receiptDetails = `
+      // STEP 7.5: ORCHESTRATION LAYER — Run all downstream messaging in parallel
+      console.log("[Checkout] ORDER CREATED", {
+        orderId,
+        trackingToken,
+        totalToPay,
+        smeId: item.sme_id,
+        storeId: item.store_id,
+        customerName: name,
+        isGuest: !user?.id,
+        isService,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Prepare receipt details for customer
+      const receiptDetails = `
 Order #${orderId}
 ${item.item_name}
 Quantity: ${isService ? "1 booking" : quantity}
@@ -272,19 +287,114 @@ Total: K${totalToPay.toFixed(2)}
 ${isService ? `Scheduled: ${scheduledDate}` : `Delivery to: ${address}`}
 
 Your order is confirmed and will be processed shortly.
-        `.trim();
+      `.trim();
 
-        await sendOrderConfirmationReceipt(
-          user?.id || orderId.toString(),
-          orderId,
-          receiptDetails,
-          !user?.id,  // isGuest
-          trackingToken  // guestToken (only used if guest)
-        );
-      } catch (msgErr) {
-        console.warn("[Checkout] System message send failed (non-blocking):", msgErr);
-        // Don't fail the entire flow if system messaging fails
-      }
+      // Prepare vendor notification details
+      const vendorNotificationDetails = `
+📦 New Order Received
+Order #${orderId}
+Item: ${item.item_name}
+Customer: ${name}
+Phone: ${cleanedPhone}
+Quantity: ${isService ? "1 booking" : quantity}
+Total: K${totalToPay.toFixed(2)}
+${isService ? `Scheduled: ${scheduledDate}` : `Delivery: ${address}`}
+OTP: ${otpCode}
+
+Customer will contact you via WhatsApp or phone.
+      `.trim();
+
+      // Run all messaging operations in parallel with Promise.allSettled
+      const messagingPromises = [
+        // 1. Customer receipt (always)
+        (async () => {
+          try {
+            await sendOrderConfirmationReceipt(
+              user?.id || orderId.toString(),
+              orderId,
+              receiptDetails,
+              !user?.id,  // isGuest
+              trackingToken  // guestToken (only used if guest)
+            );
+            console.log("[Checkout] CUSTOMER MESSAGE SENT", { orderId, recipientType: user?.id ? "authenticated" : "guest" });
+          } catch (err) {
+            console.error("[Checkout] Customer message failed:", err);
+            throw err;
+          }
+        })(),
+
+        // 2. Vendor notification (for products/services with store)
+        (async () => {
+          if (item.sme_id || item.store_id) {
+            try {
+              const vendorId = user?.id || `vendor_${item.sme_id || item.store_id}`;
+              await sendRetailerOrderNotification(
+                vendorId,
+                orderId,
+                vendorNotificationDetails
+              );
+              console.log("[Checkout] VENDOR MESSAGE SENT", { orderId, vendorId, smeId: item.sme_id, storeId: item.store_id });
+            } catch (err) {
+              console.error("[Checkout] Vendor notification failed:", err);
+              throw err;
+            }
+          }
+        })(),
+
+        // 3. External webhook call (Make.com or equivalent)
+        (async () => {
+          try {
+            const webhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL;
+            if (webhookUrl) {
+              const response = await fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  orderId,
+                  trackingToken,
+                  customerId: user?.id || null,
+                  customerName: name,
+                  customerPhone: cleanedPhone,
+                  itemName: item.item_name,
+                  smeId: item.sme_id,
+                  storeId: item.store_id,
+                  totalAmount: totalToPay,
+                  otpCode,
+                  itemType: isService ? "service" : "product",
+                  deliveryAddress: isService ? null : address,
+                  scheduledDate: isService ? scheduledDate : null,
+                  timestamp: new Date().toISOString(),
+                }),
+              });
+              if (response.ok) {
+                console.log("[Checkout] WEBHOOK SENT", { orderId, status: "success" });
+              } else {
+                console.warn("[Checkout] Webhook returned non-OK status:", response.status);
+              }
+            }
+          } catch (err) {
+            console.error("[Checkout] Webhook call failed:", err);
+            // Don't throw - webhook failures are non-critical
+          }
+        })(),
+      ];
+
+      // Execute all messaging in parallel, don't let one failure block others
+      const results = await Promise.allSettled(messagingPromises);
+
+      const successCount = results.filter(r => r.status === "fulfilled").length;
+      const failureCount = results.filter(r => r.status === "rejected").length;
+
+      console.log("[Checkout] MESSAGING ORCHESTRATION COMPLETE", {
+        orderId,
+        successCount,
+        failureCount,
+        results: results.map((r, i) => ({
+          index: i,
+          status: r.status,
+          reason: r.status === "rejected" ? String(r.reason) : undefined,
+        })),
+      });
 
       // STEP 8a: Route service bookings to messages/communications channel
       if (isService) {
@@ -506,6 +616,38 @@ Your order is confirmed and will be processed shortly.
                     </>
                   )}
                 </div>
+                {success && (
+                  <div className="mt-8 flex flex-col items-center justify-center gap-6 text-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                      className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl"
+                    >
+                      ✅
+                    </motion.div>
+
+                    <div className="space-y-2">
+                      <h2 className="text-2xl font-bold text-foreground">Order Confirmed!</h2>
+                      <p className="text-muted-foreground text-sm">
+                        Your order has been placed successfully and is being processed.
+                      </p>
+                    </div>
+
+                    <div className="w-full rounded-xl border border-green-200 bg-green-50 p-4 text-left space-y-2">
+                      <p className="text-sm"><strong>Order ID:</strong> #{orderId}</p>
+                      <p className="text-sm"><strong>Item:</strong> {item.item_name}</p>
+                      <p className="text-sm"><strong>Total:</strong> ZMW {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      {otpCode && <p className="text-sm"><strong>OTP Code:</strong> {otpCode}</p>}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {isService
+                        ? "Service provider will confirm your booking shortly."
+                        : "Vendor is preparing your order."}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -518,16 +660,14 @@ Your order is confirmed and will be processed shortly.
                   </span>
                 </div>
 
+                {!success && (
+                <>
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || success}
                   className="btn-gold mt-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-80"
                 >
-                  {success ? (
-                    <>
-                      <Check size={18} /> Confirmed
-                    </>
-                  ) : submitting ? (
+                  {submitting ? (
                     <>
                       <Loader2 size={16} className="animate-spin" /> Placing order…
                     </>
@@ -545,6 +685,23 @@ Your order is confirmed and will be processed shortly.
                 <p className="mt-3 text-center text-[10px] text-muted-foreground">
                   After confirming we'll open WhatsApp so you can finalise with the store.
                 </p>
+                </>
+                )}
+
+                {success && (
+                <>
+                <a
+                  href="/messages"
+                  className="btn-gold mt-4 flex w-full items-center justify-center gap-2 py-3.5 text-sm"
+                >
+                  🟢 VIEW RECEIPT
+                </a>
+
+                <p className="mt-3 text-center text-[10px] text-muted-foreground">
+                  Your order receipt and vendor notifications have been sent.
+                </p>
+                </>
+                )}
               </div>
             </div>
           </div>
