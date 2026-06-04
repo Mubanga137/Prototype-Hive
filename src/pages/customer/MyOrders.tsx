@@ -99,11 +99,24 @@ const MyOrders = () => {
           let guestTokens: string[] = [];
           try {
             const stored = localStorage.getItem("hive_guest_active_cart");
-            guestTokens = stored ? JSON.parse(stored) : [];
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored);
+
+                // Array format (primary)
+                if (Array.isArray(parsed)) {
+                  guestTokens = parsed.filter((t) => typeof t === "string" && t.length >= 36);
+                }
+                // Object format (fallback from old code)
+                else if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
+                  guestTokens = parsed.trackingTokens.filter((t: any) => typeof t === "string" && t.length >= 36);
+                }
+              } catch {
+                // Parse error, start fresh
+              }
+            }
           } catch (parseError) {
-            console.warn("[MyOrders] localStorage parse failed, clearing:", parseError);
-            localStorage.removeItem("hive_guest_active_cart");
-            guestTokens = [];
+            console.warn("[MyOrders] localStorage initialization failed:", parseError);
           }
 
           if (guestTokens.length === 0) {
@@ -421,7 +434,7 @@ const OrderCard = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20, opacity: 0 }}
+      exit={{ opacity: 0, y: -20 }}
       transition={{ delay: index * 0.08, duration: 0.5 }}
       className="group backdrop-blur-xl bg-gradient-to-br from-white/95 via-white/90 to-white/85 rounded-2xl shadow-xl border border-white/50 overflow-hidden hover:shadow-2xl transition-all duration-300"
     >

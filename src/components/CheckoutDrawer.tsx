@@ -261,45 +261,44 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       const otpCode = result.otp_code;             // 4-digit OTP for verification
 
       // STEP 6: Secure guest continuity - persist tracking token to localStorage
-      // Allows guest users to retrieve orders across browser sessions
-      // Format: { trackingTokens: [uuid, uuid, ...], mostRecent: uuid }
+      // Format: UNIFIED ARRAY ONLY for compatibility across all readers
+      // [uuid1, uuid2, ...] - most recent is always at index 0
       if (!user?.id) {
         try {
           const stored = localStorage.getItem("hive_guest_active_cart");
-          let guestData = { trackingTokens: [] as string[], mostRecent: trackingToken };
+          let tokens: string[] = [];
 
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
-              // Handle both old array format and new object format
+              // Normalize: handle object format (migration), array format, or string
               if (Array.isArray(parsed)) {
-                guestData.trackingTokens = [...new Set(parsed)];
-              } else if (parsed?.trackingTokens) {
-                guestData.trackingTokens = [...new Set(parsed.trackingTokens)];
+                tokens = parsed.filter((t) => typeof t === "string" && t.length >= 36);
+              } else if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
+                tokens = parsed.trackingTokens.filter((t: any) => typeof t === "string" && t.length >= 36);
+              } else if (typeof parsed === "string" && parsed.length >= 36) {
+                tokens = [parsed];
               }
             } catch {
               // Malformed JSON, start fresh
             }
           }
 
-          // Add new token
-          if (!guestData.trackingTokens.includes(trackingToken)) {
-            guestData.trackingTokens.push(trackingToken);
-          }
-          guestData.mostRecent = trackingToken;
+          // Add new token at front (most recent first)
+          tokens = [trackingToken, ...tokens.filter((t) => t !== trackingToken)];
 
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify(guestData));
-          console.log("[Checkout] Guest tokens persisted", {
-            tokenCount: guestData.trackingTokens.length,
+          // Keep only 10 most recent
+          tokens = tokens.slice(0, 10);
+
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify(tokens));
+          console.log("[Checkout] Guest tokens persisted (array format)", {
+            tokenCount: tokens.length,
             mostRecent: trackingToken.slice(0, 8) + "...",
           });
         } catch (e) {
           console.warn("[Checkout] localStorage token persistence failed:", e);
-          // Fallback to minimal format
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify({
-            trackingTokens: [trackingToken],
-            mostRecent: trackingToken,
-          }));
+          // Fallback: single token in array
+          localStorage.setItem("hive_guest_active_cart", JSON.stringify([trackingToken]));
         }
       }
 

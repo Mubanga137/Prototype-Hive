@@ -51,6 +51,8 @@ DECLARE
   v_buyer_id UUID;
   v_sme_id BIGINT;
   v_store_id BIGINT;
+  v_conversation_id UUID;
+  v_system_bot_id UUID := '00000000-0000-0000-0000-000000000000'::UUID;
 BEGIN
   -- Sanitize inputs with explicit casting and null-safety
   v_buyer_id := NULLIF(p_buyer_id::TEXT, '')::UUID;
@@ -137,6 +139,56 @@ BEGIN
     v_item_type
   )
   RETURNING id INTO v_order_id;
+
+  -- STEP 2: Ensure conversation exists for order (handles both authenticated and guest)
+  -- For authenticated: participant_a = buyer_id, participant_b = null
+  -- For guest: participant_a = null, guest_tracking_token = tracking_token
+  BEGIN
+    INSERT INTO public.conversations (
+      participant_a,
+      guest_tracking_token,
+      context_order_id,
+      last_message,
+      last_message_at
+    ) VALUES (
+      v_buyer_id,
+      CASE WHEN v_buyer_id IS NULL THEN v_tracking_token::TEXT ELSE NULL END,
+      v_order_id,
+      '🐝 Order Received',
+      NOW()
+    )
+    ON CONFLICT DO NOTHING
+    RETURNING id INTO v_conversation_id;
+
+    -- If insert didn't return (conflict), fetch the existing conversation
+    IF v_conversation_id IS NULL THEN
+      SELECT id INTO v_conversation_id
+      FROM public.conversations
+      WHERE context_order_id = v_order_id
+      LIMIT 1;
+    END IF;
+
+    -- STEP 3: Insert initial system message if conversation exists
+    IF v_conversation_id IS NOT NULL THEN
+      INSERT INTO public.messages (
+        conversation_id,
+        sender_id,
+        content,
+        message_type,
+        created_at
+      ) VALUES (
+        v_conversation_id,
+        v_system_bot_id::TEXT,
+        '🐝 Hive System Receipt: Your order has been received and confirmed. A vendor/provider will contact you shortly.',
+        'system_receipt',
+        NOW()
+      )
+      ON CONFLICT DO NOTHING;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    -- Log but don't fail the order if conversation creation fails
+    RAISE WARNING 'Failed to create conversation for order %: %', v_order_id, SQLERRM;
+  END;
 
   -- Return success response
   RETURN QUERY SELECT

@@ -7,6 +7,7 @@ const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
  * Creates or gets a system message conversation for order receipts/notifications
  * For guests: uses guest_tracking_token
  * For users: uses participant_a as the order recipient
+ * NOTE: RPC-side orchestration may have already created this - this is a fallback
  */
 export const createOrGetSystemConversation = async (
   participantId: string,
@@ -18,38 +19,63 @@ export const createOrGetSystemConversation = async (
     console.log("[systemMessaging] Looking up conversation", {
       orderId,
       isGuest,
-      participantId,
-      guestToken: guestToken ? "***" : undefined,
+      participantId: isGuest ? "GUEST" : participantId?.slice(0, 8) + "...",
+      guestToken: guestToken ? guestToken.slice(0, 8) + "..." : undefined,
     });
 
-    let query = (supabase as any)
+    // FIRST: Try to find by order ID (RPC may have already created it)
+    const { data: byOrder, error: orderQueryError } = await (supabase as any)
       .from("conversations")
       .select("*")
       .eq("context_order_id", orderId);
 
-    if (isGuest && guestToken) {
-      query = query.eq("guest_tracking_token", guestToken);
-    } else {
-      query = query.eq("participant_a", participantId);
-    }
-
-    const { data: existing, error: fetchError } = await query.single().catch(() => ({
-      data: null,
-      error: null,
-    }));
-
-    if (existing) {
-      console.log("[systemMessaging] Found existing conversation", {
-        conversationId: existing.id,
+    if (!orderQueryError && byOrder && byOrder.length > 0) {
+      console.log("[systemMessaging] Found existing conversation by order ID", {
+        conversationId: byOrder[0].id,
         orderId,
       });
-      return existing;
+      return byOrder[0];
     }
 
-    console.log("[systemMessaging] Creating new conversation for order", {
+    // SECOND: Try by participant + order (fallback)
+    if (!isGuest && participantId) {
+      const { data: byParticipant, error: partError } = await (supabase as any)
+        .from("conversations")
+        .select("*")
+        .eq("participant_a", participantId)
+        .eq("context_order_id", orderId)
+        .maybeSingle();
+
+      if (!partError && byParticipant) {
+        console.log("[systemMessaging] Found existing conversation by participant", {
+          conversationId: byParticipant.id,
+          orderId,
+        });
+        return byParticipant;
+      }
+    }
+
+    // THIRD: Try by guest token + order
+    if (isGuest && guestToken) {
+      const { data: byGuest, error: guestError } = await (supabase as any)
+        .from("conversations")
+        .select("*")
+        .eq("guest_tracking_token", guestToken)
+        .eq("context_order_id", orderId)
+        .maybeSingle();
+
+      if (!guestError && byGuest) {
+        console.log("[systemMessaging] Found existing conversation by guest token", {
+          conversationId: byGuest.id,
+          orderId,
+        });
+        return byGuest;
+      }
+    }
+
+    console.log("[systemMessaging] No existing conversation found, creating new one", {
       orderId,
       isGuest,
-      participantId,
     });
 
     // Create new conversation
@@ -68,7 +94,6 @@ export const createOrGetSystemConversation = async (
 
     if (createError) {
       console.error("[systemMessaging] Create conversation error:", {
-        error: createError,
         code: (createError as any)?.code,
         message: (createError as any)?.message,
         details: (createError as any)?.details,
@@ -85,7 +110,6 @@ export const createOrGetSystemConversation = async (
     return newConv;
   } catch (err) {
     console.error("[systemMessaging] Exception creating conversation:", {
-      error: err,
       errorString: String(err),
       orderId,
     });
