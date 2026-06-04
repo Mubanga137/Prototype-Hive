@@ -2,7 +2,6 @@ import { useState, useEffect, createContext, useContext, useCallback } from "rea
 import { supabase, setupAuthErrorHandling, clearInvalidTokens } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { ensureStore, type StoreRow } from "@/lib/ensureStore";
-import hiveLogo from "@/assets/hive-logo.jpeg";
 
 type AppRole = "customer" | "vendor" | "wholesaler" | "gig_worker";
 
@@ -44,34 +43,6 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-/** Full-screen splash shown while the auth → profile → store chain resolves. */
-const WorkspaceSplash = () => (
-  <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-5">
-      <img
-        src={hiveLogo}
-        alt="The Hive"
-        className="w-16 h-16 rounded-full object-cover border-2 border-primary/40 shadow-lg"
-      />
-      <div className="flex items-center gap-2.5">
-        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-        <p className="text-sm font-medium text-foreground tracking-wide">
-          Loading Workspace…
-        </p>
-      </div>
-      <div className="h-1 w-40 rounded-full bg-secondary overflow-hidden">
-        <div className="h-full w-1/3 bg-primary animate-[slide_1.2s_ease-in-out_infinite]" />
-      </div>
-    </div>
-    <style>{`
-      @keyframes slide {
-        0%   { transform: translateX(-120%); }
-        100% { transform: translateX(420%); }
-      }
-    `}</style>
-  </div>
-);
-
 // Track if we're already resolving a session to prevent concurrent calls
 let isResolvingSession = false;
 
@@ -85,13 +56,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Safety timeout: if loading takes more than 10 seconds, show the app anyway
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (loading) {
-        console.warn("[AuthProvider] Loading timeout - forcing app to show");
-        setLoading(false);
-      }
+      setLoading((prev) => {
+        if (prev) {
+          console.warn("[AuthProvider] Loading timeout - forcing app to show");
+          return false;
+        }
+        return prev;
+      });
     }, 10000);
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, []);
 
   /** Fetch profile by user id with retry logic. Returns the row or null. */
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
@@ -309,7 +283,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         signOut,
       }}
     >
-      {loading ? <WorkspaceSplash /> : children}
+      {/* Don't block rendering on auth loading - let children handle their own loading states */}
+      {children}
     </AuthContext.Provider>
   );
 };
