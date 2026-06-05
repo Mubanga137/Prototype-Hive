@@ -48,6 +48,7 @@ RETURNS TABLE (
   total_to_pay NUMERIC,
   otp_code TEXT,
   tracking_token UUID,
+  conversation_id UUID,
   status TEXT,
   message TEXT
 ) AS $$
@@ -85,6 +86,7 @@ BEGIN
       NULL::NUMERIC,
       v_otp_code,
       NULL::UUID,
+      NULL::UUID,
       'error'::TEXT,
       'Item not found or has been removed'::TEXT;
     RETURN;
@@ -101,6 +103,7 @@ BEGIN
           NULL::BIGINT,
           NULL::NUMERIC,
           v_otp_code,
+          NULL::UUID,
           NULL::UUID,
           'insufficient_stock'::TEXT,
           ('Only ' || v_stock_count || ' items available')::TEXT;
@@ -207,6 +210,7 @@ BEGIN
     v_total_amount::NUMERIC,
     v_otp_code::TEXT,
     v_tracking_token::UUID,
+    v_conversation_id::UUID,
     'success'::TEXT,
     'Order placed successfully'::TEXT;
 
@@ -215,6 +219,7 @@ EXCEPTION WHEN OTHERS THEN
     NULL::BIGINT,
     NULL::NUMERIC,
     v_otp_code,
+    NULL::UUID,
     NULL::UUID,
     'error'::TEXT,
     ('Database error: ' || SQLERRM)::TEXT;
