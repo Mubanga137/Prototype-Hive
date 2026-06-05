@@ -280,18 +280,48 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         return;
       }
 
-      // STEP 5B: Fallback - If conversation_id not in RPC response, fetch it directly (temporary until migration deploys)
+      // STEP 5B: Fallback - If conversation_id not in RPC response, create it directly
+      // This handles the case where the live database RPC hasn't been updated yet
       if (!extractedConversationId) {
         try {
-          const { data: convData } = await supabase
+          // First, try to fetch existing conversation for this order
+          const { data: convData, error: fetchError } = await supabase
             .from("conversations")
             .select("id")
-            .eq("context_order_id", extractedOrderId)
-            .limit(1)
-            .single();
-          extractedConversationId = convData?.id;
+            .eq("context_order_id", extractedOrderId);
+
+          if (convData && convData.length > 0) {
+            extractedConversationId = convData[0].id;
+            console.log("[Checkout] Found existing conversation for order", {
+              orderId: extractedOrderId,
+              conversationId: extractedConversationId,
+            });
+          } else {
+            // Conversation doesn't exist, create it now
+            const { data: newConv, error: createError } = await supabase
+              .from("conversations")
+              .insert({
+                participant_a: user?.id || null,
+                guest_tracking_token: !user?.id ? extractedTrackingToken : null,
+                context_order_id: extractedOrderId,
+                last_message: "🐝 Order Received",
+                last_message_at: new Date().toISOString(),
+              })
+              .select("id")
+              .single();
+
+            if (createError) {
+              console.warn("[Checkout] Failed to create conversation", createError);
+            } else if (newConv?.id) {
+              extractedConversationId = newConv.id;
+              console.log("[Checkout] Created conversation for order", {
+                orderId: extractedOrderId,
+                conversationId: extractedConversationId,
+              });
+            }
+          }
         } catch (e) {
-          console.warn("[Checkout] Failed to fetch conversation_id directly", e);
+          console.warn("[Checkout] Error ensuring conversation exists", e);
         }
       }
 
