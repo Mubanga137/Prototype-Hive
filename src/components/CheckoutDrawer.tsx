@@ -264,12 +264,12 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 5: Extract response payload (all computed server-side)
       const extractedOrderId = result.order_id;
-      const extractedConversationId = result.conversation_id;  // INVARIANT #1: Atomic conversation creation
+      let extractedConversationId = result.conversation_id;  // INVARIANT #1: Atomic conversation creation
       const extractedTrackingToken = result.tracking_token;    // UUID for guest ledger access
       const extractedTotalToPay = result.total_to_pay;         // NUMERIC: server-computed price
       const extractedOtpCode = result.otp_code;                // 4-digit OTP for verification
 
-      // Guard: Verify orderId and conversationId exist (INVARIANTS #1 & #6)
+      // Guard: Verify orderId exists (INVARIANT #6)
       if (!extractedOrderId) {
         console.error("[Checkout] FATAL: orderId missing after checkout", {
           result,
@@ -278,6 +278,21 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         toast.error("⚠️ Order ID missing. Please contact support.");
         setState("idle");
         return;
+      }
+
+      // STEP 5B: Fallback - If conversation_id not in RPC response, fetch it directly (temporary until migration deploys)
+      if (!extractedConversationId) {
+        try {
+          const { data: convData } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("context_order_id", extractedOrderId)
+            .limit(1)
+            .single();
+          extractedConversationId = convData?.id;
+        } catch (e) {
+          console.warn("[Checkout] Failed to fetch conversation_id directly", e);
+        }
       }
 
       if (!extractedConversationId) {
