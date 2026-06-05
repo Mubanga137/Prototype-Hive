@@ -3,6 +3,17 @@
 -- Purpose: This migration brings the RPC from docs/migrations into actual use
 -- =====================================================================
 
+-- CRITICAL FIX: Remove the problematic title column from orders table
+-- This column causes "column 'title' does not exist" errors when RPC tries to work with orders
+ALTER TABLE public.orders
+DROP COLUMN IF EXISTS title;
+
+-- Ensure tracking_token exists as a backup to prevent RPC failures
+ALTER TABLE public.orders
+ADD COLUMN IF NOT EXISTS tracking_token UUID DEFAULT gen_random_uuid() UNIQUE;
+
+CREATE INDEX IF NOT EXISTS idx_orders_tracking_token ON public.orders(tracking_token);
+
 -- STEP 1: Drop ANY conflicting versions to ensure clean slate
 DROP FUNCTION IF EXISTS public.secure_place_order(
   UUID, BIGINT, BIGINT, BIGINT, INT, TEXT, TEXT, TEXT, DATE, TEXT, TEXT
