@@ -428,6 +428,17 @@ const CustomerMessages = () => {
       return;
     }
 
+    // INVARIANT #2, #3: Enforce conversation_id validation
+    if (!activeConv.id || activeConv.id.trim() === "") {
+      console.error("[CustomerMessages] INVARIANT VIOLATION: activeConv.id is missing or empty", {
+        activeConv,
+        authIdentifier: authIdentifier?.slice(0, 8) + "...",
+        timestamp: new Date().toISOString(),
+      });
+      toast.error("Cannot send message: conversation is invalid");
+      return;
+    }
+
     // For guests, use guest_[trackingToken] as sender_id
     const senderId = authMode === "user" ? uid : `guest_${trackingToken}`;
     const text = draft.trim();
@@ -437,7 +448,14 @@ const CustomerMessages = () => {
     inputRef.current?.focus();
 
     try {
-      console.debug(`[CustomerMessages] Sending message to conversation ${activeConv.id}`);
+      console.log("[CustomerMessages] INVARIANT #3: Inserting message with conversation_id", {
+        conversationId: activeConv.id,
+        senderId: senderId.slice(0, 8) + "...",
+        messageType: "text",
+        authMode,
+        timestamp: new Date().toISOString(),
+      });
+
       const { error: insertError } = await (supabase as any)
         .from("messages")
         .insert({

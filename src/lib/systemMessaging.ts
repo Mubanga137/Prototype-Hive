@@ -5,9 +5,11 @@ const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
 
 /**
  * Creates or gets a system message conversation for order receipts/notifications
+ * INVARIANT #1: Single conversation per order
+ * INVARIANT #2: No new conversations during messaging
  * For guests: uses guest_tracking_token
  * For users: uses participant_a as the order recipient
- * NOTE: RPC-side orchestration may have already created this - this is a fallback
+ * NOTE: RPC-side orchestration should have already created this
  */
 export const createOrGetSystemConversation = async (
   participantId: string,
@@ -16,69 +18,53 @@ export const createOrGetSystemConversation = async (
   guestToken?: string
 ) => {
   try {
-    console.log("[systemMessaging] Looking up conversation", {
+    console.log("[systemMessaging] INVARIANT CHECK: Looking up conversation for order", {
       orderId,
       isGuest,
       participantId: isGuest ? "GUEST" : participantId?.slice(0, 8) + "...",
       guestToken: guestToken ? guestToken.slice(0, 8) + "..." : undefined,
     });
 
-    // FIRST: Try to find by order ID (RPC may have already created it)
+    // INVARIANT #1: Look up by order ID (single source of truth)
     const { data: byOrder, error: orderQueryError } = await (supabase as any)
       .from("conversations")
       .select("*")
       .eq("context_order_id", orderId);
 
-    if (!orderQueryError && byOrder && byOrder.length > 0) {
-      console.log("[systemMessaging] Found existing conversation by order ID", {
-        conversationId: byOrder[0].id,
+    if (orderQueryError) {
+      console.error("[systemMessaging] ERROR querying conversations by order_id:", {
+        error: orderQueryError,
         orderId,
       });
-      return byOrder[0];
+      throw new Error(`Failed to look up conversation for order ${orderId}`);
     }
 
-    // SECOND: Try by participant + order (fallback)
-    if (!isGuest && participantId) {
-      const { data: byParticipant, error: partError } = await (supabase as any)
-        .from("conversations")
-        .select("*")
-        .eq("participant_a", participantId)
-        .eq("context_order_id", orderId)
-        .maybeSingle();
-
-      if (!partError && byParticipant) {
-        console.log("[systemMessaging] Found existing conversation by participant", {
-          conversationId: byParticipant.id,
+    if (byOrder && byOrder.length > 0) {
+      if (byOrder.length > 1) {
+        console.error("[systemMessaging] INVARIANT VIOLATION: Multiple conversations for one order!", {
           orderId,
+          conversationCount: byOrder.length,
+          conversationIds: byOrder.map(c => c.id),
         });
-        return byParticipant;
+        throw new Error(`INVARIANT VIOLATION: Multiple conversations exist for order ${orderId}`);
       }
+
+      const conv = byOrder[0];
+      console.log("[systemMessaging] ✓ INVARIANT SATISFIED: Found conversation by order", {
+        conversationId: conv.id,
+        orderId,
+      });
+      return conv;
     }
 
-    // THIRD: Try by guest token + order
-    if (isGuest && guestToken) {
-      const { data: byGuest, error: guestError } = await (supabase as any)
-        .from("conversations")
-        .select("*")
-        .eq("guest_tracking_token", guestToken)
-        .eq("context_order_id", orderId)
-        .maybeSingle();
-
-      if (!guestError && byGuest) {
-        console.log("[systemMessaging] Found existing conversation by guest token", {
-          conversationId: byGuest.id,
-          orderId,
-        });
-        return byGuest;
-      }
-    }
-
-    console.log("[systemMessaging] No existing conversation found, creating new one", {
+    // Only create if this is a legitimate first call (not a messaging operation)
+    // Messaging operations should NEVER create conversations (Invariant #2)
+    console.warn("[systemMessaging] WARNING: No conversation found for order. Creating fallback.", {
       orderId,
       isGuest,
+      timestamp: new Date().toISOString(),
     });
 
-    // Create new conversation
     const { data: newConv, error: createError } = await (supabase as any)
       .from("conversations")
       .insert({
@@ -93,25 +79,27 @@ export const createOrGetSystemConversation = async (
       .single();
 
     if (createError) {
-      console.error("[systemMessaging] Create conversation error:", {
+      console.error("[systemMessaging] CRITICAL: Failed to create conversation", {
         code: (createError as any)?.code,
         message: (createError as any)?.message,
         details: (createError as any)?.details,
         orderId,
       });
-      return null;
+      throw new Error(`Failed to create conversation for order ${orderId}: ${(createError as any)?.message}`);
     }
 
-    console.log("[systemMessaging] Conversation created successfully", {
+    console.log("[systemMessaging] Fallback conversation created", {
       conversationId: newConv?.id,
       orderId,
+      warning: "This indicates RPC did not create conversation at order time",
     });
 
     return newConv;
   } catch (err) {
-    console.error("[systemMessaging] Exception creating conversation:", {
+    console.error("[systemMessaging] EXCEPTION in createOrGetSystemConversation:", {
       errorString: String(err),
       orderId,
+      stack: err instanceof Error ? err.stack : undefined,
     });
     return null;
   }
@@ -119,6 +107,7 @@ export const createOrGetSystemConversation = async (
 
 /**
  * Sends a system receipt message to a conversation
+ * INVARIANT #3: Message insert requires valid conversation_id
  * Uses reserved SYSTEM_BOT_ID for all platform alerts
  */
 export const sendSystemReceipt = async (
@@ -127,7 +116,11 @@ export const sendSystemReceipt = async (
   messageType: string = "system_receipt"
 ) => {
   try {
-    console.log("[systemMessaging] Sending message", {
+    if (!conversationId || conversationId.trim() === "") {
+      throw new Error("INVARIANT VIOLATION #3: conversation_id is required and must not be empty");
+    }
+
+    console.log("[systemMessaging] INVARIANT #3: Inserting message with conversation_id", {
       conversationId,
       senderBotId: SYSTEM_BOT_ID,
       messageType,
@@ -147,19 +140,21 @@ export const sendSystemReceipt = async (
       .single();
 
     if (error) {
-      console.error("[systemMessaging] Send receipt error:", {
+      console.error("[systemMessaging] CRITICAL: Message insert failed", {
         error,
         code: (error as any)?.code,
         message: (error as any)?.message,
         details: (error as any)?.details,
         conversationId,
+        messageType,
       });
-      return null;
+      throw new Error(`Message insert failed: ${(error as any)?.message}`);
     }
 
-    console.log("[systemMessaging] Message inserted successfully", {
+    console.log("[systemMessaging] ✓ INVARIANT #3 SATISFIED: Message inserted with valid conversation_id", {
       messageId: data?.id,
       conversationId,
+      messageType,
     });
 
     // Update conversation's last_message
@@ -172,15 +167,19 @@ export const sendSystemReceipt = async (
       .eq("id", conversationId);
 
     if (updateError) {
-      console.warn("[systemMessaging] Failed to update conversation last_message:", updateError);
+      console.warn("[systemMessaging] Warning: Failed to update conversation metadata:", {
+        error: updateError,
+        conversationId,
+      });
     }
 
     return data;
   } catch (err) {
-    console.error("[systemMessaging] Exception sending receipt:", {
+    console.error("[systemMessaging] EXCEPTION in sendSystemReceipt:", {
       error: err,
       conversationId,
       errorString: String(err),
+      stack: err instanceof Error ? err.stack : undefined,
     });
     return null;
   }
