@@ -229,16 +229,25 @@ export const useDualStateMessaging = () => {
 
   /**
    * Load all messages for a specific conversation
+   * INVARIANT #4: Frontend must fetch using ONLY WHERE conversation_id = <stored_conversation_id>
    * Includes system alerts (sender_id === SYSTEM_BOT_ID)
    */
   const loadMessages = useCallback(
     async (conversationId: string) => {
-      if (!conversationId) return { success: false, messages: [], error: "No conversation ID" };
+      // INVARIANT #4: Strict conversation_id validation
+      if (!conversationId || conversationId.trim() === "") {
+        console.error("[useDualStateMessaging.loadMessages] INVARIANT VIOLATION #4: conversation_id is required", {
+          conversationId,
+          timestamp: new Date().toISOString(),
+        });
+        return { success: false, messages: [], error: "INVARIANT VIOLATION: No valid conversation ID" };
+      }
 
       try {
-        console.debug(
-          `[useDualStateMessaging.loadMessages] Loading for conversation: ${conversationId}`
-        );
+        console.log("[useDualStateMessaging.loadMessages] INVARIANT #4: Fetching messages with conversation_id", {
+          conversationId,
+          timestamp: new Date().toISOString(),
+        });
 
         const { data, error } = await (supabase as any)
           .from("messages")
@@ -250,19 +259,24 @@ export const useDualStateMessaging = () => {
           console.error("[useDualStateMessaging.loadMessages] Query error:", {
             message: error.message,
             conversationId,
+            code: error.code,
           });
           return { success: false, messages: [], error: error.message };
         }
 
         const messages = data as Message[];
-        console.log(
-          `[useDualStateMessaging.loadMessages] Loaded ${messages?.length || 0} messages (${
-            messages?.filter((m) => m.sender_id === SYSTEM_BOT_ID).length || 0
-          } system alerts)`
-        );
+        console.log("[useDualStateMessaging.loadMessages] ✓ INVARIANT #4 SATISFIED: Messages fetched", {
+          conversationId,
+          messageCount: messages?.length || 0,
+          systemAlertCount: messages?.filter((m) => m.sender_id === SYSTEM_BOT_ID).length || 0,
+        });
         return { success: true, messages: messages || [], error: null };
       } catch (err: any) {
-        console.error("[useDualStateMessaging.loadMessages] Exception:", err.message);
+        console.error("[useDualStateMessaging.loadMessages] Exception:", {
+          message: err.message,
+          conversationId,
+          stack: err.stack,
+        });
         return { success: false, messages: [], error: err.message };
       }
     },

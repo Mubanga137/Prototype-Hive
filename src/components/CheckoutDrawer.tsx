@@ -264,11 +264,12 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 5: Extract response payload (all computed server-side)
       const extractedOrderId = result.order_id;
-      const extractedTrackingToken = result.tracking_token;  // UUID for guest ledger access
-      const extractedTotalToPay = result.total_to_pay;      // NUMERIC: server-computed price
-      const extractedOtpCode = result.otp_code;             // 4-digit OTP for verification
+      const extractedConversationId = result.conversation_id;  // INVARIANT #1: Atomic conversation creation
+      const extractedTrackingToken = result.tracking_token;    // UUID for guest ledger access
+      const extractedTotalToPay = result.total_to_pay;         // NUMERIC: server-computed price
+      const extractedOtpCode = result.otp_code;                // 4-digit OTP for verification
 
-      // Guard: Verify orderId exists before proceeding
+      // Guard: Verify orderId and conversationId exist (INVARIANTS #1 & #6)
       if (!extractedOrderId) {
         console.error("[Checkout] FATAL: orderId missing after checkout", {
           result,
@@ -278,6 +279,25 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         setState("idle");
         return;
       }
+
+      if (!extractedConversationId) {
+        console.error("[Checkout] INVARIANT VIOLATION: conversationId missing after checkout", {
+          result,
+          orderId: extractedOrderId,
+          timestamp: new Date().toISOString(),
+        });
+        toast.error("⚠️ Conversation setup failed. Please contact support.");
+        setState("idle");
+        return;
+      }
+
+      // INVARIANT #7: Log conversation_id at order creation
+      console.log("[Checkout] INVARIANT #1 & #7: Order and conversation created atomically", {
+        orderId: extractedOrderId,
+        conversationId: extractedConversationId,
+        trackingToken: extractedTrackingToken?.slice(0, 8) + "...",
+        timestamp: new Date().toISOString(),
+      });
 
       // Store in component state for persistence across renders
       setOrderId(extractedOrderId);

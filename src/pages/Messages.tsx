@@ -215,34 +215,129 @@ const Messages = () => {
   // ---- Send message ----
   const handleSend = async () => {
     if (!draft.trim() || !activeConv || !uid || sending) return;
+
+    // INVARIANT #2, #3: Enforce conversation_id validation
+    if (!activeConv.id || activeConv.id.trim() === "") {
+      console.error("[Messages] INVARIANT VIOLATION: activeConv.id is missing or empty", {
+        activeConv,
+        uid,
+        timestamp: new Date().toISOString(),
+      });
+      toast.error("Cannot send message: conversation is invalid");
+      return;
+    }
+
     setSending(true);
     const text = draft.trim();
     setDraft("");
-    await (supabase as any).from("messages").insert({
-      conversation_id: activeConv.id, sender_id: uid, content: text, message_type: "text",
-    });
-    await (supabase as any).from("conversations")
-      .update({ last_message: text, last_message_at: new Date().toISOString() })
-      .eq("id", activeConv.id);
-    setSending(false);
-    inputRef.current?.focus();
+
+    try {
+      console.log("[Messages] INVARIANT #3: Inserting message with conversation_id", {
+        conversationId: activeConv.id,
+        senderId: uid,
+        messageType: "text",
+        contentLength: text.length,
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: insertError } = await (supabase as any)
+        .from("messages")
+        .insert({
+          conversation_id: activeConv.id,
+          sender_id: uid,
+          content: text,
+          message_type: "text",
+        });
+
+      if (insertError) {
+        console.error("[Messages] CRITICAL: Message insert failed", {
+          error: insertError,
+          conversationId: activeConv.id,
+          messageType: "text",
+        });
+        toast.error("Failed to send message");
+        setSending(false);
+        return;
+      }
+
+      console.log("[Messages] ✓ INVARIANT #3 SATISFIED: Message inserted", {
+        conversationId: activeConv.id,
+      });
+
+      await (supabase as any)
+        .from("conversations")
+        .update({ last_message: text, last_message_at: new Date().toISOString() })
+        .eq("id", activeConv.id);
+
+      inputRef.current?.focus();
+    } catch (err) {
+      console.error("[Messages] EXCEPTION sending message:", {
+        error: err,
+        conversationId: activeConv.id,
+        errorString: String(err),
+      });
+      toast.error("Error sending message");
+    } finally {
+      setSending(false);
+    }
   };
 
   // ---- Attach product handler ----
   const handleAttachProduct = async (product: { id: number; product_name: string | null; price: number | null; image_url: string | null }) => {
     if (!activeConv || !uid) return;
+
+    // INVARIANT #2, #3: Enforce conversation_id validation
+    if (!activeConv.id || activeConv.id.trim() === "") {
+      console.error("[Messages] INVARIANT VIOLATION: activeConv.id is missing for product attach", {
+        activeConv,
+        product,
+      });
+      toast.error("Cannot attach product: conversation is invalid");
+      return;
+    }
+
     const productData = {
       product_id: product.id,
       product_name: product.product_name,
       price: product.price,
       image_url: product.image_url,
     };
-    await (supabase as any).from("messages").insert({
-      conversation_id: activeConv.id, sender_id: uid,
-      content: null, message_type: "product", product_data: productData,
+
+    console.log("[Messages] INVARIANT #3: Inserting product message with conversation_id", {
+      conversationId: activeConv.id,
+      senderId: uid,
+      messageType: "product",
+      productId: product.id,
+      timestamp: new Date().toISOString(),
     });
+
+    const { error: insertError } = await (supabase as any)
+      .from("messages")
+      .insert({
+        conversation_id: activeConv.id,
+        sender_id: uid,
+        content: null,
+        message_type: "product",
+        product_data: productData,
+      });
+
+    if (insertError) {
+      console.error("[Messages] CRITICAL: Product message insert failed", {
+        error: insertError,
+        conversationId: activeConv.id,
+        messageType: "product",
+      });
+      toast.error("Failed to attach product");
+      return;
+    }
+
+    console.log("[Messages] ✓ INVARIANT #3 SATISFIED: Product message inserted", {
+      conversationId: activeConv.id,
+    });
+
     const preview = `🛍️ ${product.product_name || "Product"}`;
-    await (supabase as any).from("conversations")
+    await (supabase as any)
+      .from("conversations")
       .update({ last_message: preview, last_message_at: new Date().toISOString() })
       .eq("id", activeConv.id);
   };

@@ -190,6 +190,7 @@ export type Database = {
       orders: {
         Row: {
           buyer_id: string | null
+          conversation_id: string | null
           created_at: string
           customer_name: string | null
           customer_phone: string | null
@@ -217,6 +218,7 @@ export type Database = {
         }
         Insert: {
           buyer_id?: string | null
+          conversation_id?: string | null
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -244,6 +246,7 @@ export type Database = {
         }
         Update: {
           buyer_id?: string | null
+          conversation_id?: string | null
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null
