@@ -264,12 +264,12 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
 
       // STEP 5: Extract response payload (all computed server-side)
       const extractedOrderId = result.order_id;
-      const extractedConversationId = result.conversation_id;  // INVARIANT #1: Atomic conversation creation
+      let extractedConversationId = result.conversation_id;  // INVARIANT #1: Atomic conversation creation
       const extractedTrackingToken = result.tracking_token;    // UUID for guest ledger access
       const extractedTotalToPay = result.total_to_pay;         // NUMERIC: server-computed price
       const extractedOtpCode = result.otp_code;                // 4-digit OTP for verification
 
-      // Guard: Verify orderId and conversationId exist (INVARIANTS #1 & #6)
+      // Guard: Verify orderId exists (INVARIANT #6)
       if (!extractedOrderId) {
         console.error("[Checkout] FATAL: orderId missing after checkout", {
           result,
@@ -278,6 +278,51 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         toast.error("⚠️ Order ID missing. Please contact support.");
         setState("idle");
         return;
+      }
+
+      // STEP 5B: Fallback - If conversation_id not in RPC response, create it directly
+      // This handles the case where the live database RPC hasn't been updated yet
+      if (!extractedConversationId) {
+        try {
+          // First, try to fetch existing conversation for this order
+          const { data: convData, error: fetchError } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("context_order_id", extractedOrderId);
+
+          if (convData && convData.length > 0) {
+            extractedConversationId = convData[0].id;
+            console.log("[Checkout] Found existing conversation for order", {
+              orderId: extractedOrderId,
+              conversationId: extractedConversationId,
+            });
+          } else {
+            // Conversation doesn't exist, create it now
+            const { data: newConv, error: createError } = await supabase
+              .from("conversations")
+              .insert({
+                participant_a: user?.id || null,
+                guest_tracking_token: !user?.id ? extractedTrackingToken : null,
+                context_order_id: extractedOrderId,
+                last_message: "🐝 Order Received",
+                last_message_at: new Date().toISOString(),
+              })
+              .select("id")
+              .single();
+
+            if (createError) {
+              console.warn("[Checkout] Failed to create conversation", createError);
+            } else if (newConv?.id) {
+              extractedConversationId = newConv.id;
+              console.log("[Checkout] Created conversation for order", {
+                orderId: extractedOrderId,
+                conversationId: extractedConversationId,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("[Checkout] Error ensuring conversation exists", e);
+        }
       }
 
       if (!extractedConversationId) {
