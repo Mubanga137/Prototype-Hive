@@ -180,10 +180,67 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     try {
       const cleanedPhone = cleanZambianPhone(phone) || phone;
 
-      // STEP 2: Invoke backend RPC with strict parameter type-casting
+      // STEP 2A: Resolve customer actor UUID
+      // For authenticated users: query actors table for customer actor record
+      // For guests: call get_or_create_guest_actor RPC
+      let customerActorId: string | null = null;
+
+      if (user?.id) {
+        // Authenticated user: find or create customer actor
+        const { data: actorData, error: actorError } = await supabase
+          .from("actors")
+          .select("id")
+          .eq("profile_id", user.id)
+          .eq("type", "customer")
+          .maybeSingle();
+
+        if (actorError) {
+          console.error("[Checkout] Error querying actors table:", actorError);
+          toast.error("Failed to verify customer account. Please try again.");
+          setState("idle");
+          return;
+        }
+
+        if (actorData?.id) {
+          customerActorId = actorData.id;
+        } else {
+          // No customer actor found for this profile; customer may need to be set up
+          console.warn("[Checkout] No customer actor found for profile", { profileId: user.id });
+          toast.error("Customer account setup incomplete. Please contact support.");
+          setState("idle");
+          return;
+        }
+      } else {
+        // Guest user: call get_or_create_guest_actor RPC
+        const { data: guestActorData, error: guestActorError } = await supabase.rpc(
+          "get_or_create_guest_actor",
+          {
+            p_phone: cleanedPhone,
+            p_display_name: name.trim(),
+          }
+        );
+
+        if (guestActorError) {
+          console.error("[Checkout] Error creating guest actor:", guestActorError);
+          toast.error("Failed to set up guest checkout. Please try again.");
+          setState("idle");
+          return;
+        }
+
+        customerActorId = guestActorData;
+
+        if (!customerActorId) {
+          console.error("[Checkout] Guest actor RPC returned null");
+          toast.error("Guest checkout setup failed. Please try again.");
+          setState("idle");
+          return;
+        }
+      }
+
+      // STEP 2B: Invoke backend RPC with actor-based customer identification
       // The browser acts as sterile input terminal only
       const { data, error } = await supabase.rpc("secure_place_order", {
-        p_buyer_id: user?.id || null,                                      // UUID or null for guests
+        p_customer_actor_id: customerActorId,                              // UUID: resolved actor
         p_item_id: parseInt(String(item.id), 10),                          // BIGINT: explicit int cast
         p_sme_id: item.sme_id ? parseInt(String(item.sme_id), 10) : null,  // BIGINT or null
         p_store_id: item.store_id
