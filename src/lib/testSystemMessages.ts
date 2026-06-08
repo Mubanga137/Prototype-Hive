@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
 
 export const createTestSystemConversationsAndMessages = async (userId: string) => {
   try {

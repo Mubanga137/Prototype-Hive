@@ -345,7 +345,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
           const { data: convData, error: fetchError } = await supabase
             .from("conversations")
             .select("id")
-            .eq("context_order_id", extractedOrderId);
+            .eq("order_id", extractedOrderId);
 
           if (convData && convData.length > 0) {
             extractedConversationId = convData[0].id;
@@ -358,9 +358,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
             const { data: newConv, error: createError } = await supabase
               .from("conversations")
               .insert({
-                participant_a: user?.id || null,
+                participant_1: user?.id || null,
                 guest_tracking_token: !user?.id ? extractedTrackingToken : null,
-                context_order_id: extractedOrderId,
+                order_id: extractedOrderId,
                 last_message: "🐝 Order Received",
                 last_message_at: new Date().toISOString(),
               })

@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // System bot ID (reserved UUID for all platform/system alerts)
-const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
 
 /**
  * Creates or gets a system message conversation for order receipts/notifications
@@ -29,7 +29,7 @@ export const createOrGetSystemConversation = async (
     const { data: byOrder, error: orderQueryError } = await (supabase as any)
       .from("conversations")
       .select("*")
-      .eq("context_order_id", orderId);
+      .eq("order_id", orderId);
 
     if (orderQueryError) {
       console.error("[systemMessaging] ERROR querying conversations by order_id:", {
@@ -68,10 +68,10 @@ export const createOrGetSystemConversation = async (
     const { data: newConv, error: createError } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: isGuest ? null : participantId,
-        participant_b: null,
+        participant_1: isGuest ? null : participantId,
+        participant_2: null,
         guest_tracking_token: isGuest ? guestToken : null,
-        context_order_id: orderId,
+        order_id: orderId,
         last_message: "System Receipt",
         last_message_at: new Date().toISOString(),
       })
@@ -245,8 +245,8 @@ export const sendRetailerOrderNotification = async (
   const fetchQuery = (supabase as any)
     .from("conversations")
     .select("*")
-    .eq("participant_a", vendorId)
-    .eq("context_order_id", orderId)
+    .eq("participant_1", vendorId)
+    .eq("order_id", orderId)
     .maybeSingle();
 
   const { data: existing, error: fetchError } = await fetchQuery;
@@ -262,9 +262,9 @@ export const sendRetailerOrderNotification = async (
     const { data: newConv, error: createError } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: vendorId,
-        participant_b: null,
-        context_order_id: orderId,
+        participant_1: vendorId,
+        participant_2: null,
+        order_id: orderId,
         last_message: "System Order Notification",
         last_message_at: new Date().toISOString(),
       })
@@ -325,8 +325,8 @@ export const sendDeliveryClaimedNotification = async (
   const fetchQuery = (supabase as any)
     .from("conversations")
     .select("*")
-    .eq("participant_a", riderId)
-    .eq("context_order_id", orderId)
+    .eq("participant_1", riderId)
+    .eq("order_id", orderId)
     .maybeSingle();
 
   const { data: existing, error: fetchError } = await fetchQuery;
@@ -342,9 +342,9 @@ export const sendDeliveryClaimedNotification = async (
     const { data: newConv, error: createError } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: riderId,
-        participant_b: null,
-        context_order_id: orderId,
+        participant_1: riderId,
+        participant_2: null,
+        order_id: orderId,
         last_message: "Delivery Claimed",
         last_message_at: new Date().toISOString(),
       })

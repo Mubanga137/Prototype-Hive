@@ -39,7 +39,7 @@ interface DualStateMessagingContext {
   authMode: "user" | "guest" | null;
 }
 
-const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
 
 export const useDualStateMessaging = () => {
   const { user } = useAuth();
