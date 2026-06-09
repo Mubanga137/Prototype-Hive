@@ -41,9 +41,6 @@ import OrderTracking from "./pages/OrderTracking.tsx";
 import TrackOrders from "./pages/customer/TrackOrders.tsx";
 import MyOrders from "./pages/customer/MyOrders.tsx";
 import GuestOrderLedger from "./pages/customer/GuestOrderLedger.tsx";
-import HiveBotWidget from "@/components/messaging/HiveBotWidget";
-import MessagingDiagnosticPanel from "@/components/messaging/MessagingDiagnosticPanel";
-import SupabaseDiagnostics from "@/components/SupabaseDiagnostics";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -100,9 +97,6 @@ const AppContent = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <HiveBotWidget hidden={hideBot} />
-      <MessagingDiagnosticPanel />
-      <SupabaseDiagnostics />
     </>
   );
 };
