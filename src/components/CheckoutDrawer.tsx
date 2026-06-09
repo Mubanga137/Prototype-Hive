@@ -165,6 +165,13 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
   };
 
   const handleSubmit = async () => {
+    // Guard: Ensure item exists before proceeding
+    if (!item || !item.id) {
+      console.error("[checkout] item is null or missing id", item);
+      toast.error("⚠️ Item data missing. Please close and reopen.");
+      return;
+    }
+
     // STEP 1: Input validation (client-side only - no business logic)
     const err = validate();
     if (err) {
@@ -323,8 +330,16 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       const extractedOrderId = result.order_id;
       let extractedConversationId = result.conversation_id;  // INVARIANT #1: Atomic conversation creation
       const extractedTrackingToken = result.tracking_token;    // UUID for guest ledger access
-      const extractedTotalToPay = result.total_to_pay;         // NUMERIC: server-computed price
+
+      // Guard: Validate total_to_pay is a number
+      const rawTotal = result?.total_to_pay ?? result?.totalAmount ?? 0;
+      const extractedTotalToPay = typeof rawTotal === "number"
+        ? rawTotal
+        : parseFloat(String(rawTotal)) || 0;
+
+      // Guard: Validate OTP code exists
       const extractedOtpCode = result.otp_code;                // 4-digit OTP for verification
+      const safeOtpCode = extractedOtpCode ?? "----";
 
       // Guard: Verify orderId exists (INVARIANT #6)
       if (!extractedOrderId) {
@@ -469,7 +484,7 @@ Phone: ${cleanedPhone}
 Quantity: ${isService ? "1 booking" : quantity}
 Total: K${extractedTotalToPay.toFixed(2)}
 ${isService ? `Scheduled: ${scheduledDate}` : `Delivery: ${address}`}
-OTP: ${extractedOtpCode}
+OTP: ${safeOtpCode}
 
 Customer will contact you via WhatsApp or phone.
       `.trim();
@@ -501,7 +516,7 @@ Customer will contact you via WhatsApp or phone.
                   smeId: item.sme_id,
                   storeId: item.store_id,
                   totalAmount: extractedTotalToPay,
-                  otpCode: extractedOtpCode,
+                  otpCode: safeOtpCode,
                   itemType: isService ? "service" : "product",
                   deliveryAddress: isService ? null : address,
                   scheduledDate: isService ? scheduledDate : null,
@@ -539,9 +554,16 @@ Customer will contact you via WhatsApp or phone.
       navigate(ledgerUrl, { replace: true });
       onOpenChange(false);
 
-    } catch (err) {
-      console.error("[checkout] Unexpected error:", err);
-      toast.error("⚠️ An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      const errorMessage = err?.message || err?.toString() || "Unknown error";
+      const errorStack = err?.stack || "No stack trace";
+      console.error("[checkout] FULL ERROR DETAILS:", {
+        message: errorMessage,
+        stack: errorStack,
+        type: typeof err,
+        raw: err
+      });
+      toast.error(`⚠️ Debug: ${errorMessage}`);
       setState("idle");
     }
   };
