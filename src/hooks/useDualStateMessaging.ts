@@ -136,7 +136,7 @@ export const useDualStateMessaging = () => {
             .from("conversations")
             .select("*")
             .eq("participant_a", uid)
-            .order("last_message_at", { ascending: false });
+            .order("created_at", { ascending: false });
 
           if (errA) {
             console.error("[useDualStateMessaging] participant_a query failed:", errA);
@@ -147,7 +147,7 @@ export const useDualStateMessaging = () => {
             .from("conversations")
             .select("*")
             .eq("participant_b", uid)
-            .order("last_message_at", { ascending: false });
+            .order("created_at", { ascending: false });
 
           if (errB) {
             console.error("[useDualStateMessaging] participant_b query failed:", errB);
@@ -185,7 +185,7 @@ export const useDualStateMessaging = () => {
             .from("conversations")
             .select("*")
             .in("guest_tracking_token", context.allTrackingTokens)
-            .order("last_message_at", { ascending: false });
+            .order("created_at", { ascending: false });
 
           data = result.data;
           error = result.error;
