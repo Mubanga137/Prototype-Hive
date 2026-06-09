@@ -71,6 +71,7 @@ const CustomerMessages = () => {
   const [loading, setLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +119,28 @@ const CustomerMessages = () => {
             'Vendor';
         });
         setVendorNames(names);
+      });
+  }, [conversations]);
+
+  // ========== Fetch Unread Notification Counts ==========
+  useEffect(() => {
+    if (!conversations || conversations.length === 0) return;
+
+    const customerActorId = conversations[0]?.participant_1;
+    if (!customerActorId) return;
+
+    supabase
+      .from('notifications')
+      .select('id, metadata')
+      .eq('recipient_actor_id', customerActorId)
+      .eq('read', false)
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        data?.forEach((n: any) => {
+          const convId = n.metadata?.conversation_id;
+          if (convId) counts[convId] = (counts[convId] || 0) + 1;
+        });
+        setUnreadCounts(counts);
       });
   }, [conversations]);
 
@@ -286,8 +309,28 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (activeConv) {
       loadMessagesForConversation(activeConv.id);
+
+      // Mark notifications as read when conversation is opened
+      const customerActorId = conversations[0]?.participant_1;
+      if (customerActorId && unreadCounts[activeConv.id] && unreadCounts[activeConv.id] > 0) {
+        supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('recipient_actor_id', customerActorId)
+          .eq('read', false)
+          .contains('metadata', { conversation_id: activeConv.id })
+          .then(() => {
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [activeConv.id]: 0
+            }));
+          })
+          .catch((err) => {
+            console.warn('[CustomerMessages] Failed to mark notifications as read:', err);
+          });
+      }
     }
-  }, [activeConv, loadMessagesForConversation]);
+  }, [activeConv, loadMessagesForConversation, conversations, unreadCounts]);
 
   // ========== Auto-scroll to latest message ==========
   useEffect(() => {
@@ -586,8 +629,7 @@ const CustomerMessages = () => {
                                       null;
 
                   const isSystemConversation =
-                    conv.last_message?.includes("Order #") ||
-                    conv.last_message?.startsWith("🛒");
+                    conv.participant_2 === SYSTEM_BOT_ID;
 
                   const conversationTitle = isSystemConversation
                     ? "THE HIVE"
@@ -638,9 +680,25 @@ const CustomerMessages = () => {
                               : "No messages yet"}
                           </p>
                         </div>
-                        <p className="text-xs text-[#0F1A35]/40 whitespace-nowrap">
-                          {formatTime(conv.last_message_at)}
-                        </p>
+                        <div className="flex flex-col items-end gap-2 whitespace-nowrap">
+                          <p className="text-xs text-[#0F1A35]/40">
+                            {formatTime(conv.last_message_at)}
+                          </p>
+                          {unreadCounts[conv.id] && unreadCounts[conv.id] > 0 && (
+                            <span style={{
+                              background: '#B37C1C',
+                              color: 'white',
+                              borderRadius: '999px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              minWidth: '18px',
+                              textAlign: 'center'
+                            }}>
+                              {unreadCounts[conv.id] > 9 ? '9+' : unreadCounts[conv.id]}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );
