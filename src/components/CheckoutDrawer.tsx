@@ -180,10 +180,67 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     try {
       const cleanedPhone = cleanZambianPhone(phone) || phone;
 
-      // STEP 2: Invoke backend RPC with strict parameter type-casting
+      // STEP 2A: Resolve customer actor UUID
+      // For authenticated users: query actors table for customer actor record
+      // For guests: call get_or_create_guest_actor RPC
+      let customerActorId: string | null = null;
+
+      if (user?.id) {
+        // Authenticated user: find or create customer actor
+        const { data: actorData, error: actorError } = await supabase
+          .from("actors")
+          .select("id")
+          .eq("profile_id", user.id)
+          .eq("type", "customer")
+          .maybeSingle();
+
+        if (actorError) {
+          console.error("[Checkout] Error querying actors table:", actorError);
+          toast.error("Failed to verify customer account. Please try again.");
+          setState("idle");
+          return;
+        }
+
+        if (actorData?.id) {
+          customerActorId = actorData.id;
+        } else {
+          // No customer actor found for this profile; customer may need to be set up
+          console.warn("[Checkout] No customer actor found for profile", { profileId: user.id });
+          toast.error("Customer account setup incomplete. Please contact support.");
+          setState("idle");
+          return;
+        }
+      } else {
+        // Guest user: call get_or_create_guest_actor RPC
+        const { data: guestActorData, error: guestActorError } = await supabase.rpc(
+          "get_or_create_guest_actor",
+          {
+            p_phone: cleanedPhone,
+            p_display_name: name.trim(),
+          }
+        );
+
+        if (guestActorError) {
+          console.error("[Checkout] Error creating guest actor:", guestActorError);
+          toast.error("Failed to set up guest checkout. Please try again.");
+          setState("idle");
+          return;
+        }
+
+        customerActorId = guestActorData;
+
+        if (!customerActorId) {
+          console.error("[Checkout] Guest actor RPC returned null");
+          toast.error("Guest checkout setup failed. Please try again.");
+          setState("idle");
+          return;
+        }
+      }
+
+      // STEP 2B: Invoke backend RPC with actor-based customer identification
       // The browser acts as sterile input terminal only
       const { data, error } = await supabase.rpc("secure_place_order", {
-        p_buyer_id: user?.id || null,                                      // UUID or null for guests
+        p_customer_actor_id: customerActorId,                              // UUID: resolved actor
         p_item_id: parseInt(String(item.id), 10),                          // BIGINT: explicit int cast
         p_sme_id: item.sme_id ? parseInt(String(item.sme_id), 10) : null,  // BIGINT or null
         p_store_id: item.store_id
@@ -280,69 +337,51 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         return;
       }
 
-      // STEP 5B: Fallback - If conversation_id not in RPC response, create it directly
-      // This handles the case where the live database RPC hasn't been updated yet
+      // STEP 5B: Fetch conversation_id from orders table
+      // The database trigger handle_order_created() automatically created the conversation
+      // when the order was inserted. We just fetch the conversation_id from the order record.
       if (!extractedConversationId) {
         try {
-          // First, try to fetch existing conversation for this order
-          const { data: convData, error: fetchError } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("context_order_id", extractedOrderId);
+          const { data: orderData, error: orderError } = await supabase
+            .from("orders")
+            .select("conversation_id")
+            .eq("id", extractedOrderId)
+            .single();
 
-          if (convData && convData.length > 0) {
-            extractedConversationId = convData[0].id;
-            console.log("[Checkout] Found existing conversation for order", {
+          if (orderError) {
+            console.warn("[Checkout] Error fetching order conversation_id:", orderError);
+          } else if (orderData?.conversation_id) {
+            extractedConversationId = orderData.conversation_id;
+            console.log("[Checkout] Fetched conversation from order record", {
               orderId: extractedOrderId,
               conversationId: extractedConversationId,
             });
           } else {
-            // Conversation doesn't exist, create it now
-            const { data: newConv, error: createError } = await supabase
-              .from("conversations")
-              .insert({
-                participant_a: user?.id || null,
-                guest_tracking_token: !user?.id ? extractedTrackingToken : null,
-                context_order_id: extractedOrderId,
-                last_message: "🐝 Order Received",
-                last_message_at: new Date().toISOString(),
-              })
-              .select("id")
-              .single();
-
-            if (createError) {
-              console.warn("[Checkout] Failed to create conversation", createError);
-            } else if (newConv?.id) {
-              extractedConversationId = newConv.id;
-              console.log("[Checkout] Created conversation for order", {
-                orderId: extractedOrderId,
-                conversationId: extractedConversationId,
-              });
-            }
+            console.warn("[Checkout] Order conversation_id is null (trigger may not have executed yet)", {
+              orderId: extractedOrderId,
+            });
           }
         } catch (e) {
-          console.warn("[Checkout] Error ensuring conversation exists", e);
+          console.warn("[Checkout] Exception fetching order conversation_id:", e);
         }
       }
 
-      if (!extractedConversationId) {
-        console.error("[Checkout] INVARIANT VIOLATION: conversationId missing after checkout", {
-          result,
+      // If conversationId is still null, that's OK - the order succeeded.
+      // The conversation will be accessible from My Orders.
+      // Don't block the user or throw an error.
+      if (extractedConversationId) {
+        console.log("[Checkout] Order and conversation ready", {
+          orderId: extractedOrderId,
+          conversationId: extractedConversationId,
+          trackingToken: extractedTrackingToken?.slice(0, 8) + "...",
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.warn("[Checkout] Order succeeded but conversation_id unavailable (will be in My Orders)", {
           orderId: extractedOrderId,
           timestamp: new Date().toISOString(),
         });
-        toast.error("⚠️ Conversation setup failed. Please contact support.");
-        setState("idle");
-        return;
       }
-
-      // INVARIANT #7: Log conversation_id at order creation
-      console.log("[Checkout] INVARIANT #1 & #7: Order and conversation created atomically", {
-        orderId: extractedOrderId,
-        conversationId: extractedConversationId,
-        trackingToken: extractedTrackingToken?.slice(0, 8) + "...",
-        timestamp: new Date().toISOString(),
-      });
 
       // Store in component state for persistence across renders
       setOrderId(extractedOrderId);
@@ -435,66 +474,15 @@ OTP: ${extractedOtpCode}
 Customer will contact you via WhatsApp or phone.
       `.trim();
 
-      // Run all messaging operations in parallel with Promise.allSettled
+      // STEP 7.5: Fire messaging tasks without blocking navigation
+      // Database trigger handle_order_created() handles all post-order events:
+      // - Conversation creation
+      // - System message generation
+      // - Vendor notifications
+      // Frontend must NOT replicate this work
       const messagingPromises = [
-        // 1. Customer receipt (always)
-        (async () => {
-          try {
-            await sendOrderConfirmationReceipt(
-              user?.id || extractedOrderId.toString(),
-              extractedOrderId,
-              receiptDetails,
-              !user?.id,  // isGuest
-              extractedTrackingToken  // guestToken (only used if guest)
-            );
-            console.log("[Checkout] CUSTOMER MESSAGE SENT", { orderId: extractedOrderId, recipientType: user?.id ? "authenticated" : "guest" });
-          } catch (err) {
-            console.error("[Checkout] Customer message failed:", err);
-            throw err;
-          }
-        })(),
-
-        // 2. Vendor notification (for products/services with store)
-        (async () => {
-          if (item.sme_id || item.store_id) {
-            try {
-              // CRITICAL FIX: Get the actual vendor/owner user ID from sme_stores
-              // NOT the customer's user ID
-              const storeId = item.store_id || item.sme_id;
-              const { data: storeData } = await supabase
-                .from("sme_stores")
-                .select("owner_user_id")
-                .eq("id", storeId)
-                .maybeSingle();
-
-              const vendorUserId = storeData?.owner_user_id || null;
-
-              if (vendorUserId) {
-                await sendRetailerOrderNotification(
-                  vendorUserId,
-                  extractedOrderId,
-                  vendorNotificationDetails
-                );
-                console.log("[Checkout] VENDOR MESSAGE SENT", {
-                  orderId: extractedOrderId,
-                  vendorUserId,
-                  smeId: item.sme_id,
-                  storeId: item.store_id,
-                });
-              } else {
-                console.warn("[Checkout] No vendor user ID found for order", {
-                  orderId: extractedOrderId,
-                  storeId,
-                  smeId: item.sme_id,
-                });
-              }
-            } catch (err) {
-              console.error("[Checkout] Vendor notification failed:", err);
-              throw err;
-            }
-          }
-        })(),
-
+        Promise.resolve(),  // Customer receipt (handled by trigger)
+        Promise.resolve(),  // Vendor notification (handled by trigger)
         // 3. External webhook call (Make.com or equivalent)
         (async () => {
           try {
@@ -533,22 +521,14 @@ Customer will contact you via WhatsApp or phone.
         })(),
       ];
 
-      // Execute all messaging in parallel, don't let one failure block others
-      const results = await Promise.allSettled(messagingPromises);
-
-      const successCount = results.filter(r => r.status === "fulfilled").length;
-      const failureCount = results.filter(r => r.status === "rejected").length;
-
-      console.log("[Checkout] MESSAGING ORCHESTRATION COMPLETE", {
-        orderId: extractedOrderId,
-        successCount,
-        failureCount,
-        results: results.map((r, i) => ({
-          index: i,
-          status: r.status,
-          reason: r.status === "rejected" ? String(r.reason) : undefined,
-        })),
-      });
+      // Fire messaging tasks without blocking navigation
+      Promise.allSettled(messagingPromises)
+        .then(results => {
+          const successCount = results.filter(r => r.status === "fulfilled").length;
+          const failureCount = results.filter(r => r.status === "rejected").length;
+          console.log("[Checkout] Messaging done", { successCount, failureCount });
+        })
+        .catch(err => console.error("[Checkout] Messaging error:", err));
 
       // STEP 8: Route to ledger immediately with order context
       // Ledger page handles both guest and authenticated users

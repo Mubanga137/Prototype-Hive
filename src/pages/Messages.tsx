@@ -21,13 +21,20 @@ import AttachProductModal from "@/components/messaging/AttachProductModal";
 
 interface Conversation {
   id: string;
-  participant_a: string;
-  participant_b: string;
+  participant_1: string | null;
+  participant_2: string | null;
   last_message: string | null;
   last_message_at: string | null;
-  context_order_id: number | null;
-  context_item_id: number | null;
+  order_id: number | null;
   created_at: string;
+}
+
+interface Actor {
+  id: string;
+  type: "system" | "vendor" | "customer" | "rider";
+  profile_id?: string | null;
+  store_id?: number | null;
+  rider_id?: number | null;
 }
 
 interface Message {
@@ -66,7 +73,7 @@ const initials = (name: string | null) =>
 
 // ---------- Component ----------
 
-const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000000";
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
 
 const Messages = () => {
   const { user } = useAuth();
@@ -129,28 +136,69 @@ const Messages = () => {
     }
   }, [location.search, conversations, activeConv]);
 
-  // ---- Resolve profiles (only for authenticated users) ----
+  // ---- Resolve actor identities for all participants ----
   useEffect(() => {
-    if (!conversations.length || !uid || context.authMode === "guest") return;
-    const ids = new Set<string>();
+    if (!conversations.length) return;
+    const actorIds = new Set<string>();
     conversations.forEach((c) => {
-      if (c.participant_a) ids.add(c.participant_a);
-      if (c.participant_b) ids.add(c.participant_b);
+      if (c.participant_1) actorIds.add(c.participant_1);
+      if (c.participant_2) actorIds.add(c.participant_2);
     });
-    ids.delete(uid);
-    const missing = [...ids].filter((id) => !profiles[id]);
-    if (!missing.length) return;
+    if (!actorIds.size) return;
+
     (async () => {
-      const { data } = await (supabase as any)
-        .from("profiles").select("user_id, full_name, phone").in("user_id", missing);
-      if (data) {
+      try {
+        // Fetch actors with their details
+        const { data: actors, error: actorsError } = await supabase
+          .from("actors")
+          .select(`
+            id,
+            type,
+            profile_id,
+            store_id,
+            rider_id,
+            profiles(id, full_name, avatar_url),
+            sme_stores(id, brand_name, logo_url),
+            riders(id, rider_name)
+          `)
+          .in("id", Array.from(actorIds));
+
+        if (actorsError) {
+          console.error("[Messages] Error fetching actors:", actorsError);
+          return;
+        }
+
+        if (!actors) return;
+
+        // Resolve display names based on actor type
         const map: Record<string, ProfileSummary> = { ...profiles };
-        (data as ProfileSummary[]).forEach((p) => (map[p.user_id] = p));
+        actors.forEach((actor: any) => {
+          let displayName = "Unknown User";
+
+          if (actor.type === "system") {
+            displayName = "🐝 Hive System";
+          } else if (actor.type === "vendor" && actor.sme_stores?.length > 0) {
+            displayName = actor.sme_stores[0].brand_name || "Vendor";
+          } else if (actor.type === "customer" && actor.profiles?.length > 0) {
+            displayName = actor.profiles[0].full_name || "Customer";
+          } else if (actor.type === "rider" && actor.riders?.length > 0) {
+            displayName = actor.riders[0].rider_name || "Rider";
+          }
+
+          map[actor.id] = {
+            user_id: actor.id,
+            full_name: displayName,
+            phone: null,
+          };
+        });
+
         setProfiles(map);
+      } catch (err) {
+        console.error("[Messages] Exception resolving actors:", err);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, uid, context.authMode]);
+  }, [conversations]);
 
   // ---- Fetch messages using dual-state logic ----
   useEffect(() => {
@@ -345,8 +393,8 @@ const Messages = () => {
   // ---- Derived ----
   const getOtherProfile = (conv: Conversation): ProfileSummary | undefined => {
     if (!uid) return undefined;
-    const otherId = conv.participant_a === uid ? conv.participant_b : conv.participant_a;
-    return profiles[otherId];
+    const otherId = conv.participant_1 === uid ? conv.participant_2 : conv.participant_1;
+    return otherId ? profiles[otherId] : undefined;
   };
 
   const filtered = conversations.filter((c) => {
@@ -400,16 +448,10 @@ const Messages = () => {
                     {conv.last_message || "Start a conversation"}
                   </p>
                   <div className="flex gap-1.5 mt-1">
-                    {conv.context_order_id && (
+                    {conv.order_id && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 border-0"
                         style={{ backgroundColor: "#0F1A35", color: "#FFFBF2" }}>
-                        📦 Order #{conv.context_order_id}
-                      </Badge>
-                    )}
-                    {conv.context_item_id && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 border-0"
-                        style={{ backgroundColor: "#B37C1C", color: "#FFFBF2" }}>
-                        🛍️ Product Inquiry
+                        📦 Order #{conv.order_id}
                       </Badge>
                     )}
                   </div>
