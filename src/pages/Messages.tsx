@@ -392,12 +392,15 @@ const Messages = () => {
 
   // ---- Derived ----
   const getOtherProfile = (conv: Conversation): ProfileSummary | undefined => {
-    if (!uid) return undefined;
-    const otherId = conv.participant_1 === uid ? conv.participant_2 : conv.participant_1;
-    return otherId ? profiles[otherId] : undefined;
+    // For authenticated users, customer is participant_1
+    // For guests, customer is also participant_1
+    // So the OTHER party (vendor) is always participant_2
+    const otherParticipantId = conv.participant_2 ?? conv.participant_b;
+    return otherParticipantId ? profiles[otherParticipantId] : undefined;
   };
 
   const filtered = conversations.filter((c) => {
+    // Show all conversations, don't filter out those with null/undefined fields
     if (!searchQuery) return true;
     const p = getOtherProfile(c);
     return p?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -523,8 +526,15 @@ const Messages = () => {
                 </div>
               </div>
             )}
-            {messages.map((msg) => {
-              const isMine = msg.sender_id === uid;
+            {messages.map((msg, index) => {
+              // For authenticated users, compare against uid
+              // For guests, use customer actor id from participant_1
+              const customerActorId = activeConv?.participant_1;
+              const isOwnMessage =
+                msg.sender_id === uid ||
+                msg.sender_id === customerActorId ||
+                msg.sender_id === context.authIdentifier;
+              const isMine = isOwnMessage;
               const isSystemMessage = msg.sender_id === SYSTEM_BOT_ID || msg.message_type === "system" || msg.message_type === "system_receipt" || msg.message_type === "retailer_notification";
 
               // System / bot message
