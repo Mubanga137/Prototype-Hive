@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGuestTracking } from "@/hooks/useGuestTracking";
 import { useDualStateMessaging } from "@/hooks/useDualStateMessaging";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -52,6 +52,8 @@ const formatTime = (iso: string | null) => {
 const initials = (name: string | null) =>
   (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
+
 const CustomerMessages = () => {
   const { user } = useAuth();
   const { isGuest, trackingToken, hasValidToken, allTrackingTokens } = useGuestTracking();
@@ -69,6 +71,7 @@ const CustomerMessages = () => {
   const [loading, setLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -116,6 +119,28 @@ const CustomerMessages = () => {
             'Vendor';
         });
         setVendorNames(names);
+      });
+  }, [conversations]);
+
+  // ========== Fetch Unread Notification Counts ==========
+  useEffect(() => {
+    if (!conversations || conversations.length === 0) return;
+
+    const customerActorId = conversations[0]?.participant_1;
+    if (!customerActorId) return;
+
+    supabase
+      .from('notifications')
+      .select('id, metadata')
+      .eq('recipient_actor_id', customerActorId)
+      .eq('read', false)
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        data?.forEach((n: any) => {
+          const convId = n.metadata?.conversation_id;
+          if (convId) counts[convId] = (counts[convId] || 0) + 1;
+        });
+        setUnreadCounts(counts);
       });
   }, [conversations]);
 
@@ -284,8 +309,28 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (activeConv) {
       loadMessagesForConversation(activeConv.id);
+
+      // Mark notifications as read when conversation is opened
+      const customerActorId = conversations[0]?.participant_1;
+      if (customerActorId && unreadCounts[activeConv.id] && unreadCounts[activeConv.id] > 0) {
+        supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('recipient_actor_id', customerActorId)
+          .eq('read', false)
+          .contains('metadata', { conversation_id: activeConv.id })
+          .then(() => {
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [activeConv.id]: 0
+            }));
+          })
+          .catch((err) => {
+            console.warn('[CustomerMessages] Failed to mark notifications as read:', err);
+          });
+      }
     }
-  }, [activeConv, loadMessagesForConversation]);
+  }, [activeConv, loadMessagesForConversation, conversations, unreadCounts]);
 
   // ========== Auto-scroll to latest message ==========
   useEffect(() => {
@@ -583,14 +628,18 @@ const CustomerMessages = () => {
                                       conv.participant_2_actor ||
                                       null;
 
-                  const conversationTitle =
-                    vendorNames[conv.participant_b] ||
-                    vendorNames[conv.participant_a] ||
-                    vendorActor?.sme_stores?.[0]?.brand_name ||
-                    vendorActor?.display_name ||
-                    conv.vendor_name ||
-                    conv.title ||
-                    "Vendor";
+                  const isSystemConversation =
+                    conv.participant_2 === SYSTEM_BOT_ID;
+
+                  const conversationTitle = isSystemConversation
+                    ? "THE HIVE"
+                    : vendorNames[conv.participant_b] ||
+                      vendorNames[conv.participant_a] ||
+                      vendorActor?.sme_stores?.[0]?.brand_name ||
+                      vendorActor?.display_name ||
+                      conv.vendor_name ||
+                      conv.title ||
+                      "Vendor";
 
                   return (
                     <button
@@ -604,8 +653,20 @@ const CustomerMessages = () => {
                     >
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 shrink-0">
-                          <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-xs">
-                            {initials(conversationTitle)}
+                          {isSystemConversation && (
+                            <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
+                          )}
+                          <AvatarFallback
+                            className="font-bold text-xs"
+                            style={isSystemConversation ? {
+                              backgroundColor: "#B37C1C",
+                              color: "white"
+                            } : {
+                              backgroundColor: "#B37C1C/10",
+                              color: "#B37C1C"
+                            }}
+                          >
+                            {isSystemConversation ? "🐝" : (vendorNames[conv.participant_b] || vendorNames[conv.participant_a] || "V").charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -619,9 +680,25 @@ const CustomerMessages = () => {
                               : "No messages yet"}
                           </p>
                         </div>
-                        <p className="text-xs text-[#0F1A35]/40 whitespace-nowrap">
-                          {formatTime(conv.last_message_at)}
-                        </p>
+                        <div className="flex flex-col items-end gap-2 whitespace-nowrap">
+                          <p className="text-xs text-[#0F1A35]/40">
+                            {formatTime(conv.last_message_at)}
+                          </p>
+                          {unreadCounts[conv.id] && unreadCounts[conv.id] > 0 && (
+                            <span style={{
+                              background: '#B37C1C',
+                              color: 'white',
+                              borderRadius: '999px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              minWidth: '18px',
+                              textAlign: 'center'
+                            }}>
+                              {unreadCounts[conv.id] > 9 ? '9+' : unreadCounts[conv.id]}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );
@@ -651,16 +728,19 @@ const CustomerMessages = () => {
                   </button>
                 )}
                 <Avatar className="w-10 h-10 border border-[#B37C1C]/20">
+                  {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? (
+                    <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
+                  ) : null}
                   <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-sm">
-                    {initials(otherProfile?.full_name || "")}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "🐝" : initials(otherProfile?.full_name || "")}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-semibold text-sm text-[#0F1A35]">
-                    {otherProfile?.full_name || "Unknown"}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_b] || vendorNames[activeConv?.participant_a] || otherProfile?.full_name || "Unknown")}
                   </p>
                   <p className="text-xs text-[#0F1A35]/60">
-                    {otherProfile?.phone || "No phone"}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "System Messages" : (otherProfile?.phone || "No phone")}
                   </p>
                 </div>
               </div>
@@ -711,20 +791,48 @@ const CustomerMessages = () => {
                 ) : (
                   messages.map((msg) => {
                     const isOwn = msg.sender_id === uid || msg.sender_id === `guest_${trackingToken}`;
-                    const isSystemAlert = msg.sender_id === dualState.SYSTEM_BOT_ID;
+                    const isSystemAlert = msg.sender_id === SYSTEM_BOT_ID || msg.message_type === "system";
 
-                    // System alerts render as centered neutral banners
+                    // System alerts render as centered receipt card
                     if (isSystemAlert) {
                       return (
-                        <div
-                          key={msg.id}
-                          className="flex justify-center py-3"
-                        >
-                          <div className="max-w-md px-4 py-3 rounded-lg bg-[#F0EDE6]/80 text-[#0F1A35]/70 border border-[#B37C1C]/15 italic text-center shadow-sm">
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        <div key={msg.id} style={{ display: "flex", justifyContent: "center" }}>
+                          <div style={{
+                            background: "#FFFBF2",
+                            border: "1.5px solid #B37C1C",
+                            borderRadius: "12px",
+                            padding: "14px 16px",
+                            margin: "8px auto",
+                            maxWidth: "90%",
+                            width: "90%"
+                          }}>
+                            <div style={{
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              color: "#B37C1C",
+                              marginBottom: "8px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px"
+                            }}>
+                              🐝 THE HIVE
+                            </div>
+                            <p style={{
+                              fontSize: "13px",
+                              color: "#0F1A35",
+                              margin: 0,
+                              lineHeight: "1.6",
+                              whiteSpace: "pre-wrap"
+                            }}>
                               {msg.content}
                             </p>
-                            <p className="text-[10px] mt-2 text-[#0F1A35]/50">
+                            <p style={{
+                              fontSize: "10px",
+                              color: "#0F1A35",
+                              opacity: 0.5,
+                              textAlign: "right",
+                              marginTop: "6px"
+                            }}>
                               {formatTime(msg.created_at)}
                             </p>
                           </div>
