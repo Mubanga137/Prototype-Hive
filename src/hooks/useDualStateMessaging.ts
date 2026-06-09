@@ -134,15 +134,7 @@ export const useDualStateMessaging = () => {
           // Fetch conversations where user is participant_a
           const { data: convA, error: errA } = await (supabase as any)
             .from("conversations")
-            .select(`
-              *,
-              vendor_actor:actors!conversations_participant_b_fkey(
-                id,
-                display_name,
-                store_id,
-                sme_stores(brand_name, logo_url)
-              )
-            `)
+            .select("*")
             .eq("participant_a", uid)
             .order("last_message_at", { ascending: false });
 
@@ -153,15 +145,7 @@ export const useDualStateMessaging = () => {
           // Fetch conversations where user is participant_b
           const { data: convB, error: errB } = await (supabase as any)
             .from("conversations")
-            .select(`
-              *,
-              vendor_actor:actors!conversations_participant_a_fkey(
-                id,
-                display_name,
-                store_id,
-                sme_stores(brand_name, logo_url)
-              )
-            `)
+            .select("*")
             .eq("participant_b", uid)
             .order("last_message_at", { ascending: false });
 
@@ -196,15 +180,7 @@ export const useDualStateMessaging = () => {
         try {
           const result = await (supabase as any)
             .from("conversations")
-            .select(`
-              *,
-              vendor_actor:actors!conversations_participant_b_fkey(
-                id,
-                display_name,
-                store_id,
-                sme_stores(brand_name, logo_url)
-              )
-            `)
+            .select("*")
             .in("guest_tracking_token", context.allTrackingTokens)
             .order("last_message_at", { ascending: false });
 
