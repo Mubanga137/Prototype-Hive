@@ -550,6 +550,17 @@ const CustomerMessages = () => {
                   const profile = profiles[otherId];
                   const isActive = activeConv?.id === conv.id;
 
+                  const vendorActor = conv.vendor_actor ||
+                                      conv.participant_2_actor ||
+                                      null;
+
+                  const conversationTitle =
+                    vendorActor?.sme_stores?.[0]?.brand_name ||
+                    vendorActor?.display_name ||
+                    conv.vendor_name ||
+                    conv.title ||
+                    "Vendor";
+
                   return (
                     <button
                       key={conv.id}
@@ -563,12 +574,12 @@ const CustomerMessages = () => {
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 shrink-0">
                           <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-xs">
-                            {initials(profile?.full_name || "")}
+                            {initials(conversationTitle)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-[#0F1A35] truncate">
-                            {profile?.full_name || "Unknown"}
+                            {conversationTitle}
                           </p>
                           <p className="text-xs text-[#0F1A35]/60 truncate">
                             {conv.last_message
