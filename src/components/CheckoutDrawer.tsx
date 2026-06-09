@@ -404,6 +404,43 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       setTotalToPay(extractedTotalToPay);
       setOtpCode(extractedOtpCode);
 
+      // Auto-send customer intro message to vendor
+      try {
+        // Get the conversation_id from the order
+        const { data: orderData } = await supabase
+          .from('orders')
+          .select('conversation_id, customer_actor_id, vendor_actor_id')
+          .eq('id', extractedOrderId)
+          .single();
+
+        if (orderData?.conversation_id &&
+            orderData?.customer_actor_id) {
+
+          // Build the auto-message text
+          const itemName = item?.item_name ||
+                           item?.name ||
+                           'your item';
+          const autoMessage =
+            `Hi! I just placed an order for ${itemName}` +
+            ` (Order #${extractedOrderId}).` +
+            ` Looking forward to receiving it! 🛒`;
+
+          // Insert the auto-message as the customer
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: orderData.conversation_id,
+              sender_actor_id: orderData.customer_actor_id,
+              content: autoMessage,
+              created_at: new Date().toISOString()
+            });
+        }
+      } catch (autoMsgError) {
+        // Never block checkout for this
+        console.warn('[Checkout] Auto-message failed:',
+          autoMsgError);
+      }
+
       // STEP 6: Secure guest continuity - persist tracking token to localStorage
       // Format: UNIFIED ARRAY ONLY for compatibility across all readers
       // [uuid1, uuid2, ...] - most recent is always at index 0
