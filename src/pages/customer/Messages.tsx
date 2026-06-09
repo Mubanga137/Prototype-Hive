@@ -670,16 +670,19 @@ const CustomerMessages = () => {
                   </button>
                 )}
                 <Avatar className="w-10 h-10 border border-[#B37C1C]/20">
+                  {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? (
+                    <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
+                  ) : null}
                   <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-sm">
-                    {initials(otherProfile?.full_name || "")}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "🐝" : initials(otherProfile?.full_name || "")}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-semibold text-sm text-[#0F1A35]">
-                    {otherProfile?.full_name || "Unknown"}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_b] || vendorNames[activeConv?.participant_a] || otherProfile?.full_name || "Unknown")}
                   </p>
                   <p className="text-xs text-[#0F1A35]/60">
-                    {otherProfile?.phone || "No phone"}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "System Messages" : (otherProfile?.phone || "No phone")}
                   </p>
                 </div>
               </div>
