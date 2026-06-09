@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGuestTracking } from "@/hooks/useGuestTracking";
 import { useDualStateMessaging } from "@/hooks/useDualStateMessaging";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -611,6 +611,9 @@ const CustomerMessages = () => {
                     >
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 shrink-0">
+                          {isSystemConversation && (
+                            <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
+                          )}
                           <AvatarFallback
                             className="font-bold text-xs"
                             style={isSystemConversation ? {
