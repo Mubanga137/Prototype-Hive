@@ -52,6 +52,8 @@ const formatTime = (iso: string | null) => {
 const initials = (name: string | null) =>
   (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 
+const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
+
 const CustomerMessages = () => {
   const { user } = useAuth();
   const { isGuest, trackingToken, hasValidToken, allTrackingTokens } = useGuestTracking();
@@ -583,14 +585,19 @@ const CustomerMessages = () => {
                                       conv.participant_2_actor ||
                                       null;
 
-                  const conversationTitle =
-                    vendorNames[conv.participant_b] ||
-                    vendorNames[conv.participant_a] ||
-                    vendorActor?.sme_stores?.[0]?.brand_name ||
-                    vendorActor?.display_name ||
-                    conv.vendor_name ||
-                    conv.title ||
-                    "Vendor";
+                  const isSystemConversation =
+                    conv.last_message?.includes("Order #") ||
+                    conv.last_message?.startsWith("🛒");
+
+                  const conversationTitle = isSystemConversation
+                    ? "THE HIVE"
+                    : vendorNames[conv.participant_b] ||
+                      vendorNames[conv.participant_a] ||
+                      vendorActor?.sme_stores?.[0]?.brand_name ||
+                      vendorActor?.display_name ||
+                      conv.vendor_name ||
+                      conv.title ||
+                      "Vendor";
 
                   return (
                     <button
@@ -604,8 +611,17 @@ const CustomerMessages = () => {
                     >
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 shrink-0">
-                          <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-xs">
-                            {(vendorNames[conv.participant_b] || vendorNames[conv.participant_a] || "V").charAt(0).toUpperCase()}
+                          <AvatarFallback
+                            className="font-bold text-xs"
+                            style={isSystemConversation ? {
+                              backgroundColor: "#B37C1C",
+                              color: "white"
+                            } : {
+                              backgroundColor: "#B37C1C/10",
+                              color: "#B37C1C"
+                            }}
+                          >
+                            {isSystemConversation ? "🐝" : (vendorNames[conv.participant_b] || vendorNames[conv.participant_a] || "V").charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -711,20 +727,48 @@ const CustomerMessages = () => {
                 ) : (
                   messages.map((msg) => {
                     const isOwn = msg.sender_id === uid || msg.sender_id === `guest_${trackingToken}`;
-                    const isSystemAlert = msg.sender_id === dualState.SYSTEM_BOT_ID;
+                    const isSystemAlert = msg.sender_id === SYSTEM_BOT_ID || msg.message_type === "system";
 
-                    // System alerts render as centered neutral banners
+                    // System alerts render as centered receipt card
                     if (isSystemAlert) {
                       return (
-                        <div
-                          key={msg.id}
-                          className="flex justify-center py-3"
-                        >
-                          <div className="max-w-md px-4 py-3 rounded-lg bg-[#F0EDE6]/80 text-[#0F1A35]/70 border border-[#B37C1C]/15 italic text-center shadow-sm">
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        <div key={msg.id} style={{ display: "flex", justifyContent: "center" }}>
+                          <div style={{
+                            background: "#FFFBF2",
+                            border: "1.5px solid #B37C1C",
+                            borderRadius: "12px",
+                            padding: "14px 16px",
+                            margin: "8px auto",
+                            maxWidth: "90%",
+                            width: "90%"
+                          }}>
+                            <div style={{
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              color: "#B37C1C",
+                              marginBottom: "8px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px"
+                            }}>
+                              🐝 THE HIVE
+                            </div>
+                            <p style={{
+                              fontSize: "13px",
+                              color: "#0F1A35",
+                              margin: 0,
+                              lineHeight: "1.6",
+                              whiteSpace: "pre-wrap"
+                            }}>
                               {msg.content}
                             </p>
-                            <p className="text-[10px] mt-2 text-[#0F1A35]/50">
+                            <p style={{
+                              fontSize: "10px",
+                              color: "#0F1A35",
+                              opacity: 0.5,
+                              textAlign: "right",
+                              marginTop: "6px"
+                            }}>
                               {formatTime(msg.created_at)}
                             </p>
                           </div>
