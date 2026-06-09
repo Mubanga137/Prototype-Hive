@@ -68,6 +68,7 @@ const CustomerMessages = () => {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
+  const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +90,34 @@ const CustomerMessages = () => {
       convLoading,
     });
   }, [uid, isAuthenticated, authIdentifier, authMode, conversations.length, convLoading]);
+
+  // ========== Fetch Vendor Names ==========
+  useEffect(() => {
+    if (!conversations || conversations.length === 0) return;
+
+    const vendorIds = [...new Set(
+      conversations.map(c => c.participant_b)
+        .filter(Boolean)
+    )];
+
+    if (vendorIds.length === 0) return;
+
+    supabase
+      .from('actors')
+      .select('id, display_name, store_id, sme_stores(brand_name, logo_url)')
+      .in('id', vendorIds)
+      .then(({ data }) => {
+        if (!data) return;
+        const names: Record<string, string> = {};
+        data.forEach((actor: any) => {
+          names[actor.id] =
+            actor.sme_stores?.[0]?.brand_name ||
+            actor.display_name ||
+            'Vendor';
+        });
+        setVendorNames(names);
+      });
+  }, [conversations]);
 
   // ========== DUAL-STATE: Load Conversations (REFACTORED) ==========
   const loadConversations = useCallback(async () => {
@@ -555,6 +584,8 @@ const CustomerMessages = () => {
                                       null;
 
                   const conversationTitle =
+                    vendorNames[conv.participant_b] ||
+                    vendorNames[conv.participant_a] ||
                     vendorActor?.sme_stores?.[0]?.brand_name ||
                     vendorActor?.display_name ||
                     conv.vendor_name ||
