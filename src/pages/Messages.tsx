@@ -27,6 +27,15 @@ interface Conversation {
   last_message_at: string | null;
   order_id: number | null;
   created_at: string;
+  vendor_actor?: {
+    id: string;
+    display_name: string | null;
+    store_id: number | null;
+    sme_stores?: Array<{
+      brand_name: string | null;
+      logo_url: string | null;
+    }>;
+  };
 }
 
 interface Actor {
@@ -40,7 +49,7 @@ interface Actor {
 interface Message {
   id: string;
   conversation_id: string;
-  sender_id: string;
+  sender_actor_id: string;
   content: string | null;
   message_type: string;
   product_data: Record<string, any> | null;
@@ -292,7 +301,7 @@ const Messages = () => {
         .from("messages")
         .insert({
           conversation_id: activeConv.id,
-          sender_id: uid,
+          sender_actor_id: uid,
           content: text,
           message_type: "text",
         });
@@ -363,7 +372,7 @@ const Messages = () => {
       .from("messages")
       .insert({
         conversation_id: activeConv.id,
-        sender_id: uid,
+        sender_actor_id: uid,
         content: null,
         message_type: "product",
         product_data: productData,
@@ -430,6 +439,7 @@ const Messages = () => {
         ) : (
           filtered.map((conv) => {
             const other = getOtherProfile(conv);
+            const vendorName = conv.vendor_actor?.sme_stores?.[0]?.brand_name || conv.vendor_actor?.display_name || other?.full_name || "Vendor";
             const isSelected = activeConv?.id === conv.id;
             return (
               <button key={conv.id} onClick={() => setActiveConv(conv)}
@@ -437,12 +447,12 @@ const Messages = () => {
                   isSelected ? "bg-primary/8" : "hover:bg-secondary/50"}`}>
                 <Avatar className="h-11 w-11 shrink-0 border border-primary/20">
                   <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                    {initials(other?.full_name ?? null)}
+                    {initials(vendorName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm text-foreground truncate">{other?.full_name || "Unknown"}</p>
+                    <p className="font-semibold text-sm text-foreground truncate">{vendorName}</p>
                     <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
                       {formatTime(conv.last_message_at)}
                     </span>
@@ -483,6 +493,9 @@ const Messages = () => {
     }
 
     const other = getOtherProfile(activeConv);
+    const isSystemThread = messages.length > 0 && messages.every((m) => m.sender_actor_id === SYSTEM_BOT_ID);
+    const headerName = isSystemThread ? "THE HIVE" : (other?.full_name || "Unknown");
+    const headerSubtitle = isSystemThread ? "Order notifications & updates" : "Online";
 
     return (
       <div className="flex-1 flex flex-col h-full bg-background/60 relative">
@@ -498,17 +511,17 @@ const Messages = () => {
           )}
           <Avatar className="h-10 w-10 border border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-              {initials(other?.full_name ?? null)}
+              {isSystemThread ? "🐝" : initials(headerName)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-foreground truncate">{other?.full_name || "Unknown"}</p>
+            <p className="font-semibold text-sm text-foreground truncate">{headerName}</p>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-              <p className="text-[10px] text-muted-foreground">Online</p>
+              {!isSystemThread && <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />}
+              <p className="text-[10px] text-muted-foreground">{headerSubtitle}</p>
             </div>
           </div>
-          {other?.phone && (
+          {!isSystemThread && other?.phone && (
             <a href={`tel:${other.phone}`}
               className="flex items-center justify-center w-10 h-10 rounded-full transition-colors"
               style={{ backgroundColor: "#B37C1C" }}>
@@ -534,15 +547,36 @@ const Messages = () => {
               // For guests, use customer actor id from participant_1
               const customerActorId = activeConv?.participant_1;
               const isOwnMessage =
-                msg.sender_id === uid ||
-                msg.sender_id === customerActorId ||
-                msg.sender_id === context.authIdentifier;
+                msg.sender_actor_id === uid ||
+                msg.sender_actor_id === customerActorId ||
+                msg.sender_actor_id === context.authIdentifier;
               const isMine = isOwnMessage;
-              const isSystemMessage = msg.sender_id === SYSTEM_BOT_ID || msg.message_type === "system" || msg.message_type === "system_receipt" || msg.message_type === "retailer_notification";
+              const isSystemMessage = msg.sender_actor_id === SYSTEM_BOT_ID || msg.message_type === "system" || msg.message_type === "system_receipt" || msg.message_type === "retailer_notification";
 
-              // System / bot message
+              // System / bot message - receipt card
               if (isSystemMessage) {
-                return <SystemMessage key={msg.id} content={msg.content || ""} />;
+                return (
+                  <div key={msg.id} className="flex justify-start">
+                    <div style={{
+                      background: '#FFFBF2',
+                      border: '1.5px solid #B37C1C',
+                      borderRadius: '12px',
+                      padding: '14px 16px',
+                      margin: '8px 0',
+                      maxWidth: '85%'
+                    }}>
+                      <div style={{fontSize:'13px', fontWeight:700, color:'#B37C1C', marginBottom:'8px'}}>
+                        🐝 THE HIVE
+                      </div>
+                      <p style={{fontSize:'13px', color:'#0F1A35', margin:0, lineHeight:'1.5'}}>
+                        {msg.content}
+                      </p>
+                      <p style={{fontSize:'10px', color:'#0F1A35', opacity:0.5, textAlign:'right', marginTop:'6px'}}>
+                        {formatTime(msg.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                );
               }
 
               // Product card
