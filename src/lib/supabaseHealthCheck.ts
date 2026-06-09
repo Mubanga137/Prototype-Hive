@@ -64,7 +64,7 @@ export async function checkSupabaseHealth(): Promise<SupabaseHealthStatus> {
       const { data: rpcData, error: rpcError } = await supabase.rpc(
         "secure_place_order",
         {
-          p_buyer_id: null,
+          p_customer_actor_id: null,
           p_item_id: 0,
           p_sme_id: null,
           p_store_id: null,
