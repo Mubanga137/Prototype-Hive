@@ -4,6 +4,7 @@ interface GuestTrackingState {
   isGuest: boolean;
   trackingToken: string | null;
   hasValidToken: boolean;
+  allTrackingTokens: string[];
 }
 
 /**
@@ -16,6 +17,7 @@ export const useGuestTracking = (): GuestTrackingState => {
     isGuest: false,
     trackingToken: null,
     hasValidToken: false,
+    allTrackingTokens: [],
   });
 
   useEffect(() => {
@@ -27,33 +29,40 @@ export const useGuestTracking = (): GuestTrackingState => {
           isGuest: false,
           trackingToken: null,
           hasValidToken: false,
+          allTrackingTokens: [],
         });
         return;
       }
 
       let trackingToken: string | null = null;
+      let allTokens: string[] = [];
 
       try {
         const parsed = JSON.parse(stored);
 
         // PRIMARY: Array format (standard)
         if (Array.isArray(parsed)) {
-          trackingToken = parsed.find((t) => typeof t === "string" && t.length >= 36) || null;
+          allTokens = parsed.filter((t) => typeof t === "string" && t.length >= 36);
+          trackingToken = allTokens[0] || null;
         }
         // FALLBACK: Object format (migration from old code)
         else if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
-          trackingToken = parsed.trackingTokens.find((t: any) => typeof t === "string" && t.length >= 36) || null;
+          allTokens = parsed.trackingTokens.filter((t: any) => typeof t === "string" && t.length >= 36);
+          trackingToken = allTokens[0] || null;
         } else if (parsed?.mostRecent && typeof parsed.mostRecent === "string") {
           trackingToken = parsed.mostRecent.length >= 36 ? parsed.mostRecent : null;
+          allTokens = trackingToken ? [trackingToken] : [];
         }
         // LAST RESORT: Direct string token
         else if (typeof parsed === "string" && parsed.length >= 36) {
           trackingToken = parsed;
+          allTokens = [parsed];
         }
       } catch {
         // Try as direct string
         if (typeof stored === "string" && stored.length >= 36) {
           trackingToken = stored;
+          allTokens = [stored];
         }
       }
 
@@ -61,6 +70,7 @@ export const useGuestTracking = (): GuestTrackingState => {
         isGuest: !!trackingToken,
         trackingToken: trackingToken,
         hasValidToken: !!trackingToken,
+        allTrackingTokens: allTokens,
       });
     } catch (error) {
       console.error("[useGuestTracking] Error reading guest token:", error);
@@ -68,6 +78,7 @@ export const useGuestTracking = (): GuestTrackingState => {
         isGuest: false,
         trackingToken: null,
         hasValidToken: false,
+        allTrackingTokens: [],
       });
     }
   }, []);

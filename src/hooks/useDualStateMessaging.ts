@@ -37,18 +37,20 @@ interface DualStateMessagingContext {
   isGuest: boolean;
   authIdentifier: string | null;
   authMode: "user" | "guest" | null;
+  allTrackingTokens: string[];
 }
 
 const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
 
 export const useDualStateMessaging = () => {
   const { user } = useAuth();
-  const { isGuest, trackingToken, hasValidToken } = useGuestTracking();
+  const { isGuest, trackingToken, hasValidToken, allTrackingTokens } = useGuestTracking();
   const [context, setContext] = useState<DualStateMessagingContext>({
     isAuthenticated: false,
     isGuest: false,
     authIdentifier: null,
     authMode: null,
+    allTrackingTokens: [],
   });
 
   // Determine auth context on mount and when auth state changes
@@ -71,6 +73,7 @@ export const useDualStateMessaging = () => {
         isGuest: false,
         authIdentifier: uid || null,
         authMode: "user",
+        allTrackingTokens: [],
       });
     } else if (isGuestMode) {
       setContext({
@@ -78,6 +81,7 @@ export const useDualStateMessaging = () => {
         isGuest: true,
         authIdentifier: trackingToken,
         authMode: "guest",
+        allTrackingTokens,
       });
     } else {
       setContext({
@@ -85,9 +89,10 @@ export const useDualStateMessaging = () => {
         isGuest: false,
         authIdentifier: null,
         authMode: null,
+        allTrackingTokens: [],
       });
     }
-  }, [user?.id, isGuest, trackingToken, hasValidToken]);
+  }, [user?.id, isGuest, trackingToken, hasValidToken, allTrackingTokens]);
 
   /**
    * DUAL-STATE RULE 1: AUTHENTICATED vs GUEST data retrieval
@@ -167,19 +172,16 @@ export const useDualStateMessaging = () => {
           console.error("[useDualStateMessaging] Query exception:", queryErr.message);
           error = queryErr;
         }
-      } else if (context.authMode === "guest" && context.authIdentifier) {
-        // GUEST: Fetch via guest_tracking_token anchor
+      } else if (context.authMode === "guest" && context.allTrackingTokens.length > 0) {
+        // GUEST: Fetch via all guest_tracking_tokens (support multiple orders per guest)
         console.debug(
-          `[useDualStateMessaging.loadConversations] Guest mode: ${context.authIdentifier.slice(
-            0,
-            8
-          )}...`
+          `[useDualStateMessaging.loadConversations] Guest mode with ${context.allTrackingTokens.length} tokens`
         );
         try {
           const result = await (supabase as any)
             .from("conversations")
             .select("*")
-            .eq("guest_tracking_token", context.authIdentifier)
+            .in("guest_tracking_token", context.allTrackingTokens)
             .order("last_message_at", { ascending: false });
 
           data = result.data;

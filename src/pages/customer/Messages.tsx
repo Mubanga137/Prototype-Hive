@@ -55,7 +55,7 @@ const initials = (name: string | null) =>
 
 const CustomerMessages = () => {
   const { user } = useAuth();
-  const { isGuest, trackingToken } = useGuestTracking();
+  const { isGuest, trackingToken, hasValidToken, allTrackingTokens } = useGuestTracking();
   const location = useLocation();
   const isMobile = useIsMobile();
   const dualState = useDualStateMessaging();
@@ -529,6 +529,30 @@ const CustomerMessages = () => {
                   className="border-0 bg-transparent focus-visible:ring-0 text-sm"
                 />
               </div>
+            </div>
+
+            {/* DEBUG PANEL */}
+            <div style={{background:'#ffeeee', padding:'12px',
+              fontSize:'11px', fontFamily:'monospace',
+              borderRadius:'8px', marginBottom:'12px', marginLeft: '8px', marginRight: '8px', marginTop: '8px'}}>
+              <div><b>DEBUG - Guest Messaging State</b></div>
+              <div>trackingToken: {trackingToken || 'NULL'}</div>
+              <div>allTrackingTokens: {JSON.stringify(allTrackingTokens)}</div>
+              <div>authIdentifier: {dualState.context?.authIdentifier || 'NULL'}</div>
+              <div>authMode: {dualState.context?.authMode || 'NULL'}</div>
+              <div>isGuest: {String(isGuest)}</div>
+              <div>hasValidToken: {String(hasValidToken)}</div>
+              <div>conversations.length: {conversations?.length ?? 0}</div>
+              <div>convLoading: {String(convLoading)}</div>
+              <div>localStorage raw: {
+                (() => {
+                  try {
+                    return localStorage.getItem('hive_guest_active_cart') || 'EMPTY'
+                  } catch(e) {
+                    return 'ERROR: ' + (e as Error).message
+                  }
+                })()
+              }</div>
             </div>
 
             {/* Conversations List */}
