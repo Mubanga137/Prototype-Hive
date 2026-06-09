@@ -474,66 +474,15 @@ OTP: ${extractedOtpCode}
 Customer will contact you via WhatsApp or phone.
       `.trim();
 
-      // Run all messaging operations in parallel with Promise.allSettled
+      // STEP 7.5: Fire messaging tasks without blocking navigation
+      // Database trigger handle_order_created() handles all post-order events:
+      // - Conversation creation
+      // - System message generation
+      // - Vendor notifications
+      // Frontend must NOT replicate this work
       const messagingPromises = [
-        // 1. Customer receipt (always)
-        (async () => {
-          try {
-            await sendOrderConfirmationReceipt(
-              user?.id || extractedOrderId.toString(),
-              extractedOrderId,
-              receiptDetails,
-              !user?.id,  // isGuest
-              extractedTrackingToken  // guestToken (only used if guest)
-            );
-            console.log("[Checkout] CUSTOMER MESSAGE SENT", { orderId: extractedOrderId, recipientType: user?.id ? "authenticated" : "guest" });
-          } catch (err) {
-            console.error("[Checkout] Customer message failed:", err);
-            throw err;
-          }
-        })(),
-
-        // 2. Vendor notification (for products/services with store)
-        (async () => {
-          if (item.sme_id || item.store_id) {
-            try {
-              // CRITICAL FIX: Get the actual vendor/owner user ID from sme_stores
-              // NOT the customer's user ID
-              const storeId = item.store_id || item.sme_id;
-              const { data: storeData } = await supabase
-                .from("sme_stores")
-                .select("owner_user_id")
-                .eq("id", storeId)
-                .maybeSingle();
-
-              const vendorUserId = storeData?.owner_user_id || null;
-
-              if (vendorUserId) {
-                await sendRetailerOrderNotification(
-                  vendorUserId,
-                  extractedOrderId,
-                  vendorNotificationDetails
-                );
-                console.log("[Checkout] VENDOR MESSAGE SENT", {
-                  orderId: extractedOrderId,
-                  vendorUserId,
-                  smeId: item.sme_id,
-                  storeId: item.store_id,
-                });
-              } else {
-                console.warn("[Checkout] No vendor user ID found for order", {
-                  orderId: extractedOrderId,
-                  storeId,
-                  smeId: item.sme_id,
-                });
-              }
-            } catch (err) {
-              console.error("[Checkout] Vendor notification failed:", err);
-              throw err;
-            }
-          }
-        })(),
-
+        Promise.resolve(),  // Customer receipt (handled by trigger)
+        Promise.resolve(),  // Vendor notification (handled by trigger)
         // 3. External webhook call (Make.com or equivalent)
         (async () => {
           try {
@@ -572,22 +521,14 @@ Customer will contact you via WhatsApp or phone.
         })(),
       ];
 
-      // Execute all messaging in parallel, don't let one failure block others
-      const results = await Promise.allSettled(messagingPromises);
-
-      const successCount = results.filter(r => r.status === "fulfilled").length;
-      const failureCount = results.filter(r => r.status === "rejected").length;
-
-      console.log("[Checkout] MESSAGING ORCHESTRATION COMPLETE", {
-        orderId: extractedOrderId,
-        successCount,
-        failureCount,
-        results: results.map((r, i) => ({
-          index: i,
-          status: r.status,
-          reason: r.status === "rejected" ? String(r.reason) : undefined,
-        })),
-      });
+      // Fire messaging tasks without blocking navigation
+      Promise.allSettled(messagingPromises)
+        .then(results => {
+          const successCount = results.filter(r => r.status === "fulfilled").length;
+          const failureCount = results.filter(r => r.status === "rejected").length;
+          console.log("[Checkout] Messaging done", { successCount, failureCount });
+        })
+        .catch(err => console.error("[Checkout] Messaging error:", err));
 
       // STEP 8: Route to ledger immediately with order context
       // Ledger page handles both guest and authenticated users
