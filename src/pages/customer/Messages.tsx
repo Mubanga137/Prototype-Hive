@@ -102,6 +102,7 @@ const CustomerMessages = () => {
           `[CustomerMessages] Loaded ${result.conversations.length} conversations`
         );
         setConversations(result.conversations);
+        console.log("[GUEST FETCH] Conversations set:", result.conversations?.length);
       } else {
         console.warn("[CustomerMessages] Failed to load conversations:", result.error);
         setConversations([]);

@@ -177,6 +177,9 @@ export const useDualStateMessaging = () => {
         console.debug(
           `[useDualStateMessaging.loadConversations] Guest mode with ${context.allTrackingTokens.length} tokens`
         );
+
+        console.log("[GUEST FETCH] Starting fetch with tokens:", context.allTrackingTokens);
+
         try {
           const result = await (supabase as any)
             .from("conversations")
@@ -186,6 +189,12 @@ export const useDualStateMessaging = () => {
 
           data = result.data;
           error = result.error;
+
+          console.log("[GUEST FETCH] Query result:", {
+            data,
+            error,
+            count: data?.length
+          });
 
           if (error) {
             console.error("[useDualStateMessaging] Guest query error:", error.message);
