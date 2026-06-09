@@ -448,7 +448,10 @@ const Messages = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {conv.last_message || "Start a conversation"}
+                    {conv.last_message
+                      ? conv.last_message.substring(0, 60) +
+                        (conv.last_message.length > 60 ? "..." : "")
+                      : "No messages yet"}
                   </p>
                   <div className="flex gap-1.5 mt-1">
                     {conv.order_id && (
