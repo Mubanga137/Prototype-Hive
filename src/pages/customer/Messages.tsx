@@ -605,7 +605,7 @@ const CustomerMessages = () => {
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10 shrink-0">
                           <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-xs">
-                            {initials(conversationTitle)}
+                            {(vendorNames[conv.participant_b] || vendorNames[conv.participant_a] || "V").charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
