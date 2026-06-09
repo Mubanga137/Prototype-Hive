@@ -78,9 +78,15 @@ export const setupGlobalErrorHandlers = () => {
 
       return response;
     } catch (error: any) {
-      // Log detailed network error information
-      if (error?.message?.includes("fetch") || error?.message?.includes("Failed")) {
-        console.warn("[Global Error Handler] Network connectivity issue detected", {
+      // Silent "Failed to fetch" errors - common in preview mode retries
+      if (error?.message?.includes("Failed to fetch")) {
+        console.warn("[Global Error Handler] Network retry:", error?.message);
+        throw error;
+      }
+
+      // Log other detailed network error information
+      if (error?.message?.includes("fetch")) {
+        console.warn("[Global Error Handler] Network error detected", {
           url,
           error: error?.message,
           type: error?.name,

@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import MessagingDebugPanel from "@/components/messaging/MessagingDebugPanel";
 
 interface Conversation {
   id: string;
@@ -508,286 +507,274 @@ const CustomerMessages = () => {
   };
 
   return (
-    <>
-      <MessagingDebugPanel />
-      <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
-        <div className="max-w-6xl mx-auto h-full flex gap-4 p-4">
-          {/* ========== CONVERSATIONS LIST PANEL ========== */}
-          <div
-            className={`${
-              isMobile && activeConv ? "hidden" : "w-full md:w-80"
-            } flex flex-col bg-white rounded-2xl shadow-lg border border-[#B37C1C]/10`}
-          >
-            {/* Search Bar */}
-            <div className="p-4 border-b border-[#B37C1C]/10">
-              <div className="flex items-center gap-2 bg-[#FFFBF2] rounded-lg px-3 py-2">
-                <Search size={18} className="text-[#B37C1C]/60" />
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border-0 bg-transparent focus-visible:ring-0 text-sm"
-                />
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
+      <div className="max-w-6xl mx-auto h-full flex gap-4 p-4">
+        {/* ========== CONVERSATIONS LIST PANEL ========== */}
+        <div
+          className={`${
+            isMobile && activeConv ? "hidden" : "w-full md:w-80"
+          } flex flex-col bg-white rounded-2xl shadow-lg border border-[#B37C1C]/10`}
+        >
+          {/* Search Bar */}
+          <div className="p-4 border-b border-[#B37C1C]/10">
+            <div className="flex items-center gap-2 bg-[#FFFBF2] rounded-lg px-3 py-2">
+              <Search size={18} className="text-[#B37C1C]/60" />
+              <Input
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-0 bg-transparent focus-visible:ring-0 text-sm"
+              />
             </div>
-
-            {/* DEBUG PANEL */}
-            <div style={{background:'#ffeeee', padding:'12px',
-              fontSize:'11px', fontFamily:'monospace',
-              borderRadius:'8px', marginBottom:'12px', marginLeft: '8px', marginRight: '8px', marginTop: '8px'}}>
-              <div><b>DEBUG - Guest Messaging State</b></div>
-              <div>trackingToken: {trackingToken || 'NULL'}</div>
-              <div>allTrackingTokens: {JSON.stringify(allTrackingTokens)}</div>
-              <div>authIdentifier: {dualState.context?.authIdentifier || 'NULL'}</div>
-              <div>authMode: {dualState.context?.authMode || 'NULL'}</div>
-              <div>isGuest: {String(isGuest)}</div>
-              <div>hasValidToken: {String(hasValidToken)}</div>
-              <div>conversations.length: {conversations?.length ?? 0}</div>
-              <div>convLoading: {String(convLoading)}</div>
-              <div>localStorage raw: {
-                (() => {
-                  try {
-                    return localStorage.getItem('hive_guest_active_cart') || 'EMPTY'
-                  } catch(e) {
-                    return 'ERROR: ' + (e as Error).message
-                  }
-                })()
-              }</div>
-            </div>
-
-            {/* Conversations List */}
-            <ScrollArea className="flex-1">
-              <div className="space-y-1 p-2">
-                {loading ? (
-                  <div className="p-8 text-center text-[#0F1A35]/40">
-                    <p className="text-sm">Loading conversations...</p>
-                  </div>
-                ) : filteredConversations.length === 0 ? (
-                  <div className="p-8 text-center text-[#0F1A35]/60 flex flex-col items-center gap-3">
-                    <MessageSquare size={36} className="opacity-40" />
-                    <p className="text-sm">No conversations yet</p>
-                  </div>
-                ) : (
-                  filteredConversations.map((conv) => {
-                    const otherId =
-                      conv.participant_a === uid
-                        ? conv.participant_b
-                        : conv.participant_a;
-                    const profile = profiles[otherId];
-                    const isActive = activeConv?.id === conv.id;
-
-                    return (
-                      <button
-                        key={conv.id}
-                        onClick={() => setActiveConv(conv)}
-                        className={`w-full text-left p-3 rounded-lg transition-all ${
-                          isActive
-                            ? "bg-[#B37C1C]/10 border border-[#B37C1C]/25"
-                            : "hover:bg-[#FFFBF2] border border-transparent"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-10 h-10 shrink-0">
-                            <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-xs">
-                              {initials(profile?.full_name || "")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-[#0F1A35] truncate">
-                              {profile?.full_name || "Unknown"}
-                            </p>
-                            <p className="text-xs text-[#0F1A35]/60 truncate">
-                              {conv.last_message || "Start a conversation"}
-                            </p>
-                          </div>
-                          <p className="text-xs text-[#0F1A35]/40 whitespace-nowrap">
-                            {formatTime(conv.last_message_at)}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
           </div>
 
-          {/* ========== CHAT PANEL ========== */}
-          {activeConv ? (
-            <div
-              className={`${
-                isMobile ? "w-full" : "flex-1"
-              } flex flex-col bg-white rounded-2xl shadow-lg border border-[#B37C1C]/10`}
-            >
-              {/* Chat Header */}
-              <div className="px-4 py-3 border-b border-[#B37C1C]/10 flex items-center justify-between bg-gradient-to-r from-[#FFFBF2] to-white">
-                <div className="flex items-center gap-3">
-                  {isMobile && (
-                    <button
-                      onClick={() => setActiveConv(null)}
-                      className="p-2 hover:bg-[#FFFBF2] rounded-lg transition-colors"
-                      title="Back to conversations"
-                    >
-                      <ArrowLeft size={20} className="text-[#0F1A35]" />
-                    </button>
-                  )}
-                  <Avatar className="w-10 h-10 border border-[#B37C1C]/20">
-                    <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-sm">
-                      {initials(otherProfile?.full_name || "")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold text-sm text-[#0F1A35]">
-                      {otherProfile?.full_name || "Unknown"}
-                    </p>
-                    <p className="text-xs text-[#0F1A35]/60">
-                      {otherProfile?.phone || "No phone"}
-                    </p>
-                  </div>
-                </div>
 
-                {/* WhatsApp Receipt Button with Transaction Token */}
-                {otherProfile?.phone && activeConv?.context_order_id && (
+          {/* Conversations List */}
+          <ScrollArea className="flex-1">
+            <div className="space-y-1 p-2">
+              {loading ? (
+                <div className="p-8 text-center text-[#0F1A35]/40">
+                  <p className="text-sm">Loading conversations...</p>
+                </div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="p-8 text-center text-[#0F1A35]/60 flex flex-col items-center gap-3">
+                  <MessageSquare size={36} className="opacity-40" />
+                  <p className="text-sm">No conversations yet</p>
+                </div>
+              ) : (
+                filteredConversations.map((conv) => {
+                  const otherId =
+                    conv.participant_a === uid
+                      ? conv.participant_b
+                      : conv.participant_a;
+                  const profile = profiles[otherId];
+                  const isActive = activeConv?.id === conv.id;
+
+                  const vendorActor = conv.vendor_actor ||
+                                      conv.participant_2_actor ||
+                                      null;
+
+                  const conversationTitle =
+                    vendorActor?.sme_stores?.[0]?.brand_name ||
+                    vendorActor?.display_name ||
+                    conv.vendor_name ||
+                    conv.title ||
+                    "Vendor";
+
+                  return (
+                    <button
+                      key={conv.id}
+                      onClick={() => setActiveConv(conv)}
+                      className={`w-full text-left p-3 rounded-lg transition-all ${
+                        isActive
+                          ? "bg-[#B37C1C]/10 border border-[#B37C1C]/25"
+                          : "hover:bg-[#FFFBF2] border border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10 shrink-0">
+                          <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-xs">
+                            {initials(conversationTitle)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-[#0F1A35] truncate">
+                            {conversationTitle}
+                          </p>
+                          <p className="text-xs text-[#0F1A35]/60 truncate">
+                            {conv.last_message
+                              ? conv.last_message.substring(0, 60) +
+                                (conv.last_message.length > 60 ? "..." : "")
+                              : "No messages yet"}
+                          </p>
+                        </div>
+                        <p className="text-xs text-[#0F1A35]/40 whitespace-nowrap">
+                          {formatTime(conv.last_message_at)}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* ========== CHAT PANEL ========== */}
+        {activeConv ? (
+          <div
+            className={`${
+              isMobile ? "w-full" : "flex-1"
+            } flex flex-col bg-white rounded-2xl shadow-lg border border-[#B37C1C]/10`}
+          >
+            {/* Chat Header */}
+            <div className="px-4 py-3 border-b border-[#B37C1C]/10 flex items-center justify-between bg-gradient-to-r from-[#FFFBF2] to-white">
+              <div className="flex items-center gap-3">
+                {isMobile && (
                   <button
-                    onClick={() => {
-                      // RULE 3: Wire transaction verification token parameters securely
-                      // Encode order tracking token and pass as URL query parameter
-                      const orderTrackingToken = activeConv?.context_order_id?.toString() || "";
-                      const message = encodeURIComponent(
-                        `Hello Hive, send my receipt summary text for Token: ${orderTrackingToken}`
-                      );
-                      const phoneNumber = otherProfile.phone.replace(/\D/g, "");
-                      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
-                      window.open(whatsappUrl, "_blank");
-                    }}
-                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95"
-                    style={{ backgroundColor: "#25D366" }}
-                    title="View WhatsApp Receipt"
+                    onClick={() => setActiveConv(null)}
+                    className="p-2 hover:bg-[#FFFBF2] rounded-lg transition-colors"
+                    title="Back to conversations"
                   >
-                    <span className="text-lg">💬</span>
+                    <ArrowLeft size={20} className="text-[#0F1A35]" />
                   </button>
                 )}
-                {otherProfile?.phone && !activeConv?.context_order_id && (
-                  <a
-                    href={`https://wa.me/${otherProfile.phone.replace(/\D/g, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110"
-                    style={{ backgroundColor: "#25D366" }}
-                    title="Open on WhatsApp"
-                  >
-                    <span className="text-lg">💬</span>
-                  </a>
-                )}
+                <Avatar className="w-10 h-10 border border-[#B37C1C]/20">
+                  <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-sm">
+                    {initials(otherProfile?.full_name || "")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold text-sm text-[#0F1A35]">
+                    {otherProfile?.full_name || "Unknown"}
+                  </p>
+                  <p className="text-xs text-[#0F1A35]/60">
+                    {otherProfile?.phone || "No phone"}
+                  </p>
+                </div>
               </div>
 
-              {/* Messages Area */}
-              <ScrollArea className="flex-1 px-4 py-4">
-                <div className="space-y-3 max-w-2xl">
-                  {messages.length === 0 ? (
-                    <div className="text-center py-8 text-[#0F1A35]/40">
-                      <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">No messages yet. Start the conversation!</p>
-                    </div>
-                  ) : (
-                    messages.map((msg) => {
-                      const isOwn = msg.sender_id === uid || msg.sender_id === `guest_${trackingToken}`;
-                      const isSystemAlert = msg.sender_id === dualState.SYSTEM_BOT_ID;
+              {/* WhatsApp Receipt Button with Transaction Token */}
+              {otherProfile?.phone && activeConv?.context_order_id && (
+                <button
+                  onClick={() => {
+                    // RULE 3: Wire transaction verification token parameters securely
+                    // Encode order tracking token and pass as URL query parameter
+                    const orderTrackingToken = activeConv?.context_order_id?.toString() || "";
+                    const message = encodeURIComponent(
+                      `Hello Hive, send my receipt summary text for Token: ${orderTrackingToken}`
+                    );
+                    const phoneNumber = otherProfile.phone.replace(/\D/g, "");
+                    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+                    window.open(whatsappUrl, "_blank");
+                  }}
+                  className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95"
+                  style={{ backgroundColor: "#25D366" }}
+                  title="View WhatsApp Receipt"
+                >
+                  <span className="text-lg">💬</span>
+                </button>
+              )}
+              {otherProfile?.phone && !activeConv?.context_order_id && (
+                <a
+                  href={`https://wa.me/${otherProfile.phone.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110"
+                  style={{ backgroundColor: "#25D366" }}
+                  title="Open on WhatsApp"
+                >
+                  <span className="text-lg">💬</span>
+                </a>
+              )}
+            </div>
 
-                      // System alerts render as centered neutral banners
-                      if (isSystemAlert) {
-                        return (
-                          <div
-                            key={msg.id}
-                            className="flex justify-center py-3"
-                          >
-                            <div className="max-w-md px-4 py-3 rounded-lg bg-[#F0EDE6]/80 text-[#0F1A35]/70 border border-[#B37C1C]/15 italic text-center shadow-sm">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                                {msg.content}
-                              </p>
-                              <p className="text-[10px] mt-2 text-[#0F1A35]/50">
-                                {formatTime(msg.created_at)}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      }
+            {/* Messages Area */}
+            <ScrollArea className="flex-1 px-4 py-4">
+              <div className="space-y-3 max-w-2xl">
+                {messages.length === 0 ? (
+                  <div className="text-center py-8 text-[#0F1A35]/40">
+                    <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No messages yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  messages.map((msg) => {
+                    const isOwn = msg.sender_id === uid || msg.sender_id === `guest_${trackingToken}`;
+                    const isSystemAlert = msg.sender_id === dualState.SYSTEM_BOT_ID;
 
-                      // Peer-to-peer messages
+                    // System alerts render as centered neutral banners
+                    if (isSystemAlert) {
                       return (
                         <div
                           key={msg.id}
-                          className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                          className="flex justify-center py-3"
                         >
-                          <div
-                            className={`max-w-xs px-4 py-2.5 rounded-2xl shadow-sm ${
-                              isOwn
-                                ? "bg-[#B37C1C] text-[#FFFBF2] rounded-br-none"
-                                : "bg-[#F0EDE6] text-[#0F1A35] rounded-bl-none border border-[#B37C1C]/10"
-                            }`}
-                          >
+                          <div className="max-w-md px-4 py-3 rounded-lg bg-[#F0EDE6]/80 text-[#0F1A35]/70 border border-[#B37C1C]/15 italic text-center shadow-sm">
                             <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                               {msg.content}
                             </p>
-                            <p
-                              className={`text-[10px] mt-1 text-right ${
-                                isOwn
-                                  ? "text-[#FFFBF2]/70"
-                                  : "text-[#0F1A35]/50"
-                              }`}
-                            >
+                            <p className="text-[10px] mt-2 text-[#0F1A35]/50">
                               {formatTime(msg.created_at)}
                             </p>
                           </div>
                         </div>
                       );
-                    })
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-              </ScrollArea>
-
-              {/* Input Area */}
-              <div className="px-4 py-3 border-t border-[#B37C1C]/10 bg-gradient-to-r from-[#FFFBF2] to-white flex gap-2">
-                <Input
-                  ref={inputRef}
-                  placeholder="Type a message..."
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
                     }
-                  }}
-                  disabled={sending}
-                  className="flex-1 border-[#B37C1C]/20 focus-visible:ring-[#B37C1C]/40"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!draft.trim() || sending}
-                  className="flex items-center justify-center w-10 h-10 rounded-lg transition-all disabled:opacity-40 hover:scale-105"
-                  style={{
-                    backgroundColor: draft.trim() && !sending ? "#B37C1C" : "#B37C1C",
-                  }}
-                  title="Send message"
-                >
-                  <Send size={18} color="#FFFBF2" />
-                </button>
+
+                    // Peer-to-peer messages
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-xs px-4 py-2.5 rounded-2xl shadow-sm ${
+                            isOwn
+                              ? "bg-[#B37C1C] text-[#FFFBF2] rounded-br-none"
+                              : "bg-[#F0EDE6] text-[#0F1A35] rounded-bl-none border border-[#B37C1C]/10"
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {msg.content}
+                          </p>
+                          <p
+                            className={`text-[10px] mt-1 text-right ${
+                              isOwn
+                                ? "text-[#FFFBF2]/70"
+                                : "text-[#0F1A35]/50"
+                            }`}
+                          >
+                            {formatTime(msg.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatEndRef} />
               </div>
+            </ScrollArea>
+
+            {/* Input Area */}
+            <div className="px-4 py-3 border-t border-[#B37C1C]/10 bg-gradient-to-r from-[#FFFBF2] to-white flex gap-2">
+              <Input
+                ref={inputRef}
+                placeholder="Type a message..."
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={sending}
+                className="flex-1 border-[#B37C1C]/20 focus-visible:ring-[#B37C1C]/40"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!draft.trim() || sending}
+                className="flex items-center justify-center w-10 h-10 rounded-lg transition-all disabled:opacity-40 hover:scale-105"
+                style={{
+                  backgroundColor: draft.trim() && !sending ? "#B37C1C" : "#B37C1C",
+                }}
+                title="Send message"
+              >
+                <Send size={18} color="#FFFBF2" />
+              </button>
             </div>
-          ) : (
-            <div className="hidden md:flex flex-1 items-center justify-center bg-white rounded-2xl shadow-lg border border-[#B37C1C]/10">
-              <div className="text-center text-[#0F1A35]/60 flex flex-col items-center gap-3">
-                <MessageSquare size={48} className="opacity-30" />
-                <p className="text-lg font-semibold">Select a conversation</p>
-                <p className="text-sm">to start messaging</p>
-              </div>
+          </div>
+        ) : (
+          <div className="hidden md:flex flex-1 items-center justify-center bg-white rounded-2xl shadow-lg border border-[#B37C1C]/10">
+            <div className="text-center text-[#0F1A35]/60 flex flex-col items-center gap-3">
+              <MessageSquare size={48} className="opacity-30" />
+              <p className="text-lg font-semibold">Select a conversation</p>
+              <p className="text-sm">to start messaging</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 };
 
