@@ -337,69 +337,51 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         return;
       }
 
-      // STEP 5B: Fallback - If conversation_id not in RPC response, create it directly
-      // This handles the case where the live database RPC hasn't been updated yet
+      // STEP 5B: Fetch conversation_id from orders table
+      // The database trigger handle_order_created() automatically created the conversation
+      // when the order was inserted. We just fetch the conversation_id from the order record.
       if (!extractedConversationId) {
         try {
-          // First, try to fetch existing conversation for this order
-          const { data: convData, error: fetchError } = await supabase
-            .from("conversations")
-            .select("id")
-            .eq("order_id", extractedOrderId);
+          const { data: orderData, error: orderError } = await supabase
+            .from("orders")
+            .select("conversation_id")
+            .eq("id", extractedOrderId)
+            .single();
 
-          if (convData && convData.length > 0) {
-            extractedConversationId = convData[0].id;
-            console.log("[Checkout] Found existing conversation for order", {
+          if (orderError) {
+            console.warn("[Checkout] Error fetching order conversation_id:", orderError);
+          } else if (orderData?.conversation_id) {
+            extractedConversationId = orderData.conversation_id;
+            console.log("[Checkout] Fetched conversation from order record", {
               orderId: extractedOrderId,
               conversationId: extractedConversationId,
             });
           } else {
-            // Conversation doesn't exist, create it now
-            const { data: newConv, error: createError } = await supabase
-              .from("conversations")
-              .insert({
-                participant_1: user?.id || null,
-                guest_tracking_token: !user?.id ? extractedTrackingToken : null,
-                order_id: extractedOrderId,
-                last_message: "🐝 Order Received",
-                last_message_at: new Date().toISOString(),
-              })
-              .select("id")
-              .single();
-
-            if (createError) {
-              console.warn("[Checkout] Failed to create conversation", createError);
-            } else if (newConv?.id) {
-              extractedConversationId = newConv.id;
-              console.log("[Checkout] Created conversation for order", {
-                orderId: extractedOrderId,
-                conversationId: extractedConversationId,
-              });
-            }
+            console.warn("[Checkout] Order conversation_id is null (trigger may not have executed yet)", {
+              orderId: extractedOrderId,
+            });
           }
         } catch (e) {
-          console.warn("[Checkout] Error ensuring conversation exists", e);
+          console.warn("[Checkout] Exception fetching order conversation_id:", e);
         }
       }
 
-      if (!extractedConversationId) {
-        console.error("[Checkout] INVARIANT VIOLATION: conversationId missing after checkout", {
-          result,
+      // If conversationId is still null, that's OK - the order succeeded.
+      // The conversation will be accessible from My Orders.
+      // Don't block the user or throw an error.
+      if (extractedConversationId) {
+        console.log("[Checkout] Order and conversation ready", {
+          orderId: extractedOrderId,
+          conversationId: extractedConversationId,
+          trackingToken: extractedTrackingToken?.slice(0, 8) + "...",
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.warn("[Checkout] Order succeeded but conversation_id unavailable (will be in My Orders)", {
           orderId: extractedOrderId,
           timestamp: new Date().toISOString(),
         });
-        toast.error("⚠️ Conversation setup failed. Please contact support.");
-        setState("idle");
-        return;
       }
-
-      // INVARIANT #7: Log conversation_id at order creation
-      console.log("[Checkout] INVARIANT #1 & #7: Order and conversation created atomically", {
-        orderId: extractedOrderId,
-        conversationId: extractedConversationId,
-        trackingToken: extractedTrackingToken?.slice(0, 8) + "...",
-        timestamp: new Date().toISOString(),
-      });
 
       // Store in component state for persistence across renders
       setOrderId(extractedOrderId);

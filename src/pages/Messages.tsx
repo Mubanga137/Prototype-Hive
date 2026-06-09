@@ -393,8 +393,8 @@ const Messages = () => {
   // ---- Derived ----
   const getOtherProfile = (conv: Conversation): ProfileSummary | undefined => {
     if (!uid) return undefined;
-    const otherId = conv.participant_a === uid ? conv.participant_b : conv.participant_a;
-    return profiles[otherId];
+    const otherId = conv.participant_1 === uid ? conv.participant_2 : conv.participant_1;
+    return otherId ? profiles[otherId] : undefined;
   };
 
   const filtered = conversations.filter((c) => {
@@ -448,16 +448,10 @@ const Messages = () => {
                     {conv.last_message || "Start a conversation"}
                   </p>
                   <div className="flex gap-1.5 mt-1">
-                    {conv.context_order_id && (
+                    {conv.order_id && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 border-0"
                         style={{ backgroundColor: "#0F1A35", color: "#FFFBF2" }}>
-                        📦 Order #{conv.context_order_id}
-                      </Badge>
-                    )}
-                    {conv.context_item_id && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 border-0"
-                        style={{ backgroundColor: "#B37C1C", color: "#FFFBF2" }}>
-                        🛍️ Product Inquiry
+                        📦 Order #{conv.order_id}
                       </Badge>
                     )}
                   </div>
