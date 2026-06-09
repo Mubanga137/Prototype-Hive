@@ -17,6 +17,8 @@ export const createOrGetSystemConversation = async (
   isGuest: boolean = false,
   guestToken?: string
 ) => {
+  // Disabled: handled by database trigger handle_order_created()
+  return;
   try {
     console.log("[systemMessaging] INVARIANT CHECK: Looking up conversation for order", {
       orderId,
@@ -115,6 +117,8 @@ export const sendSystemReceipt = async (
   content: string,
   messageType: string = "system_receipt"
 ) => {
+  // Disabled: handled by database trigger handle_order_created()
+  return;
   try {
     if (!conversationId || conversationId.trim() === "") {
       throw new Error("INVARIANT VIOLATION #3: conversation_id is required and must not be empty");
@@ -195,6 +199,8 @@ export const sendOrderConfirmationReceipt = async (
   isGuest: boolean = false,
   guestToken?: string
 ) => {
+  // Disabled: handled by database trigger handle_order_created()
+  return;
   console.log("[systemMessaging] Sending order confirmation receipt", {
     orderId,
     isGuest,
@@ -237,6 +243,8 @@ export const sendRetailerOrderNotification = async (
   orderId: number,
   orderDetails: string
 ) => {
+  // Disabled: handled by database trigger handle_order_created()
+  return;
   console.log("[systemMessaging] Sending retailer notification", {
     orderId,
     vendorId,
@@ -317,6 +325,8 @@ export const sendDeliveryClaimedNotification = async (
   riderId: string,
   orderId: number
 ) => {
+  // Disabled: handled by database trigger handle_order_created()
+  return;
   console.log("[systemMessaging] Sending delivery claimed notification", {
     orderId,
     riderId,
