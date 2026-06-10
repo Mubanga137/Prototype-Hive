@@ -285,8 +285,8 @@ WhatsApp Integration (if phone exists)
 ```sql
 CREATE TABLE conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  participant_a uuid,              -- Registered user A
-  participant_b uuid,              -- Registered user B
+  participant_1 uuid,              -- Registered user 1 (customer/actor)
+  participant_2 uuid,              -- Registered user 2 (vendor/actor)
   guest_tracking_token varchar,    -- 36-char guest token
   last_message text,               -- Message preview
   last_message_at timestamp,       -- When last message sent
@@ -295,8 +295,8 @@ CREATE TABLE conversations (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_conv_participant_a ON conversations(participant_a);
-CREATE INDEX idx_conv_participant_b ON conversations(participant_b);
+CREATE INDEX idx_conv_participant_1 ON conversations(participant_1);
+CREATE INDEX idx_conv_participant_2 ON conversations(participant_2);
 CREATE INDEX idx_conv_guest_token ON conversations(guest_tracking_token);
 CREATE INDEX idx_conv_last_message_at ON conversations(last_message_at DESC);
 ```

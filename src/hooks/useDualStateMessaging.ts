@@ -14,8 +14,8 @@ import { toast } from "sonner";
 
 interface Conversation {
   id: string;
-  participant_a: string | null;
-  participant_b: string | null;
+  participant_1: string | null;
+  participant_2: string | null;
   guest_tracking_token: string | null;
   last_message: string | null;
   last_message_at: string | null;
@@ -131,26 +131,26 @@ export const useDualStateMessaging = () => {
         const uid = context.authIdentifier;
 
         try {
-          // Fetch conversations where user is participant_a
+          // Fetch conversations where user is participant_1
           const { data: convA, error: errA } = await (supabase as any)
             .from("conversations")
             .select("*")
-            .eq("participant_a", uid)
+            .eq("participant_1", uid)
             .order("last_message_at", { ascending: false });
 
           if (errA) {
-            console.error("[useDualStateMessaging] participant_a query failed:", errA);
+            console.error("[useDualStateMessaging] participant_1 query failed:", errA);
           }
 
-          // Fetch conversations where user is participant_b
+          // Fetch conversations where user is participant_2
           const { data: convB, error: errB } = await (supabase as any)
             .from("conversations")
             .select("*")
-            .eq("participant_b", uid)
+            .eq("participant_2", uid)
             .order("last_message_at", { ascending: false });
 
           if (errB) {
-            console.error("[useDualStateMessaging] participant_b query failed:", errB);
+            console.error("[useDualStateMessaging] participant_2 query failed:", errB);
           }
 
           error = errA || errB;
@@ -346,14 +346,14 @@ export const useDualStateMessaging = () => {
           guestToken: guestToken.slice(0, 8) + "...",
         });
 
-        // Update conversations: set participant_a or participant_b to new user, clear guest token
-        const { error } = await supabase
-          .from("conversations")
-          .update({
-            guest_tracking_token: null,
-            participant_a: userId,
-          })
-          .eq("guest_tracking_token", guestToken);
+        // Update conversations: set participant_1 or participant_2 to new user, clear guest token
+      const { error } = await supabase
+        .from("conversations")
+        .update({
+          guest_tracking_token: null,
+          participant_1: userId,
+        })
+        .eq("guest_tracking_token", guestToken);
 
         if (error) {
           console.error("[useDualStateMessaging.linkGuestConversationsToUser] Update failed:", error);

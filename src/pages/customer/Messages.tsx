@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import HoneycombBackground from "@/components/HoneycombBackground";
+import hiveLogo from "@/assets/hive-logo.jpeg";
 
 interface Conversation {
   id: string;
@@ -756,7 +757,7 @@ const CustomerMessages = () => {
                           flexShrink: 0
                         }}>
                           {isSystemConv ? (
-                            <img src="/src/assets/hive-logo.jpeg" alt="The Hive" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+                            <img src={hiveLogo} alt="The Hive" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
                           ) : logoUrl ? (
                             <img src={logoUrl} alt="store"
                               style={{width:'100%', height:'100%',
@@ -848,7 +849,7 @@ const CustomerMessages = () => {
                   return (
                     <div>
                       {isSystemConv ? (
-                        <img src="/hive-logo.png"
+                        <img src={hiveLogo}
                           onError={(e) => e.currentTarget.style.display = 'none'}
                           style={{
                             width: '36px', height: '36px',
