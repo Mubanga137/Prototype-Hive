@@ -369,10 +369,6 @@ const CustomerMessages = () => {
     }
   }, [activeConv, loadMessagesForConversation, conversations, unreadCounts]);
 
-  // ========== Auto-scroll to latest message ==========
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   // ========== REAL-TIME: Stream Message Bubbles ==========
   // Once conversation_id is resolved, set up active real-time subscription
