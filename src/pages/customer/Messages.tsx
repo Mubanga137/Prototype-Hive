@@ -13,8 +13,8 @@ import { toast } from "sonner";
 
 interface Conversation {
   id: string;
-  participant_a: string | null;
-  participant_b: string | null;
+  participant_1: string | null;
+  participant_2: string | null;
   guest_tracking_token: string | null;
   last_message: string | null;
   last_message_at: string | null;
@@ -71,11 +71,13 @@ const CustomerMessages = () => {
   const [loading, setLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
+  const [vendorLogos, setVendorLogos] = useState<Record<string, string>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const realtimeChannelsRef = useRef<Map<string, any>>(new Map());
+  const hasLoadedRef = useRef(false);
 
   const uid = user?.id;
   const isAuthenticated = !!uid;
@@ -98,27 +100,64 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (!conversations || conversations.length === 0) return;
 
-    const vendorIds = [...new Set(
-      conversations.map(c => c.participant_b)
-        .filter(Boolean)
+    console.log('[VendorLookup] conversations:', conversations?.map(c => ({ id: c.id, participant_2: c.participant_2 })));
+
+    const vendorActorIds = [...new Set(
+      conversations
+        .map(c => c.participant_2)
+        .filter(id => id !== '00000000-0000-0000-0000-000000000001')
     )];
 
-    if (vendorIds.length === 0) return;
+    if (vendorActorIds.length === 0) return;
 
+    // Step 1: get store_id for each vendor actor
     supabase
       .from('actors')
-      .select('id, display_name, store_id, sme_stores(brand_name, logo_url)')
-      .in('id', vendorIds)
-      .then(({ data }) => {
-        if (!data) return;
-        const names: Record<string, string> = {};
-        data.forEach((actor: any) => {
-          names[actor.id] =
-            actor.sme_stores?.[0]?.brand_name ||
-            actor.display_name ||
-            'Vendor';
-        });
-        setVendorNames(names);
+      .select('id, store_id')
+      .in('id', vendorActorIds)
+      .eq('type', 'vendor')
+      .then(({ data: actorRows }) => {
+        console.log('[VendorLookup] actorRows:', actorRows);
+        if (!actorRows?.length) return;
+
+        // Step 2: collect store IDs
+        const storeIds = actorRows
+          .map(a => a.store_id)
+          .filter(Boolean);
+
+        if (!storeIds.length) return;
+
+        // Step 3: fetch real store data
+        supabase
+          .from('sme_stores')
+          .select('id, brand_name, logo_url')
+          .in('id', storeIds)
+          .then(({ data: stores }) => {
+            console.log('[VendorLookup] stores:', stores);
+            if (!stores) return;
+
+            const names: Record<string, string> = {};
+            const logos: Record<string, string> = {};
+
+            actorRows.forEach(actor => {
+              const store = stores.find(
+                s => s.id === actor.store_id
+              );
+              if (store) {
+                names[actor.id] = store.brand_name || 'Vendor';
+                if (store.logo_url) {
+                  logos[actor.id] = store.logo_url;
+                }
+              }
+            });
+
+            console.log('[VendorLookup] names built:', names);
+            console.log('[VendorLookup] final names:', names);
+            console.log('[VendorLookup] final logos:', logos);
+
+            setVendorNames(names);
+            setVendorLogos(logos);
+          });
       });
   }, [conversations]);
 
@@ -176,14 +215,21 @@ const CustomerMessages = () => {
 
   // Load conversations when auth context changes
   useEffect(() => {
+    if (hasLoadedRef.current) return;
     if (authIdentifier && authMode) {
+      hasLoadedRef.current = true;
       loadConversations();
     } else {
       console.debug("[CustomerMessages] No auth identifier, skipping load");
       setConversations([]);
       setConvLoading(false);
     }
-  }, [authIdentifier, authMode, loadConversations]);
+  }, [authIdentifier, authMode]);
+
+  // Reset the ref when auth changes
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [authIdentifier]);
 
   // Auto-select conversation from URL parameter (?c=conversationId)
   useEffect(() => {
@@ -259,8 +305,8 @@ const CustomerMessages = () => {
     try {
       const allUserIds = new Set<string>();
       conversations.forEach((c) => {
-        if (c.participant_a) allUserIds.add(c.participant_a);
-        if (c.participant_b) allUserIds.add(c.participant_b);
+        if (c.participant_1) allUserIds.add(c.participant_1);
+        if (c.participant_2) allUserIds.add(c.participant_2);
       });
 
       const userIds = Array.from(allUserIds);
@@ -332,10 +378,6 @@ const CustomerMessages = () => {
     }
   }, [activeConv, loadMessagesForConversation, conversations, unreadCounts]);
 
-  // ========== Auto-scroll to latest message ==========
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   // ========== REAL-TIME: Stream Message Bubbles ==========
   // Once conversation_id is resolved, set up active real-time subscription
@@ -435,7 +477,7 @@ const CustomerMessages = () => {
           if (payload.eventType === "INSERT") {
             const conv = payload.new as Conversation;
             if (authMode === "user" && uid) {
-              if (conv.participant_a === uid || conv.participant_b === uid) {
+              if (conv.participant_1 === uid || conv.participant_2 === uid) {
                 setConversations((prev) => [conv, ...prev]);
               }
             } else if (authMode === "guest" && trackingToken) {
@@ -469,9 +511,9 @@ const CustomerMessages = () => {
 
   // ========== Get Other Participant Profile ==========
   const otherUserId = activeConv
-    ? activeConv.participant_a === uid
-      ? activeConv.participant_b
-      : activeConv.participant_a
+    ? activeConv.participant_1 === uid
+      ? activeConv.participant_2
+      : activeConv.participant_1
     : null;
 
   const otherProfile = otherUserId ? profiles[otherUserId] : null;
@@ -480,7 +522,7 @@ const CustomerMessages = () => {
   const filteredConversations = conversations.filter((c) => {
     if (!searchQuery) return true;
     const otherId =
-      c.participant_a === uid ? c.participant_b : c.participant_a;
+      c.participant_1 === uid ? c.participant_2 : c.participant_1;
     const otherProf = profiles[otherId];
     return (
       otherProf?.full_name
@@ -618,9 +660,9 @@ const CustomerMessages = () => {
               ) : (
                 filteredConversations.map((conv) => {
                   const otherId =
-                    conv.participant_a === uid
-                      ? conv.participant_b
-                      : conv.participant_a;
+                    conv.participant_1 === uid
+                      ? conv.participant_2
+                      : conv.participant_1;
                   const profile = profiles[otherId];
                   const isActive = activeConv?.id === conv.id;
 
@@ -633,13 +675,17 @@ const CustomerMessages = () => {
 
                   const conversationTitle = isSystemConversation
                     ? "THE HIVE"
-                    : vendorNames[conv.participant_b] ||
-                      vendorNames[conv.participant_a] ||
+                    : vendorNames[conv.participant_2] ||
                       vendorActor?.sme_stores?.[0]?.brand_name ||
                       vendorActor?.display_name ||
                       conv.vendor_name ||
                       conv.title ||
                       "Vendor";
+
+                  const isSystemConv = conv.participant_2 === '00000000-0000-0000-0000-000000000001';
+                  const logoUrl = vendorLogos[conv.participant_2];
+
+                  console.log('[ConvCard] participant_2:', conv.participant_2, 'name:', vendorNames[conv.participant_2]);
 
                   return (
                     <button
@@ -652,23 +698,31 @@ const CustomerMessages = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10 shrink-0">
-                          {isSystemConversation && (
-                            <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
+                        <div style={{
+                          width: '40px', height: '40px',
+                          borderRadius: '50%',
+                          background: isSystemConv ? '#B37C1C' : '#f0e6d3',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          flexShrink: 0
+                        }}>
+                          {isSystemConv ? (
+                            <img src="/src/assets/hive-logo.jpeg" alt="The Hive" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
+                          ) : logoUrl ? (
+                            <img src={logoUrl} alt="store"
+                              style={{width:'100%', height:'100%',
+                              objectFit:'cover'}} />
+                          ) : (
+                            <span style={{
+                              fontSize:'14px', fontWeight:700,
+                              color:'#B37C1C'
+                            }}>
+                              {(vendorNames[conv.participant_2] || 'V')
+                                .charAt(0).toUpperCase()}
+                            </span>
                           )}
-                          <AvatarFallback
-                            className="font-bold text-xs"
-                            style={isSystemConversation ? {
-                              backgroundColor: "#B37C1C",
-                              color: "white"
-                            } : {
-                              backgroundColor: "#B37C1C/10",
-                              color: "#B37C1C"
-                            }}
-                          >
-                            {isSystemConversation ? "🐝" : (vendorNames[conv.participant_b] || vendorNames[conv.participant_a] || "V").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-[#0F1A35] truncate">
                             {conversationTitle}
@@ -737,7 +791,7 @@ const CustomerMessages = () => {
                 </Avatar>
                 <div>
                   <p className="font-semibold text-sm text-[#0F1A35]">
-                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_b] || vendorNames[activeConv?.participant_a] || otherProfile?.full_name || "Unknown")}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_2] || vendorNames[activeConv?.participant_1] || otherProfile?.full_name || "Unknown")}
                   </p>
                   <p className="text-xs text-[#0F1A35]/60">
                     {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "System Messages" : (otherProfile?.phone || "No phone")}
