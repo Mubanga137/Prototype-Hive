@@ -99,6 +99,8 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (!conversations || conversations.length === 0) return;
 
+    console.log('[VendorLookup] conversations:', conversations?.map(c => ({ id: c.id, participant_2: c.participant_2 })));
+
     const vendorActorIds = [...new Set(
       conversations
         .map(c => c.participant_2)
@@ -114,6 +116,7 @@ const CustomerMessages = () => {
       .in('id', vendorActorIds)
       .eq('type', 'vendor')
       .then(({ data: actorRows }) => {
+        console.log('[VendorLookup] actorRows:', actorRows);
         if (!actorRows?.length) return;
 
         // Step 2: collect store IDs
@@ -129,6 +132,7 @@ const CustomerMessages = () => {
           .select('id, brand_name, logo_url')
           .in('id', storeIds)
           .then(({ data: stores }) => {
+            console.log('[VendorLookup] stores:', stores);
             if (!stores) return;
 
             const names: Record<string, string> = {};
@@ -145,6 +149,9 @@ const CustomerMessages = () => {
                 }
               }
             });
+
+            console.log('[VendorLookup] final names:', names);
+            console.log('[VendorLookup] final logos:', logos);
 
             setVendorNames(names);
             setVendorLogos(logos);
