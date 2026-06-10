@@ -150,6 +150,7 @@ const CustomerMessages = () => {
               }
             });
 
+            console.log('[VendorLookup] names built:', names);
             console.log('[VendorLookup] final names:', names);
             console.log('[VendorLookup] final logos:', logos);
 
@@ -676,6 +677,8 @@ const CustomerMessages = () => {
 
                   const isSystemConv = conv.participant_2 === '00000000-0000-0000-0000-000000000001';
                   const logoUrl = vendorLogos[conv.participant_2];
+
+                  console.log('[ConvCard] participant_2:', conv.participant_2, 'name:', vendorNames[conv.participant_2]);
 
                   return (
                     <button
