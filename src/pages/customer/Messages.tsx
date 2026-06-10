@@ -847,9 +847,6 @@ const CustomerMessages = () => {
                   <p className="font-semibold text-sm text-[#0F1A35]">
                     {activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001' ? 'THE HIVE' : (vendorNames[activeConv?.participant_2] || 'Vendor')}
                   </p>
-                  <p className="text-xs text-[#0F1A35]/60">
-                    {activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001' ? "System Messages" : (otherProfile?.phone || "No phone")}
-                  </p>
                 </div>
               </div>
 
