@@ -25,6 +25,7 @@ const Services = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -117,16 +118,22 @@ const Services = () => {
   };
 
   const handleDelete = async (id: number) => {
-    const { error } = await supabase.from("hive_catalogue").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Service removed.");
-    fetchData();
+    setDeletingId(id);
+    try {
+      const { error } = await supabase.from("hive_catalogue").delete().eq("id", id);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Service removed.");
+      fetchData();
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm";
 
   return (
     <RetailerStudioSidebar>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -197,8 +204,23 @@ const Services = () => {
                   <button onClick={() => handleEdit(service)} className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-1.5 hover:bg-primary/5 transition-colors">
                     <Edit size={12} /> Edit
                   </button>
-                  <button onClick={() => handleDelete(service.id)} className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg py-1.5 hover:bg-destructive/5 transition-colors">
-                    <Trash2 size={12} /> Delete
+                  <button
+                    onClick={() => handleDelete(service.id)}
+                    disabled={deletingId === service.id}
+                    className="flex-1 flex items-center justify-center gap-1 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg py-1.5 hover:bg-destructive/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {deletingId === service.id ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                        </svg>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={12} /> Delete
+                      </>
+                    )}
                   </button>
                 </div>
               </motion.div>

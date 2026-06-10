@@ -65,6 +65,7 @@ const sidebarModules = [
 const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
@@ -73,8 +74,13 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
   const capacityStyles = getCapacityStyles(capacity);
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/");
+    setLoggingOut(true);
+    try {
+      await signOut();
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -210,16 +216,28 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
             <p className="text-[10px] text-[#0F1A35]/60">Vendor Account</p>
           </div>
         </button>
-        <button 
+        <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors"
+          disabled={loggingOut}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             color: "#B37C1C",
             borderColor: "hsl(38,73%,40%,0.3)",
           }}
         >
-          <LogOut size={14} />
-          Sign Out
+          {loggingOut ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+              </svg>
+              Signing out...
+            </>
+          ) : (
+            <>
+              <LogOut size={14} />
+              Sign Out
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -227,6 +245,7 @@ const RetailerStudioSidebar = ({ children }: RetailerStudioSidebarProps) => {
 
   return (
     <div className="min-h-screen relative flex bg-[#FFFBF2]">
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-56 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <SidebarContent />

@@ -25,12 +25,18 @@ const sidebarItems = [
 const WarehouseSidebar = ({ children, activeSection, onSectionChange }: WarehouseSidebarProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/");
+    setLoggingOut(true);
+    try {
+      await signOut();
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const SidebarContent = ({ isCollapsed = false, isMobile = false }: { isCollapsed?: boolean; isMobile?: boolean }) => (
@@ -129,15 +135,27 @@ const WarehouseSidebar = ({ children, activeSection, onSectionChange }: Warehous
         </button>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors"
+          disabled={loggingOut}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             color: "#B37C1C",
             borderColor: "hsl(38,73%,40%,0.3)",
           }}
           title="Sign Out"
         >
-          <LogOut size={14} />
-          <span className="hidden lg:inline">Sign Out</span>
+          {loggingOut ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+              </svg>
+              <span className="hidden lg:inline">Signing out...</span>
+            </>
+          ) : (
+            <>
+              <LogOut size={14} />
+              <span className="hidden lg:inline">Sign Out</span>
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -145,6 +163,7 @@ const WarehouseSidebar = ({ children, activeSection, onSectionChange }: Warehous
 
   return (
     <div className="min-h-screen relative flex bg-[#FFFBF2]">
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-56 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen" style={{ borderColor: "hsl(38,40%,85%)" }}>
         <SidebarContent />
