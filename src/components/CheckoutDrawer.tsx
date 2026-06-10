@@ -404,43 +404,6 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       setTotalToPay(extractedTotalToPay);
       setOtpCode(extractedOtpCode);
 
-      // Auto-send customer intro message to vendor
-      try {
-        // Get the conversation_id from the order
-        const { data: orderData } = await supabase
-          .from('orders')
-          .select('conversation_id, customer_actor_id, vendor_actor_id')
-          .eq('id', extractedOrderId)
-          .single();
-
-        if (orderData?.conversation_id &&
-            orderData?.customer_actor_id) {
-
-          // Build the auto-message text
-          const itemName = item?.item_name ||
-                           item?.name ||
-                           'your item';
-          const autoMessage =
-            `Hi! I just placed an order for ${itemName}` +
-            ` (Order #${extractedOrderId}).` +
-            ` Looking forward to receiving it! 🛒`;
-
-          // Insert the auto-message as the customer
-          await supabase
-            .from('messages')
-            .insert({
-              conversation_id: orderData.conversation_id,
-              sender_actor_id: orderData.customer_actor_id,
-              content: autoMessage,
-              created_at: new Date().toISOString()
-            });
-        }
-      } catch (autoMsgError) {
-        // Never block checkout for this
-        console.warn('[Checkout] Auto-message failed:',
-          autoMsgError);
-      }
-
       // STEP 6: Secure guest continuity - persist tracking token to localStorage
       // Format: UNIFIED ARRAY ONLY for compatibility across all readers
       // [uuid1, uuid2, ...] - most recent is always at index 0
@@ -486,57 +449,64 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       // STEP 7: Update UI to success state
       setState("success");
 
-      // STEP 7.5: ORCHESTRATION LAYER — Run all downstream messaging in parallel
-      console.log("[Checkout] ORDER CREATED", {
-        orderId: extractedOrderId,
-        trackingToken: extractedTrackingToken,
-        totalToPay: extractedTotalToPay,
-        smeId: item.sme_id,
-        storeId: item.store_id,
-        customerName: name,
-        isGuest: !user?.id,
-        isService,
-        timestamp: new Date().toISOString(),
-      });
+      // STEP 8: Route to ledger immediately with order context
+      // Ledger page handles both guest and authenticated users
+      // Use query params to pass order context
+      const ledgerUrl = `/ledger?orderId=${extractedOrderId}&trackingToken=${extractedTrackingToken}`;
 
-      // Prepare receipt details for customer
-      const receiptDetails = `
-Order #${extractedOrderId}
-${item.item_name}
-Quantity: ${isService ? "1 booking" : quantity}
-Total: K${extractedTotalToPay.toFixed(2)}
+      // INSTANT redirect - no delays, no intermediate UI
+      navigate(ledgerUrl, { replace: true });
+      onOpenChange(false);
 
-${isService ? `Scheduled: ${scheduledDate}` : `Delivery to: ${address}`}
+      // STEP 7.5: ORCHESTRATION LAYER — Run all downstream messaging in background (non-blocking)
+      // Fire these after navigation to avoid delaying the user experience
+      (async () => {
+        try {
+          console.log("[Checkout] ORDER CREATED", {
+            orderId: extractedOrderId,
+            trackingToken: extractedTrackingToken,
+            totalToPay: extractedTotalToPay,
+            smeId: item.sme_id,
+            storeId: item.store_id,
+            customerName: name,
+            isGuest: !user?.id,
+            isService,
+            timestamp: new Date().toISOString(),
+          });
 
-Your order is confirmed and will be processed shortly.
-      `.trim();
+          // Auto-send customer intro message to vendor (async, non-blocking)
+          try {
+            const { data: orderData } = await supabase
+              .from('orders')
+              .select('conversation_id, customer_actor_id, vendor_actor_id')
+              .eq('id', extractedOrderId)
+              .single();
 
-      // Prepare vendor notification details
-      const vendorNotificationDetails = `
-📦 New Order Received
-Order #${extractedOrderId}
-Item: ${item.item_name}
-Customer: ${name}
-Phone: ${cleanedPhone}
-Quantity: ${isService ? "1 booking" : quantity}
-Total: K${extractedTotalToPay.toFixed(2)}
-${isService ? `Scheduled: ${scheduledDate}` : `Delivery: ${address}`}
-OTP: ${safeOtpCode}
+            if (orderData?.conversation_id &&
+                orderData?.customer_actor_id) {
 
-Customer will contact you via WhatsApp or phone.
-      `.trim();
+              const itemName = item?.item_name ||
+                               item?.name ||
+                               'your item';
+              const autoMessage =
+                `Hi! I just placed an order for ${itemName}` +
+                ` (Order #${extractedOrderId}).` +
+                ` Looking forward to receiving it! 🛒`;
 
-      // STEP 7.5: Fire messaging tasks without blocking navigation
-      // Database trigger handle_order_created() handles all post-order events:
-      // - Conversation creation
-      // - System message generation
-      // - Vendor notifications
-      // Frontend must NOT replicate this work
-      const messagingPromises = [
-        Promise.resolve(),  // Customer receipt (handled by trigger)
-        Promise.resolve(),  // Vendor notification (handled by trigger)
-        // 3. External webhook call (Make.com or equivalent)
-        (async () => {
+              await supabase
+                .from('messages')
+                .insert({
+                  conversation_id: orderData.conversation_id,
+                  sender_actor_id: orderData.customer_actor_id,
+                  content: autoMessage,
+                  created_at: new Date().toISOString()
+                });
+            }
+          } catch (autoMsgError) {
+            console.warn('[Checkout] Auto-message failed:', autoMsgError);
+          }
+
+          // External webhook call (Make.com or equivalent)
           try {
             const webhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL;
             if (webhookUrl) {
@@ -568,28 +538,11 @@ Customer will contact you via WhatsApp or phone.
             }
           } catch (err) {
             console.error("[Checkout] Webhook call failed:", err);
-            // Don't throw - webhook failures are non-critical
           }
-        })(),
-      ];
-
-      // Fire messaging tasks without blocking navigation
-      Promise.allSettled(messagingPromises)
-        .then(results => {
-          const successCount = results.filter(r => r.status === "fulfilled").length;
-          const failureCount = results.filter(r => r.status === "rejected").length;
-          console.log("[Checkout] Messaging done", { successCount, failureCount });
-        })
-        .catch(err => console.error("[Checkout] Messaging error:", err));
-
-      // STEP 8: Route to ledger immediately with order context
-      // Ledger page handles both guest and authenticated users
-      // Use query params to pass order context
-      const ledgerUrl = `/ledger?orderId=${extractedOrderId}&trackingToken=${extractedTrackingToken}`;
-
-      // INSTANT redirect - no delays, no intermediate UI
-      navigate(ledgerUrl, { replace: true });
-      onOpenChange(false);
+        } catch (err) {
+          console.error("[Checkout] Background messaging failed:", err);
+        }
+      })();
 
     } catch (err: any) {
       const errorMessage = err?.message || err?.toString() || "Unknown error";
