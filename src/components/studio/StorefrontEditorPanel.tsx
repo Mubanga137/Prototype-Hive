@@ -128,6 +128,8 @@ const StorefrontEditorPanel = ({
   const [copied, setCopied] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
+  const [addingPromo, setAddingPromo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -194,54 +196,64 @@ const StorefrontEditorPanel = ({
   };
 
   const copyLink = async () => {
-    if (!storeUrl) {
-      toast.error('Save store first');
-      return;
+    setCopyingLink(true);
+    try {
+      if (!storeUrl) {
+        toast.error('Save store first');
+        return;
+      }
+      await navigator.clipboard.writeText(storeUrl);
+      setCopied(true);
+      toast.success('Link copied!');
+      setTimeout(() => setCopied(false), 1800);
+    } finally {
+      setCopyingLink(false);
     }
-    await navigator.clipboard.writeText(storeUrl);
-    setCopied(true);
-    toast.success('Link copied!');
-    setTimeout(() => setCopied(false), 1800);
   };
 
   // Promo management functions
   const addPromo = async () => {
-    if (!promoCode.trim()) {
-      toast.error('Promo code required');
-      return;
+    setAddingPromo(true);
+    try {
+      if (!promoCode.trim()) {
+        toast.error('Promo code required');
+        return;
+      }
+      if (!promoDiscount.trim()) {
+        toast.error('Discount value required');
+        return;
+      }
+      if (!store?.id) {
+        toast.error('Store not loaded');
+        return;
+      }
+
+      const newPromo = {
+        id: Date.now().toString(),
+        code: promoCode.toUpperCase().trim(),
+        discount: parseFloat(promoDiscount),
+        type: promoType,
+        created_at: new Date().toISOString(),
+      };
+
+      const updatedPromos = [...promos, newPromo];
+      setPromos(updatedPromos);
+
+      // Save to DB draft_data
+      await supabase.from('sme_stores').update({
+        draft_data: {
+          ...((store as any).draft_data || {}),
+          promos: updatedPromos,
+        },
+      }).eq('id', store.id);
+
+      setPromoCode('');
+      setPromoDiscount('');
+      setPromoType('percentage');
+      toast.success('✅ Promo added!');
+    } finally {
+      setAddingPromo(false);
     }
-    if (!promoDiscount.trim()) {
-      toast.error('Discount value required');
-      return;
-    }
-    if (!store?.id) {
-      toast.error('Store not loaded');
-      return;
-    }
-
-    const newPromo = {
-      id: Date.now().toString(),
-      code: promoCode.toUpperCase().trim(),
-      discount: parseFloat(promoDiscount),
-      type: promoType,
-      created_at: new Date().toISOString(),
-    };
-
-    const updatedPromos = [...promos, newPromo];
-    setPromos(updatedPromos);
-
-    // Save to DB draft_data
-    await supabase.from('sme_stores').update({
-      draft_data: {
-        ...((store as any).draft_data || {}),
-        promos: updatedPromos,
-      },
-    }).eq('id', store.id);
-
-    setPromoCode('');
-    setPromoDiscount('');
-    setPromoType('percentage');
-    toast.success('✅ Promo added!');
   };
 
   const deletePromo = async (id: string) => {
@@ -319,6 +331,7 @@ const StorefrontEditorPanel = ({
 
   return (
     <div className="h-full bg-card flex flex-col">
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* Header */}
       <div className="sticky top-0 bg-card border-b border-border px-4 py-3 z-10">
         <div className="flex items-center justify-between gap-2">
@@ -603,9 +616,21 @@ const StorefrontEditorPanel = ({
 
                 <button
                   onClick={addPromo}
-                  className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-xs hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5"
+                  disabled={addingPromo}
+                  className="w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-xs hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Check size={14} /> Add Promo Code
+                  {addingPromo ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                      </svg>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} /> Add Promo Code
+                    </>
+                  )}
                 </button>
               </motion.div>
             )}
@@ -674,9 +699,18 @@ const StorefrontEditorPanel = ({
                   />
                   <button
                     onClick={copyLink}
-                    className="px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1"
+                    disabled={copyingLink}
+                    className="px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copyingLink ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                      </svg>
+                    ) : copied ? (
+                      <Check size={14} />
+                    ) : (
+                      <Copy size={14} />
+                    )}
                   </button>
                   <a
                     href={storeUrl}

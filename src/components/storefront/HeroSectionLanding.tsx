@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ShoppingCart, MessageCircle } from 'lucide-react';
+import { useState } from 'react';
 
 export interface HeroSectionLandingProps {
   storeName: string;
@@ -24,6 +25,28 @@ const HeroSectionLanding = ({
   onShopClick,
   onMessageClick,
 }: HeroSectionLandingProps) => {
+  const [shoppingLoading, setShoppingLoading] = useState(false);
+  const [messagingLoading, setMessagingLoading] = useState(false);
+
+  const handleShopClick = async () => {
+    setShoppingLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      onShopClick?.();
+    } finally {
+      setShoppingLoading(false);
+    }
+  };
+
+  const handleMessageClick = async () => {
+    setMessagingLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      onMessageClick?.();
+    } finally {
+      setMessagingLoading(false);
+    }
+  };
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -31,6 +54,7 @@ const HeroSectionLanding = ({
       transition={{ duration: 0.6 }}
       className="relative py-12 md:py-20 lg:py-24 overflow-hidden"
     >
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* SOFT GRADIENT BACKGROUND */}
       <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-amber-50/80 to-amber-100/60" />
       
@@ -109,21 +133,45 @@ const HeroSectionLanding = ({
             >
               {/* Primary Button */}
               <button
-                onClick={onShopClick}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-amber-600/40 text-base"
+                onClick={handleShopClick}
+                disabled={shoppingLoading}
+                className="inline-flex items-center gap-2 px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-amber-600/40 text-base disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <ShoppingCart size={20} />
-                Shop Now
+                {shoppingLoading ? (
+                  <>
+                    <svg width="20" height="20" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart size={20} />
+                    Shop Now
+                  </>
+                )}
               </button>
 
               {/* Secondary Button */}
               {whatsappNumber && (
                 <button
-                  onClick={onMessageClick}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-white border-2 border-foreground text-foreground font-bold rounded-xl hover:bg-foreground/5 transition-colors text-base"
+                  onClick={handleMessageClick}
+                  disabled={messagingLoading}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-white border-2 border-foreground text-foreground font-bold rounded-xl hover:bg-foreground/5 transition-colors text-base disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <MessageCircle size={20} />
-                  Contact Vendor
+                  {messagingLoading ? (
+                    <>
+                      <svg width="20" height="20" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                      </svg>
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle size={20} />
+                      Contact Vendor
+                    </>
+                  )}
                 </button>
               )}
             </motion.div>

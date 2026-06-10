@@ -67,6 +67,8 @@ const Orders = () => {
       if (error) { toast.error(error.message); return; }
       toast.success(`Order updated to ${newStatus}`);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    } catch (err) {
+      toast.error("Failed to update order");
     } finally {
       setUpdatingId(null);
     }

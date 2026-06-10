@@ -43,6 +43,7 @@ const GigSidenav = ({
 }: GigSidenavProps) => {
   const [open, setOpen] = useState(false);
   const [showGPSModal, setShowGPSModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
@@ -73,8 +74,13 @@ const GigSidenav = ({
   ];
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/");
+    setLoggingOut(true);
+    try {
+      await signOut();
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const handleNavigate = (path: string) => {
@@ -290,11 +296,23 @@ const GigSidenav = ({
         </button>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors hover:text-red-600"
-          style={{ borderColor: "hsl(38,40%,85%)", color: "hsl(220,20%,46%)" }}
+          disabled={loggingOut}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ borderColor: "hsl(38,40%,85%)", color: loggingOut ? "hsl(220,20%,46%)" : "hsl(220,20%,46%)" }}
         >
-          <LogOut size={14} />
-          Logout
+          {loggingOut ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+              </svg>
+              Signing out...
+            </>
+          ) : (
+            <>
+              <LogOut size={14} />
+              Logout
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -302,6 +320,7 @@ const GigSidenav = ({
 
   return (
     <>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* GPS Off Modal */}
       <GPSOffModal
         isOpen={showGPSModal}

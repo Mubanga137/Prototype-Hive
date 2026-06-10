@@ -46,10 +46,16 @@ const sidebarModules = [
 
 const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarSidebarProps) => {
   const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const { profile, signOut } = useAuth();
 
   const handleLogout = async () => {
-    await signOut();
+    setLoggingOut(true);
+    try {
+      await signOut();
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const SidebarContent = ({ isCollapsed = false, isMobile = false }: { isCollapsed?: boolean; isMobile?: boolean }) => (
@@ -215,22 +221,34 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
         </motion.button>
         <motion.button
           onClick={handleLogout}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold border rounded-xl transition-colors uppercase tracking-wide"
+          disabled={loggingOut}
+          whileHover={{ scale: loggingOut ? 1 : 1.01 }}
+          whileTap={{ scale: loggingOut ? 1 : 0.99 }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold border rounded-xl transition-colors uppercase tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             color: "#B37C1C",
             borderColor: "hsl(38,73%,40%,0.2)",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.12)";
+            if (!loggingOut) e.currentTarget.style.backgroundColor = "hsl(38,73%,40%,0.12)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "transparent";
           }}
         >
-          <LogOut size={16} />
-          <span className={isCollapsed && !isMobile ? "hidden" : ""}>Sign Out</span>
+          {loggingOut ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+              </svg>
+              <span className={isCollapsed && !isMobile ? "hidden" : ""}>Signing out...</span>
+            </>
+          ) : (
+            <>
+              <LogOut size={16} />
+              <span className={isCollapsed && !isMobile ? "hidden" : ""}>Sign Out</span>
+            </>
+          )}
         </motion.button>
       </div>
     </div>
@@ -238,6 +256,7 @@ const GigRadarSidebar = ({ isOpen, onClose, userRole = "gig_worker" }: GigRadarS
 
   return (
     <>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* Desktop Sidebar - Always Visible */}
       <aside
         className="hidden lg:flex w-64 shrink-0 bg-[#FFFBF2] border-r relative z-20 flex-col sticky top-0 h-screen"

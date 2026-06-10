@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ShoppingCart, MessageCircle, BadgeCheck, Zap, Star } from 'lucide-react';
+import { useState } from 'react';
 
 export interface HeroSectionRefinedProps {
   storeName: string;
@@ -24,6 +25,28 @@ const HeroSectionRefined = ({
   onShopClick,
   onContactClick,
 }: HeroSectionRefinedProps) => {
+  const [shoppingLoading, setShoppingLoading] = useState(false);
+  const [contactLoading, setContactLoading] = useState(false);
+
+  const handleShopClick = async () => {
+    setShoppingLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      onShopClick?.();
+    } finally {
+      setShoppingLoading(false);
+    }
+  };
+
+  const handleContactClick = async () => {
+    setContactLoading(true);
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      onContactClick?.();
+    } finally {
+      setContactLoading(false);
+    }
+  };
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -31,6 +54,7 @@ const HeroSectionRefined = ({
       transition={{ duration: 0.6 }}
       className="relative overflow-hidden"
     >
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* GOLD HONEYCOMB BACKGROUND */}
       <div className="absolute inset-0 bg-[#FFFBF2]" />
       
@@ -139,20 +163,44 @@ const HeroSectionRefined = ({
               >
                 {/* Primary Button */}
                 <button
-                  onClick={onShopClick}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#B37C1C] hover:bg-[#9D6B17] text-white font-medium text-sm md:text-base rounded-lg transition-colors shadow-lg shadow-[#B37C1C]/20"
+                  onClick={handleShopClick}
+                  disabled={shoppingLoading}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#B37C1C] hover:bg-[#9D6B17] text-white font-medium text-sm md:text-base rounded-lg transition-colors shadow-lg shadow-[#B37C1C]/20 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <ShoppingCart size={16} />
-                  Shop Now
+                  {shoppingLoading ? (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                      </svg>
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart size={16} />
+                      Shop Now
+                    </>
+                  )}
                 </button>
 
                 {/* Secondary Button */}
                 <button
-                  onClick={onContactClick}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-[#B37C1C] text-[#B37C1C] font-medium text-sm md:text-base rounded-lg hover:bg-[#B37C1C]/5 transition-colors"
+                  onClick={handleContactClick}
+                  disabled={contactLoading}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 border-2 border-[#B37C1C] text-[#B37C1C] font-medium text-sm md:text-base rounded-lg hover:bg-[#B37C1C]/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <MessageCircle size={16} />
-                  Contact Vendor
+                  {contactLoading ? (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                      </svg>
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle size={16} />
+                      Contact Vendor
+                    </>
+                  )}
                 </button>
               </motion.div>
             </motion.div>
