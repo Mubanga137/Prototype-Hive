@@ -13,8 +13,8 @@ import { toast } from "sonner";
 
 interface Conversation {
   id: string;
-  participant_a: string | null;
-  participant_b: string | null;
+  participant_1: string | null;
+  participant_2: string | null;
   guest_tracking_token: string | null;
   last_message: string | null;
   last_message_at: string | null;
@@ -77,6 +77,7 @@ const CustomerMessages = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const realtimeChannelsRef = useRef<Map<string, any>>(new Map());
+  const hasLoadedRef = useRef(false);
 
   const uid = user?.id;
   const isAuthenticated = !!uid;
@@ -214,14 +215,21 @@ const CustomerMessages = () => {
 
   // Load conversations when auth context changes
   useEffect(() => {
+    if (hasLoadedRef.current) return;
     if (authIdentifier && authMode) {
+      hasLoadedRef.current = true;
       loadConversations();
     } else {
       console.debug("[CustomerMessages] No auth identifier, skipping load");
       setConversations([]);
       setConvLoading(false);
     }
-  }, [authIdentifier, authMode, loadConversations]);
+  }, [authIdentifier, authMode]);
+
+  // Reset the ref when auth changes
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [authIdentifier]);
 
   // Auto-select conversation from URL parameter (?c=conversationId)
   useEffect(() => {
@@ -297,8 +305,8 @@ const CustomerMessages = () => {
     try {
       const allUserIds = new Set<string>();
       conversations.forEach((c) => {
-        if (c.participant_a) allUserIds.add(c.participant_a);
-        if (c.participant_b) allUserIds.add(c.participant_b);
+        if (c.participant_1) allUserIds.add(c.participant_1);
+        if (c.participant_2) allUserIds.add(c.participant_2);
       });
 
       const userIds = Array.from(allUserIds);
@@ -469,7 +477,7 @@ const CustomerMessages = () => {
           if (payload.eventType === "INSERT") {
             const conv = payload.new as Conversation;
             if (authMode === "user" && uid) {
-              if (conv.participant_a === uid || conv.participant_b === uid) {
+              if (conv.participant_1 === uid || conv.participant_2 === uid) {
                 setConversations((prev) => [conv, ...prev]);
               }
             } else if (authMode === "guest" && trackingToken) {
@@ -503,9 +511,9 @@ const CustomerMessages = () => {
 
   // ========== Get Other Participant Profile ==========
   const otherUserId = activeConv
-    ? activeConv.participant_a === uid
-      ? activeConv.participant_b
-      : activeConv.participant_a
+    ? activeConv.participant_1 === uid
+      ? activeConv.participant_2
+      : activeConv.participant_1
     : null;
 
   const otherProfile = otherUserId ? profiles[otherUserId] : null;
@@ -514,7 +522,7 @@ const CustomerMessages = () => {
   const filteredConversations = conversations.filter((c) => {
     if (!searchQuery) return true;
     const otherId =
-      c.participant_a === uid ? c.participant_b : c.participant_a;
+      c.participant_1 === uid ? c.participant_2 : c.participant_1;
     const otherProf = profiles[otherId];
     return (
       otherProf?.full_name
@@ -652,9 +660,9 @@ const CustomerMessages = () => {
               ) : (
                 filteredConversations.map((conv) => {
                   const otherId =
-                    conv.participant_a === uid
-                      ? conv.participant_b
-                      : conv.participant_a;
+                    conv.participant_1 === uid
+                      ? conv.participant_2
+                      : conv.participant_1;
                   const profile = profiles[otherId];
                   const isActive = activeConv?.id === conv.id;
 
@@ -667,8 +675,7 @@ const CustomerMessages = () => {
 
                   const conversationTitle = isSystemConversation
                     ? "THE HIVE"
-                    : vendorNames[conv.participant_b] ||
-                      vendorNames[conv.participant_a] ||
+                    : vendorNames[conv.participant_2] ||
                       vendorActor?.sme_stores?.[0]?.brand_name ||
                       vendorActor?.display_name ||
                       conv.vendor_name ||
@@ -784,7 +791,7 @@ const CustomerMessages = () => {
                 </Avatar>
                 <div>
                   <p className="font-semibold text-sm text-[#0F1A35]">
-                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_b] || vendorNames[activeConv?.participant_a] || otherProfile?.full_name || "Unknown")}
+                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_2] || vendorNames[activeConv?.participant_1] || otherProfile?.full_name || "Unknown")}
                   </p>
                   <p className="text-xs text-[#0F1A35]/60">
                     {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "System Messages" : (otherProfile?.phone || "No phone")}
