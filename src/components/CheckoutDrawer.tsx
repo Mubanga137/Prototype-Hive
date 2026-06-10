@@ -182,10 +182,12 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
     // Hard-block duplicate concurrent submissions
     if (state !== "idle") return;
 
+    const checkoutStartTime = performance.now();
     setState("submitting");
 
     try {
       const cleanedPhone = cleanZambianPhone(phone) || phone;
+      const actorResolveStart = performance.now();
 
       // STEP 2A: Resolve customer actor UUID
       // For authenticated users: query actors table for customer actor record
@@ -244,8 +246,14 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         }
       }
 
+      console.log("[Checkout] Actor resolution took", {
+        duration: (performance.now() - actorResolveStart).toFixed(0) + "ms",
+        isGuest: !user?.id,
+      });
+
       // STEP 2B: Invoke backend RPC with actor-based customer identification
       // The browser acts as sterile input terminal only
+      const rpcStart = performance.now();
       const { data, error } = await supabase.rpc("secure_place_order", {
         p_customer_actor_id: customerActorId,                              // UUID: resolved actor
         p_item_id: parseInt(String(item.id), 10),                          // BIGINT: explicit int cast
@@ -352,51 +360,9 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
         return;
       }
 
-      // STEP 5B: Fetch conversation_id from orders table
-      // The database trigger handle_order_created() automatically created the conversation
-      // when the order was inserted. We just fetch the conversation_id from the order record.
-      if (!extractedConversationId) {
-        try {
-          const { data: orderData, error: orderError } = await supabase
-            .from("orders")
-            .select("conversation_id")
-            .eq("id", extractedOrderId)
-            .single();
-
-          if (orderError) {
-            console.warn("[Checkout] Error fetching order conversation_id:", orderError);
-          } else if (orderData?.conversation_id) {
-            extractedConversationId = orderData.conversation_id;
-            console.log("[Checkout] Fetched conversation from order record", {
-              orderId: extractedOrderId,
-              conversationId: extractedConversationId,
-            });
-          } else {
-            console.warn("[Checkout] Order conversation_id is null (trigger may not have executed yet)", {
-              orderId: extractedOrderId,
-            });
-          }
-        } catch (e) {
-          console.warn("[Checkout] Exception fetching order conversation_id:", e);
-        }
-      }
-
-      // If conversationId is still null, that's OK - the order succeeded.
-      // The conversation will be accessible from My Orders.
-      // Don't block the user or throw an error.
-      if (extractedConversationId) {
-        console.log("[Checkout] Order and conversation ready", {
-          orderId: extractedOrderId,
-          conversationId: extractedConversationId,
-          trackingToken: extractedTrackingToken?.slice(0, 8) + "...",
-          timestamp: new Date().toISOString(),
-        });
-      } else {
-        console.warn("[Checkout] Order succeeded but conversation_id unavailable (will be in My Orders)", {
-          orderId: extractedOrderId,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      console.log("[Checkout] RPC call took", {
+        duration: (performance.now() - rpcStart).toFixed(0) + "ms",
+      });
 
       // Store in component state for persistence across renders
       setOrderId(extractedOrderId);
@@ -404,50 +370,13 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       setTotalToPay(extractedTotalToPay);
       setOtpCode(extractedOtpCode);
 
-      // STEP 6: Secure guest continuity - persist tracking token to localStorage
-      // Format: UNIFIED ARRAY ONLY for compatibility across all readers
-      // [uuid1, uuid2, ...] - most recent is always at index 0
-      if (!user?.id && extractedTrackingToken) {
-        try {
-          const stored = localStorage.getItem("hive_guest_active_cart");
-          let tokens: string[] = [];
-
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              // Normalize: handle object format (migration), array format, or string
-              if (Array.isArray(parsed)) {
-                tokens = parsed.filter((t) => typeof t === "string" && t.length >= 36);
-              } else if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
-                tokens = parsed.trackingTokens.filter((t: any) => typeof t === "string" && t.length >= 36);
-              } else if (typeof parsed === "string" && parsed.length >= 36) {
-                tokens = [parsed];
-              }
-            } catch {
-              // Malformed JSON, start fresh
-            }
-          }
-
-          // Add new token at front (most recent first)
-          tokens = [extractedTrackingToken, ...tokens.filter((t) => t !== extractedTrackingToken)];
-
-          // Keep only 10 most recent
-          tokens = tokens.slice(0, 10);
-
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify(tokens));
-          console.log("[Checkout] Guest tokens persisted (array format)", {
-            tokenCount: tokens.length,
-            mostRecent: extractedTrackingToken.slice(0, 8) + "...",
-          });
-        } catch (e) {
-          console.warn("[Checkout] localStorage token persistence failed:", e);
-          // Fallback: single token in array
-          localStorage.setItem("hive_guest_active_cart", JSON.stringify([extractedTrackingToken]));
-        }
-      }
-
       // STEP 7: Update UI to success state
       setState("success");
+
+      const totalCheckoutTime = performance.now() - checkoutStartTime;
+      console.log("[Checkout] TOTAL TIME TO REDIRECT", {
+        duration: totalCheckoutTime.toFixed(0) + "ms",
+      });
 
       // STEP 8: Route to ledger immediately with order context
       // Ledger page handles both guest and authenticated users
@@ -458,7 +387,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
       navigate(ledgerUrl, { replace: true });
       onOpenChange(false);
 
-      // STEP 7.5: ORCHESTRATION LAYER — Run all downstream messaging in background (non-blocking)
+      // STEP 9: ORCHESTRATION LAYER — Run all downstream tasks in background (non-blocking)
       // Fire these after navigation to avoid delaying the user experience
       (async () => {
         try {
@@ -506,6 +435,40 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
             console.warn('[Checkout] Auto-message failed:', autoMsgError);
           }
 
+          // Persist guest tracking token to localStorage
+          if (!user?.id && extractedTrackingToken) {
+            try {
+              const stored = localStorage.getItem("hive_guest_active_cart");
+              let tokens: string[] = [];
+
+              if (stored) {
+                try {
+                  const parsed = JSON.parse(stored);
+                  if (Array.isArray(parsed)) {
+                    tokens = parsed.filter((t) => typeof t === "string" && t.length >= 36);
+                  } else if (parsed?.trackingTokens && Array.isArray(parsed.trackingTokens)) {
+                    tokens = parsed.trackingTokens.filter((t: any) => typeof t === "string" && t.length >= 36);
+                  } else if (typeof parsed === "string" && parsed.length >= 36) {
+                    tokens = [parsed];
+                  }
+                } catch {
+                  // Malformed JSON, start fresh
+                }
+              }
+
+              tokens = [extractedTrackingToken, ...tokens.filter((t) => t !== extractedTrackingToken)];
+              tokens = tokens.slice(0, 10);
+
+              localStorage.setItem("hive_guest_active_cart", JSON.stringify(tokens));
+              console.log("[Checkout] Guest tokens persisted", {
+                tokenCount: tokens.length,
+              });
+            } catch (e) {
+              console.warn("[Checkout] localStorage persistence failed:", e);
+              localStorage.setItem("hive_guest_active_cart", JSON.stringify([extractedTrackingToken]));
+            }
+          }
+
           // External webhook call (Make.com or equivalent)
           try {
             const webhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL;
@@ -540,7 +503,7 @@ const CheckoutDrawer = ({ open, onOpenChange, item }: CheckoutDrawerProps) => {
             console.error("[Checkout] Webhook call failed:", err);
           }
         } catch (err) {
-          console.error("[Checkout] Background messaging failed:", err);
+          console.error("[Checkout] Background tasks failed:", err);
         }
       })();
 
