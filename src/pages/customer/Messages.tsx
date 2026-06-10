@@ -71,6 +71,7 @@ const CustomerMessages = () => {
   const [loading, setLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
+  const [vendorLogos, setVendorLogos] = useState<Record<string, string>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -98,27 +99,56 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (!conversations || conversations.length === 0) return;
 
-    const vendorIds = [...new Set(
-      conversations.map(c => c.participant_b)
-        .filter(Boolean)
+    const vendorActorIds = [...new Set(
+      conversations
+        .map(c => c.participant_2)
+        .filter(id => id !== '00000000-0000-0000-0000-000000000001')
     )];
 
-    if (vendorIds.length === 0) return;
+    if (vendorActorIds.length === 0) return;
 
+    // Step 1: get store_id for each vendor actor
     supabase
       .from('actors')
-      .select('id, display_name, store_id, sme_stores(brand_name, logo_url)')
-      .in('id', vendorIds)
-      .then(({ data }) => {
-        if (!data) return;
-        const names: Record<string, string> = {};
-        data.forEach((actor: any) => {
-          names[actor.id] =
-            actor.sme_stores?.[0]?.brand_name ||
-            actor.display_name ||
-            'Vendor';
-        });
-        setVendorNames(names);
+      .select('id, store_id')
+      .in('id', vendorActorIds)
+      .eq('type', 'vendor')
+      .then(({ data: actorRows }) => {
+        if (!actorRows?.length) return;
+
+        // Step 2: collect store IDs
+        const storeIds = actorRows
+          .map(a => a.store_id)
+          .filter(Boolean);
+
+        if (!storeIds.length) return;
+
+        // Step 3: fetch real store data
+        supabase
+          .from('sme_stores')
+          .select('id, brand_name, logo_url')
+          .in('id', storeIds)
+          .then(({ data: stores }) => {
+            if (!stores) return;
+
+            const names: Record<string, string> = {};
+            const logos: Record<string, string> = {};
+
+            actorRows.forEach(actor => {
+              const store = stores.find(
+                s => s.id === actor.store_id
+              );
+              if (store) {
+                names[actor.id] = store.brand_name || 'Vendor';
+                if (store.logo_url) {
+                  logos[actor.id] = store.logo_url;
+                }
+              }
+            });
+
+            setVendorNames(names);
+            setVendorLogos(logos);
+          });
       });
   }, [conversations]);
 
@@ -641,6 +671,9 @@ const CustomerMessages = () => {
                       conv.title ||
                       "Vendor";
 
+                  const isSystemConv = conv.participant_2 === '00000000-0000-0000-0000-000000000001';
+                  const logoUrl = vendorLogos[conv.participant_2];
+
                   return (
                     <button
                       key={conv.id}
@@ -652,23 +685,31 @@ const CustomerMessages = () => {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10 shrink-0">
-                          {isSystemConversation && (
-                            <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
+                        <div style={{
+                          width: '40px', height: '40px',
+                          borderRadius: '50%',
+                          background: isSystemConv ? '#B37C1C' : '#f0e6d3',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          flexShrink: 0
+                        }}>
+                          {isSystemConv ? (
+                            <span style={{fontSize:'18px'}}>🐝</span>
+                          ) : logoUrl ? (
+                            <img src={logoUrl} alt="store"
+                              style={{width:'100%', height:'100%',
+                              objectFit:'cover'}} />
+                          ) : (
+                            <span style={{
+                              fontSize:'14px', fontWeight:700,
+                              color:'#B37C1C'
+                            }}>
+                              {(vendorNames[conv.participant_2] || 'V')
+                                .charAt(0).toUpperCase()}
+                            </span>
                           )}
-                          <AvatarFallback
-                            className="font-bold text-xs"
-                            style={isSystemConversation ? {
-                              backgroundColor: "#B37C1C",
-                              color: "white"
-                            } : {
-                              backgroundColor: "#B37C1C/10",
-                              color: "#B37C1C"
-                            }}
-                          >
-                            {isSystemConversation ? "🐝" : (vendorNames[conv.participant_b] || vendorNames[conv.participant_a] || "V").charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-[#0F1A35] truncate">
                             {conversationTitle}
