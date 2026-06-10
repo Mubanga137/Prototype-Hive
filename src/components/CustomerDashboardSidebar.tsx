@@ -21,6 +21,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [mobileSidebarCollapsed, setMobileSidebarCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
   const unreadCount = useUnreadCount();
@@ -44,8 +45,13 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
   const sidebarItems = fullSidebarItems;
 
   const handleLogout = async () => {
-    await signOut();
-    navigate("/");
+    setLoggingOut(true);
+    try {
+      await signOut();
+      navigate("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const SidebarContent = ({ isCollapsed, isMobile = false }: { isCollapsed?: boolean; isMobile?: boolean }) => (
@@ -166,17 +172,29 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
         </motion.button>
         <motion.button
           onClick={handleLogout}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors"
+          disabled={loggingOut}
+          whileHover={{ scale: loggingOut ? 1 : 1.05 }}
+          whileTap={{ scale: loggingOut ? 1 : 0.95 }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
             color: "#B37C1C",
             borderColor: "hsl(38,73%,40%,0.3)",
           }}
           title={isCollapsed && !isMobile ? "Sign Out" : undefined}
         >
-          <LogOut size={14} />
-          <span className={`${isCollapsed && !isMobile ? "hidden" : ""}`}>Sign Out</span>
+          {loggingOut ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+              </svg>
+              <span className={`${isCollapsed && !isMobile ? "hidden" : ""}`}>Signing out...</span>
+            </>
+          ) : (
+            <>
+              <LogOut size={14} />
+              <span className={`${isCollapsed && !isMobile ? "hidden" : ""}`}>Sign Out</span>
+            </>
+          )}
         </motion.button>
       </div>
     </div>
@@ -184,6 +202,7 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
 
   return (
     <div className="min-h-screen relative flex bg-[#FFFBF2]">
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* Desktop Sidebar - Collapsible */}
       <motion.aside
         initial={false}

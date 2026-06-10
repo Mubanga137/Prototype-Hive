@@ -25,10 +25,17 @@ interface OrderRow {
 }
 
 const Orders = () => {
+  const spinStyle = `
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `;
   const { user } = useAuth();
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -54,10 +61,15 @@ const Orders = () => {
   }, [user]);
 
   const handleStatusUpdate = async (orderId: number, newStatus: string) => {
-    const { error } = await supabase.from("orders").update({ status: newStatus } as any).eq("id", orderId);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Order updated to ${newStatus}`);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    setUpdatingId(orderId);
+    try {
+      const { error } = await supabase.from("orders").update({ status: newStatus } as any).eq("id", orderId);
+      if (error) { toast.error(error.message); return; }
+      toast.success(`Order updated to ${newStatus}`);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const filtered = orders.filter(o =>
@@ -66,6 +78,7 @@ const Orders = () => {
 
   return (
     <RetailerStudioSidebar>
+      <style>{spinStyle}</style>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -122,11 +135,35 @@ const Orders = () => {
                       <td className="px-5 py-4 text-right">
                         {order.status === "processing" && (
                           <button onClick={() => handleStatusUpdate(order.id, "in_transit")}
-                            className="text-xs font-semibold text-primary hover:underline">Ship</button>
+                            disabled={updatingId === order.id}
+                            className="text-xs font-semibold text-primary hover:underline disabled:opacity-60 disabled:cursor-not-allowed transition-opacity inline-flex items-center gap-1">
+                            {updatingId === order.id ? (
+                              <>
+                                <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                                </svg>
+                                Shipping...
+                              </>
+                            ) : (
+                              "Ship"
+                            )}
+                          </button>
                         )}
                         {order.status === "in_transit" && (
                           <button onClick={() => handleStatusUpdate(order.id, "delivered")}
-                            className="text-xs font-semibold text-emerald-600 hover:underline">Mark Delivered</button>
+                            disabled={updatingId === order.id}
+                            className="text-xs font-semibold text-emerald-600 hover:underline disabled:opacity-60 disabled:cursor-not-allowed transition-opacity inline-flex items-center gap-1">
+                            {updatingId === order.id ? (
+                              <>
+                                <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="30 70" />
+                                </svg>
+                                Updating...
+                              </>
+                            ) : (
+                              "Mark Delivered"
+                            )}
+                          </button>
                         )}
                       </td>
                     </motion.tr>
