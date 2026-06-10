@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import HoneycombBackground from "@/components/HoneycombBackground";
 
 interface Conversation {
   id: string;
@@ -73,6 +74,7 @@ const CustomerMessages = () => {
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({});
   const [vendorLogos, setVendorLogos] = useState<Record<string, string>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [messagesLoading, setMessagesLoading] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -277,12 +279,15 @@ const CustomerMessages = () => {
         });
         toast.error(`Failed to load messages: ${error.message || "Unknown error"}`);
         setMessages([]);
+        setMessagesLoading(false);
       } else if (data) {
         console.log(`[CustomerMessages] Loaded ${data.length} messages for conversation`);
         setMessages(data as Message[]);
+        setMessagesLoading(false);
       } else {
         console.warn("[CustomerMessages] No data returned from messages query");
         setMessages([]);
+        setMessagesLoading(false);
       }
     } catch (err: any) {
       console.error("[CustomerMessages] Exception loading messages:", {
@@ -292,6 +297,7 @@ const CustomerMessages = () => {
       });
       toast.error(`Failed to load messages: ${err.message}`);
       setMessages([]);
+      setMessagesLoading(false);
     }
   }, []);
 
@@ -354,6 +360,8 @@ const CustomerMessages = () => {
 
   useEffect(() => {
     if (activeConv) {
+      setMessages([]);
+      setMessagesLoading(true);
       loadMessagesForConversation(activeConv.id);
 
       // Mark notifications as read when conversation is opened
@@ -377,6 +385,12 @@ const CustomerMessages = () => {
       }
     }
   }, [activeConv, loadMessagesForConversation, conversations, unreadCounts]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      setMessagesLoading(false);
+    }
+  }, [messages]);
 
 
   // ========== REAL-TIME: Stream Message Bubbles ==========
@@ -623,8 +637,9 @@ const CustomerMessages = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
-      <div className="max-w-6xl mx-auto h-full flex gap-4 p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-[#FFFBF2] via-[#F9F6F0] to-[#F5F1ED]">
+      <HoneycombBackground />
+      <div className="relative max-w-6xl mx-auto h-full flex gap-4 p-4">
         {/* ========== CONVERSATIONS LIST PANEL ========== */}
         <div
           className={`${
@@ -725,7 +740,18 @@ const CustomerMessages = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-[#0F1A35] truncate">
-                            {conversationTitle}
+                            {isSystemConversation
+                              ? "THE HIVE"
+                              : vendorNames[conv.participant_2] || (
+                                  <span style={{
+                                    display: 'inline-block',
+                                    width: '80px',
+                                    height: '12px',
+                                    background: '#e8ddd0',
+                                    borderRadius: '4px',
+                                    verticalAlign: 'middle'
+                                  }} />
+                                )}
                           </p>
                           <p className="text-xs text-[#0F1A35]/60 truncate">
                             {conv.last_message
@@ -781,20 +807,48 @@ const CustomerMessages = () => {
                     <ArrowLeft size={20} className="text-[#0F1A35]" />
                   </button>
                 )}
-                <Avatar className="w-10 h-10 border border-[#B37C1C]/20">
-                  {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? (
-                    <AvatarImage src="/src/assets/hive-logo.jpeg" alt="The Hive" />
-                  ) : null}
-                  <AvatarFallback className="bg-[#B37C1C]/10 text-[#B37C1C] font-bold text-sm">
-                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "🐝" : initials(otherProfile?.full_name || "")}
-                  </AvatarFallback>
-                </Avatar>
+                {(() => {
+                  const isSystemConv = activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001';
+                  const headerLogo = isSystemConv ? null : vendorLogos[activeConv?.participant_2];
+                  const headerName = isSystemConv ? 'THE HIVE' : (vendorNames[activeConv?.participant_2] || 'Vendor');
+
+                  return (
+                    <div>
+                      {isSystemConv ? (
+                        <img src="/hive-logo.png"
+                          onError={(e) => e.currentTarget.style.display = 'none'}
+                          style={{
+                            width: '36px', height: '36px',
+                            borderRadius: '50%', objectFit: 'cover'
+                          }} />
+                      ) : headerLogo ? (
+                        <img src={headerLogo}
+                          style={{
+                            width: '36px', height: '36px',
+                            borderRadius: '50%', objectFit: 'cover'
+                          }} />
+                      ) : (
+                        <div style={{
+                          width: '36px', height: '36px',
+                          borderRadius: '50%',
+                          background: '#B37C1C',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white', fontWeight: 700,
+                          fontSize: '14px'
+                        }}>
+                          {headerName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div>
                   <p className="font-semibold text-sm text-[#0F1A35]">
-                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "THE HIVE" : (vendorNames[activeConv?.participant_2] || vendorNames[activeConv?.participant_1] || otherProfile?.full_name || "Unknown")}
+                    {activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001' ? 'THE HIVE' : (vendorNames[activeConv?.participant_2] || 'Vendor')}
                   </p>
                   <p className="text-xs text-[#0F1A35]/60">
-                    {activeConv?.last_message?.includes("Order #") || activeConv?.last_message?.startsWith("🛒") ? "System Messages" : (otherProfile?.phone || "No phone")}
+                    {activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001' ? "System Messages" : (otherProfile?.phone || "No phone")}
                   </p>
                 </div>
               </div>
