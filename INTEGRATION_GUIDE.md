@@ -192,8 +192,8 @@ localStorage.setItem('debug', 'useGlobalMessageListener*');
 -- conversations table
 CREATE TABLE conversations (
   id UUID PRIMARY KEY,
-  participant_a UUID REFERENCES profiles(user_id),
-  participant_b UUID REFERENCES profiles(user_id),
+  participant_1 UUID REFERENCES profiles(user_id),
+  participant_2 UUID REFERENCES profiles(user_id),
   guest_tracking_token TEXT,
   context_order_id INTEGER,
   last_message TEXT,
