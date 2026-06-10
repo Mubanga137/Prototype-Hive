@@ -63,16 +63,24 @@ const Signup = () => {
   };
 
   const handleSocialAuth = async (provider: "google" | "apple" | "facebook") => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/customer-dash`,
-        queryParams: { prompt: "select_account" },
-      },
-    });
-    if (error) {
-      console.error("[oauth]", provider, error);
-      toast.error(error.message);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/customer-dash`,
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (error) {
+        console.error("[oauth]", provider, error);
+        toast.error(error.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("[oauth error]", err);
+      toast.error("OAuth failed. Please try again.");
+      setLoading(false);
     }
   };
 
@@ -204,19 +212,22 @@ const Signup = () => {
   };
 
   const handleOnboardingComplete = async () => {
-    // Link guest orders and conversations to the newly created account
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      try {
-        await linkGuestOrdersToAccount(user.id);
-      } catch (linkError) {
-        console.warn("[Signup Onboarding] Guest order linkage failed (non-blocking):", linkError);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        try {
+          await linkGuestOrdersToAccount(user.id);
+        } catch (linkError) {
+          console.warn("[Signup Onboarding] Guest order linkage failed (non-blocking):", linkError);
+        }
+        try {
+          await linkGuestConversationsToUser(user.id);
+        } catch (linkError) {
+          console.warn("[Signup Onboarding] Guest conversation linkage failed (non-blocking):", linkError);
+        }
       }
-      try {
-        await linkGuestConversationsToUser(user.id);
-      } catch (linkError) {
-        console.warn("[Signup Onboarding] Guest conversation linkage failed (non-blocking):", linkError);
-      }
+    } catch (err) {
+      console.warn("[Signup Onboarding] Error:", err);
     }
     navigate("/customer-dash", { replace: true });
   };

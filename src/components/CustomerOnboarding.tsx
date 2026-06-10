@@ -69,7 +69,6 @@ const CustomerOnboarding = ({ userId: initialUserId, onComplete, isSignup = fals
       return;
     }
     setCreatingAccount(true);
-
     try {
       const { data: authData, error } = await supabase.auth.signUp({
         email,
@@ -93,7 +92,6 @@ const CustomerOnboarding = ({ userId: initialUserId, onComplete, isSignup = fals
         return;
       }
 
-      // Create profile immediately with upsert to handle race conditions
       const { error: profileErr } = await supabase.from("profiles").upsert({
         user_id: authData.user.id,
         full_name: fullName,
@@ -105,15 +103,14 @@ const CustomerOnboarding = ({ userId: initialUserId, onComplete, isSignup = fals
 
       if (profileErr) {
         console.warn("Profile creation warning:", profileErr.message);
-        // Continue anyway - profile might exist or be created by RLS
       }
 
       setUserId(authData.user.id);
-      setCreatingAccount(false);
       setStep(3);
     } catch (err) {
       console.error("Account creation exception:", err);
       toast.error("An unexpected error occurred. Please try again.");
+    } finally {
       setCreatingAccount(false);
     }
   };
@@ -124,16 +121,22 @@ const CustomerOnboarding = ({ userId: initialUserId, onComplete, isSignup = fals
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ preferences: [...selectedTastes, ...selectedPhilosophy.map(p => `philosophy:${p}`)] })
-      .eq("user_id", userId);
-    setSaving(false);
-    if (error) {
-      toast.error("Failed to save preferences");
-    } else {
-      toast.success("Welcome to The Hive! 🐝");
-      onComplete();
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ preferences: [...selectedTastes, ...selectedPhilosophy.map(p => `philosophy:${p}`)] })
+        .eq("user_id", userId);
+      if (error) {
+        toast.error("Failed to save preferences");
+      } else {
+        toast.success("Welcome to The Hive! 🐝");
+        onComplete();
+      }
+    } catch (err) {
+      console.error("Error saving preferences:", err);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 

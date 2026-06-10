@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
@@ -21,8 +22,15 @@ const Header = () => {
 
   const handleNav = async (path: string) => {
     if (path === "logout") {
-      await signOut();
-      navigate("/");
+      setIsLoading(true);
+      try {
+        await signOut();
+        navigate("/");
+      } catch (err) {
+        console.error("Logout error:", err);
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       navigate(path);
     }
@@ -112,16 +120,17 @@ const Header = () => {
               {/* Footer */}
               <div className="p-3 border-t border-border/20">
                 {user ? (
-                  <button 
-                    onClick={() => handleNav("logout")} 
-                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border border-border rounded-xl text-foreground hover:bg-secondary transition-colors"
+                  <button
+                    onClick={() => handleNav("logout")}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border border-border rounded-xl text-foreground hover:bg-secondary transition-colors disabled:opacity-60"
                   >
                     <LogOut size={14} />
-                    Sign Out
+                    {isLoading ? "Signing out..." : "Sign Out"}
                   </button>
                 ) : (
-                  <button 
-                    onClick={() => { navigate("/signup"); setOpen(false); }} 
+                  <button
+                    onClick={() => { navigate("/signup"); setOpen(false); }}
                     className="btn-gold w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold rounded-xl"
                   >
                     <UserPlus size={14} />
@@ -191,10 +200,11 @@ const Header = () => {
             {user ? (
               <button
                 onClick={() => handleNav("logout")}
-                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border border-border rounded-xl text-foreground hover:bg-secondary transition-colors"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold border border-border rounded-xl text-foreground hover:bg-secondary transition-colors disabled:opacity-60"
               >
                 <LogOut size={14} />
-                Sign Out
+                {isLoading ? "Signing out..." : "Sign Out"}
               </button>
             ) : (
               <button
