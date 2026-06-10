@@ -75,6 +75,7 @@ const CustomerMessages = () => {
   const [vendorLogos, setVendorLogos] = useState<Record<string, string>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [vendorNamesLoaded, setVendorNamesLoaded] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,6 +101,8 @@ const CustomerMessages = () => {
 
   // ========== Fetch Vendor Names ==========
   useEffect(() => {
+    setVendorNamesLoaded(false);
+
     if (!conversations || conversations.length === 0) return;
 
     console.log('[VendorLookup] conversations:', conversations?.map(c => ({ id: c.id, participant_2: c.participant_2 })));
@@ -159,6 +162,7 @@ const CustomerMessages = () => {
 
         setVendorNames(names);
         setVendorLogos(logos);
+        setVendorNamesLoaded(true);
       });
   }, [conversations]);
 
@@ -671,6 +675,36 @@ const CustomerMessages = () => {
                   <MessageSquare size={36} className="opacity-40" />
                   <p className="text-sm">No conversations yet</p>
                 </div>
+              ) : !vendorNamesLoaded && filteredConversations.length > 0 ? (
+                [...Array(filteredConversations.length)].map((_, i) => (
+                  <div key={i} style={{
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    borderBottom: '1px solid #f0ebe3'
+                  }}>
+                    <div style={{
+                      width: '40px', height: '40px',
+                      borderRadius: '50%',
+                      background: '#e8ddd0',
+                      flexShrink: 0
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        width: '120px', height: '12px',
+                        background: '#e8ddd0',
+                        borderRadius: '4px',
+                        marginBottom: '6px'
+                      }} />
+                      <div style={{
+                        width: '180px', height: '10px',
+                        background: '#f0ebe3',
+                        borderRadius: '4px'
+                      }} />
+                    </div>
+                  </div>
+                ))
               ) : (
                 filteredConversations.map((conv) => {
                   const otherId =
