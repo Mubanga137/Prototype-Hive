@@ -695,7 +695,7 @@ const CustomerMessages = () => {
                           flexShrink: 0
                         }}>
                           {isSystemConv ? (
-                            <span style={{fontSize:'18px'}}>🐝</span>
+                            <img src="/src/assets/hive-logo.jpeg" alt="The Hive" style={{width:'100%', height:'100%', objectFit:'cover'}}/>
                           ) : logoUrl ? (
                             <img src={logoUrl} alt="store"
                               style={{width:'100%', height:'100%',
