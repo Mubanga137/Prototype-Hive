@@ -118,7 +118,7 @@ const CustomerMessages = () => {
       .select('id, store_id')
       .in('id', vendorActorIds)
       .eq('type', 'vendor')
-      .then(({ data: actorRows }) => {
+      .then(async ({ data: actorRows }) => {
         console.log('[VendorLookup] actorRows:', actorRows);
         if (!actorRows?.length) return;
 
@@ -129,37 +129,36 @@ const CustomerMessages = () => {
 
         if (!storeIds.length) return;
 
-        // Step 3: fetch real store data
-        supabase
+        // Step 3: fetch real store data (parallel with fallback display)
+        const { data: stores } = await supabase
           .from('sme_stores')
           .select('id, brand_name, logo_url')
-          .in('id', storeIds)
-          .then(({ data: stores }) => {
-            console.log('[VendorLookup] stores:', stores);
-            if (!stores) return;
+          .in('id', storeIds);
 
-            const names: Record<string, string> = {};
-            const logos: Record<string, string> = {};
+        console.log('[VendorLookup] stores:', stores);
+        if (!stores) return;
 
-            actorRows.forEach(actor => {
-              const store = stores.find(
-                s => s.id === actor.store_id
-              );
-              if (store) {
-                names[actor.id] = store.brand_name || 'Vendor';
-                if (store.logo_url) {
-                  logos[actor.id] = store.logo_url;
-                }
-              }
-            });
+        const names: Record<string, string> = {};
+        const logos: Record<string, string> = {};
 
-            console.log('[VendorLookup] names built:', names);
-            console.log('[VendorLookup] final names:', names);
-            console.log('[VendorLookup] final logos:', logos);
+        actorRows.forEach(actor => {
+          const store = stores.find(
+            s => s.id === actor.store_id
+          );
+          if (store) {
+            names[actor.id] = store.brand_name || 'Vendor';
+            if (store.logo_url) {
+              logos[actor.id] = store.logo_url;
+            }
+          }
+        });
 
-            setVendorNames(names);
-            setVendorLogos(logos);
-          });
+        console.log('[VendorLookup] names built:', names);
+        console.log('[VendorLookup] final names:', names);
+        console.log('[VendorLookup] final logos:', logos);
+
+        setVendorNames(names);
+        setVendorLogos(logos);
       });
   }, [conversations]);
 
@@ -845,7 +844,16 @@ const CustomerMessages = () => {
                 })()}
                 <div>
                   <p className="font-semibold text-sm text-[#0F1A35]">
-                    {activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001' ? 'THE HIVE' : (vendorNames[activeConv?.participant_2] || 'Vendor')}
+                    {activeConv?.participant_2 === '00000000-0000-0000-0000-000000000001' ? 'THE HIVE' : (vendorNames[activeConv?.participant_2] || (
+                      <span style={{
+                        display: 'inline-block',
+                        width: '100px',
+                        height: '14px',
+                        background: '#e8ddd0',
+                        borderRadius: '4px',
+                        verticalAlign: 'middle'
+                      }} />
+                    ))}
                   </p>
                 </div>
               </div>
