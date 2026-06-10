@@ -1,23 +1,29 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShoppingCart } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 const HeroSection = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleShopClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-
-    const { data: session } = await supabase.auth.getSession();
-
-    if (session?.user) {
-      navigate("/customer-dash");
-    } else {
-      // Route guest to marketplace view
-      navigate("/customer-dash?guest=true");
+    setIsLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (session?.user) {
+        navigate("/customer-dash");
+      } else {
+        navigate("/customer-dash?guest=true");
+      }
+    } catch (err) {
+      console.error("Navigation error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,15 +59,20 @@ const HeroSection = () => {
 
       <motion.button
         onClick={handleShopClick}
+        disabled={isLoading}
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4, delay: 0.3 }}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.96 }}
-        className="btn-gold flex items-center gap-2 text-lg px-10 py-4"
+        whileHover={!isLoading ? { scale: 1.06 } : {}}
+        whileTap={!isLoading ? { scale: 0.96 } : {}}
+        className="btn-gold flex items-center gap-2 text-lg px-10 py-4 disabled:opacity-70"
       >
-        <ShoppingCart size={20} />
-        SHOP WITH THE HIVE
+        {isLoading ? "Loading..." : (
+          <>
+            <ShoppingCart size={20} />
+            SHOP WITH THE HIVE
+          </>
+        )}
       </motion.button>
     </section>
   );

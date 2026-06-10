@@ -35,19 +35,24 @@ const CustomerPreferencesModal = ({ open, onComplete, userId }: CustomerPreferen
     }
 
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ preferences: selectedPreferences })
-      .eq("user_id", userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ preferences: selectedPreferences })
+        .eq("user_id", userId);
 
-    setSaving(false);
-
-    if (error) {
-      toast.error("Failed to save preferences");
-      console.error(error);
-    } else {
-      toast.success("Preferences saved successfully!");
-      onComplete();
+      if (error) {
+        toast.error("Failed to save preferences");
+        console.error(error);
+      } else {
+        toast.success("Preferences saved successfully!");
+        onComplete();
+      }
+    } catch (err) {
+      console.error("Error saving preferences:", err);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
