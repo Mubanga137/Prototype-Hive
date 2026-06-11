@@ -404,7 +404,7 @@ const Messages = () => {
     // For authenticated users, customer is participant_1
     // For guests, customer is also participant_1
     // So the OTHER party (vendor) is always participant_2
-    const otherParticipantId = conv.participant_2 ?? conv.participant_b;
+    const otherParticipantId = conv.participant_2;
     return otherParticipantId ? profiles[otherParticipantId] : undefined;
   };
 

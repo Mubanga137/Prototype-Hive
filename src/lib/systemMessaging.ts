@@ -8,7 +8,7 @@ const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
  * INVARIANT #1: Single conversation per order
  * INVARIANT #2: No new conversations during messaging
  * For guests: uses guest_tracking_token
- * For users: uses participant_a as the order recipient
+ * For users: uses participant_1 as the order recipient
  * NOTE: RPC-side orchestration should have already created this
  */
 export const createOrGetSystemConversation = async (

@@ -123,7 +123,9 @@ export const useDualStateMessaging = () => {
       let error: any = null;
 
       if (context.authMode === "user" && context.authIdentifier) {
-        // AUTHENTICATED: Split into two separate queries (more reliable than .or())
+        // AUTHENTICATED: Two-step lookup
+        // STEP 1: Resolve actor ID from profile_id (user.id)
+        // STEP 2: Query conversations by actor ID
         console.debug(
           `[useDualStateMessaging.loadConversations] User mode: ${context.authIdentifier}`
         );
@@ -131,43 +133,70 @@ export const useDualStateMessaging = () => {
         const uid = context.authIdentifier;
 
         try {
-          // Fetch conversations where user is participant_1
-          const { data: convA, error: errA } = await (supabase as any)
-            .from("conversations")
-            .select("*")
-            .eq("participant_1", uid)
-            .order("last_message_at", { ascending: false });
+          // STEP 1: Resolve vendor/user actor ID
+          console.debug("[useDualStateMessaging] STEP 1: Resolving actor ID from profile_id", {
+            userId: uid.slice(0, 8) + "...",
+          });
 
-          if (errA) {
-            console.error("[useDualStateMessaging] participant_1 query failed:", errA);
+          const { data: actorData, error: actorError } = await (supabase as any)
+            .from("actors")
+            .select("id")
+            .eq("profile_id", uid)
+            .maybeSingle();
+
+          if (actorError) {
+            console.error("[useDualStateMessaging] Error resolving actor ID:", actorError);
+            error = actorError;
           }
 
-          // Fetch conversations where user is participant_2
-          const { data: convB, error: errB } = await (supabase as any)
-            .from("conversations")
-            .select("*")
-            .eq("participant_2", uid)
-            .order("last_message_at", { ascending: false });
+          const actorId = actorData?.id;
+          if (!actorId) {
+            console.warn("[useDualStateMessaging] No actor found for profile_id:", uid);
+            // Return empty conversations if actor not found
+            data = [];
+          } else {
+            console.debug("[useDualStateMessaging] STEP 2: Resolved actor ID", {
+              actorId: actorId.slice(0, 8) + "...",
+            });
 
-          if (errB) {
-            console.error("[useDualStateMessaging] participant_2 query failed:", errB);
+            // STEP 2: Fetch conversations where user/vendor is participant_1 or participant_2
+            const { data: convA, error: errA } = await (supabase as any)
+              .from("conversations")
+              .select("*")
+              .eq("participant_1", actorId)
+              .order("last_message_at", { ascending: false });
+
+            if (errA) {
+              console.error("[useDualStateMessaging] participant_1 query failed:", errA);
+            }
+
+            // Fetch conversations where user/vendor is participant_2
+            const { data: convB, error: errB } = await (supabase as any)
+              .from("conversations")
+              .select("*")
+              .eq("participant_2", actorId)
+              .order("last_message_at", { ascending: false });
+
+            if (errB) {
+              console.error("[useDualStateMessaging] participant_2 query failed:", errB);
+            }
+
+            error = errA || errB;
+            data = [...(convA || []), ...(convB || [])];
+
+            // Deduplicate and sort
+            const seen = new Set();
+            data = data.filter((conv: any) => {
+              if (seen.has(conv.id)) return false;
+              seen.add(conv.id);
+              return true;
+            });
+            data.sort((a: any, b: any) => {
+              const timeA = new Date(a.last_message_at || 0).getTime();
+              const timeB = new Date(b.last_message_at || 0).getTime();
+              return timeB - timeA;
+            });
           }
-
-          error = errA || errB;
-          data = [...(convA || []), ...(convB || [])];
-
-          // Deduplicate and sort
-          const seen = new Set();
-          data = data.filter((conv: any) => {
-            if (seen.has(conv.id)) return false;
-            seen.add(conv.id);
-            return true;
-          });
-          data.sort((a: any, b: any) => {
-            const timeA = new Date(a.last_message_at || 0).getTime();
-            const timeB = new Date(b.last_message_at || 0).getTime();
-            return timeB - timeA;
-          });
         } catch (queryErr: any) {
           console.error("[useDualStateMessaging] Query exception:", queryErr.message);
           error = queryErr;
