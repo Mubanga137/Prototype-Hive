@@ -174,6 +174,16 @@ const CustomerMessages = () => {
     const customerActorId = conversations[0]?.participant_1;
     if (!customerActorId) return;
 
+    // Get locally marked read conversations as backup
+    let readConvs: string[] = [];
+    try {
+      readConvs = JSON.parse(
+        localStorage.getItem('hive_read_conversations') || '[]'
+      );
+    } catch (e) {
+      console.warn('[UnreadCounts] Failed to parse localStorage:', e);
+    }
+
     supabase
       .from('notifications')
       .select('id, metadata')
@@ -183,9 +193,13 @@ const CustomerMessages = () => {
         const counts: Record<string, number> = {};
         data?.forEach((n: any) => {
           const convId = n.metadata?.conversation_id;
-          if (convId) counts[convId] = (counts[convId] || 0) + 1;
+          // Skip conversations marked as read in localStorage
+          if (convId && !readConvs.includes(convId)) {
+            counts[convId] = (counts[convId] || 0) + 1;
+          }
         });
         setUnreadCounts(counts);
+        console.log('[UnreadCounts] Fetched counts:', counts, 'readConvs:', readConvs);
       });
   }, [conversations]);
 
@@ -371,6 +385,9 @@ const CustomerMessages = () => {
 
     // Mark ALL notifications for this conversation as read in the database
     const customerActorId = activeConv.participant_1 || conversations[0]?.participant_1;
+    console.log('[MarkRead] Attempting to mark read for conv:', activeConv?.id);
+    console.log('[MarkRead] customerActorId:', customerActorId);
+
     if (customerActorId) {
       supabase
         .from('notifications')
@@ -378,7 +395,26 @@ const CustomerMessages = () => {
         .eq('recipient_actor_id', customerActorId)
         .eq('read', false)
         .filter('metadata->>conversation_id', 'eq', activeConv.id)
-        .then(() => {
+        .then(({ error, data }) => {
+          console.log('[MarkRead] Result:', { error, data });
+
+          // Also mark in localStorage as backup
+          try {
+            const readConvs = JSON.parse(
+              localStorage.getItem('hive_read_conversations') || '[]'
+            );
+            if (!readConvs.includes(activeConv.id)) {
+              readConvs.push(activeConv.id);
+              localStorage.setItem(
+                'hive_read_conversations',
+                JSON.stringify(readConvs)
+              );
+              console.log('[MarkRead] Saved to localStorage:', readConvs);
+            }
+          } catch (e) {
+            console.warn('[MarkRead] localStorage save failed:', e);
+          }
+
           setUnreadCounts((prev) => ({
             ...prev,
             [activeConv.id]: 0
