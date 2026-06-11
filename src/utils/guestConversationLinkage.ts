@@ -42,7 +42,7 @@ export async function linkGuestConversationsToUser(userId: string): Promise<void
     // Twin-table relational lookup: resolve conversation shells via guest token anchors
     const { data: conversations, error: convError } = await supabase
       .from("conversations")
-      .select("id, guest_tracking_token, participant_a, participant_b, context_order_id")
+      .select("id, guest_tracking_token, participant_1, participant_2, context_order_id")
       .in("guest_tracking_token", trackingTokens);
 
     if (convError) {
@@ -59,12 +59,12 @@ export async function linkGuestConversationsToUser(userId: string): Promise<void
       `[linkGuestConversationsToUser] Found ${conversations.length} conversations to migrate`
     );
 
-    // Update all guest conversations: clear guest_tracking_token, set participant_a to new user
+    // Update all guest conversations: clear guest_tracking_token, set participant_1 to new user
     const { error: updateError } = await supabase
       .from("conversations")
       .update({
         guest_tracking_token: null,
-        participant_a: userId,
+        participant_1: userId,
       })
       .in("guest_tracking_token", trackingTokens);
 

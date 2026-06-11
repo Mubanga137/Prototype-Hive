@@ -53,8 +53,8 @@ export const createTestConversation = async (
     const { data, error } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: userId1,
-        participant_b: userId2,
+        participant_1: userId1,
+        participant_2: userId2,
         context_order_id: orderId || null,
         last_message: "Conversation started",
         last_message_at: new Date().toISOString(),

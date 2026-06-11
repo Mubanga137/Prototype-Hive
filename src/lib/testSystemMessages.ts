@@ -10,8 +10,8 @@ export const createTestSystemConversationsAndMessages = async (userId: string) =
     const { data: conv, error: convError } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: userId,
-        participant_b: null,
+        participant_1: userId,
+        participant_2: null,
         context_order_id: 1001,
         last_message: "System Receipt",
         last_message_at: new Date().toISOString(),
@@ -85,8 +85,8 @@ export const createTestVendorNotification = async (vendorId: string) => {
     const { data: conv, error: convError } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: vendorId,
-        participant_b: null,
+        participant_1: vendorId,
+        participant_2: null,
         context_order_id: 2001,
         last_message: "New Order",
         last_message_at: new Date().toISOString(),
@@ -144,8 +144,8 @@ export const createTestRiderNotification = async (riderId: string) => {
     const { data: conv, error: convError } = await (supabase as any)
       .from("conversations")
       .insert({
-        participant_a: riderId,
-        participant_b: null,
+        participant_1: riderId,
+        participant_2: null,
         context_order_id: 3001,
         last_message: "Delivery Claimed",
         last_message_at: new Date().toISOString(),
