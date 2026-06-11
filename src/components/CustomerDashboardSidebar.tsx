@@ -133,12 +133,12 @@ const CustomerDashboardSidebar = ({ children, activeSection, onSectionChange }: 
               className="shrink-0"
             />
             <span className={`flex-1 text-left ${isCollapsed && !isMobile ? "hidden" : ""}`}>{item.label}</span>
-            {!(isCollapsed && !isMobile) && item.label === "Messages" && unreadCount > 0 && (
+            {!(isCollapsed && !isMobile) && item.label === "Messages" && (unreadCount ?? 0) > 0 && (
               <span
                 className="ml-auto min-w-[20px] h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-[#FFFBF2]"
                 style={{ backgroundColor: "#B37C1C" }}
               >
-                {unreadCount}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </motion.button>

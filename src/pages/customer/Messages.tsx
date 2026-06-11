@@ -363,32 +363,32 @@ const CustomerMessages = () => {
   }, [loadProfiles]);
 
   useEffect(() => {
-    if (activeConv) {
-      setMessages([]);
-      setMessagesLoading(true);
-      loadMessagesForConversation(activeConv.id);
+    if (!activeConv) return;
 
-      // Mark notifications as read when conversation is opened
-      const customerActorId = conversations[0]?.participant_1;
-      if (customerActorId && unreadCounts[activeConv.id] && unreadCounts[activeConv.id] > 0) {
-        supabase
-          .from('notifications')
-          .update({ read: true })
-          .eq('recipient_actor_id', customerActorId)
-          .eq('read', false)
-          .contains('metadata', { conversation_id: activeConv.id })
-          .then(() => {
-            setUnreadCounts((prev) => ({
-              ...prev,
-              [activeConv.id]: 0
-            }));
-          })
-          .catch((err) => {
-            console.warn('[CustomerMessages] Failed to mark notifications as read:', err);
-          });
-      }
+    setMessages([]);
+    setMessagesLoading(true);
+    loadMessagesForConversation(activeConv.id);
+
+    // Mark ALL notifications for this conversation as read in the database
+    const customerActorId = activeConv.participant_1 || conversations[0]?.participant_1;
+    if (customerActorId) {
+      supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('recipient_actor_id', customerActorId)
+        .eq('read', false)
+        .filter('metadata->>conversation_id', 'eq', activeConv.id)
+        .then(() => {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [activeConv.id]: 0
+          }));
+        })
+        .catch((err) => {
+          console.warn('[CustomerMessages] Failed to mark notifications as read:', err);
+        });
     }
-  }, [activeConv, loadMessagesForConversation, conversations, unreadCounts]);
+  }, [activeConv, loadMessagesForConversation, conversations]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -798,7 +798,7 @@ const CustomerMessages = () => {
                           <p className="text-xs text-[#0F1A35]/40">
                             {formatTime(conv.last_message_at)}
                           </p>
-                          {unreadCounts[conv.id] && unreadCounts[conv.id] > 0 && (
+                          {(unreadCounts[conv.id] ?? 0) > 0 && (
                             <span style={{
                               background: '#B37C1C',
                               color: 'white',
