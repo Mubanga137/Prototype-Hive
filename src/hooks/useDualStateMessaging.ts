@@ -103,7 +103,7 @@ export const useDualStateMessaging = () => {
    *   - Execute twin-table relational lookup: fetch conversation shell, then message data
    *
    * IF SESSION IS AUTHENTICATED (Registered User/Vendor/Rider):
-   *   - Isolate conversation histories by checking: participant_a === auth.uid() OR participant_b === auth.uid()
+   *   - Isolate conversation histories by checking: participant_1 === actor.id OR participant_2 === actor.id
    */
   const loadConversations = useCallback(async () => {
     if (!context.authIdentifier || !context.authMode) {

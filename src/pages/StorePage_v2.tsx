@@ -170,13 +170,13 @@ const StorePage_v2 = () => {
     const { data: existing } = await supabase
       .from("conversations" as any)
       .select("id")
-      .or(`and(participant_a.eq.${a},participant_b.eq.${b}),and(participant_a.eq.${b},participant_b.eq.${a})`)
+      .or(`and(participant_1.eq.${a},participant_2.eq.${b}),and(participant_1.eq.${b},participant_2.eq.${a})`)
       .maybeSingle();
     let convId = (existing as any)?.id;
     if (!convId) {
       const { data: created } = await supabase
         .from("conversations" as any)
-        .insert({ participant_a: a, participant_b: b } as any)
+        .insert({ participant_1: a, participant_2: b } as any)
         .select("id")
         .single();
       convId = (created as any).id;
