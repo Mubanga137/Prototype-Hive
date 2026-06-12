@@ -94,6 +94,20 @@ export const useDualStateMessaging = () => {
     }
   }, [user?.id, isGuest, trackingToken, hasValidToken, allTrackingTokens]);
 
+  // Load conversations when auth context is ready
+  useEffect(() => {
+    // Don't run until we have auth context
+    if (!context.authMode) return;
+
+    // For authenticated users, wait for profile
+    if (context.authMode === "user" && !profile?.id) return;
+
+    // For guests, wait for tracking tokens
+    if (context.authMode === "guest" && context.allTrackingTokens.length === 0) return;
+
+    loadConversations();
+  }, [context.authMode, context.authIdentifier, profile?.id]);
+
   /**
    * DUAL-STATE RULE 1: AUTHENTICATED vs GUEST data retrieval
    *
