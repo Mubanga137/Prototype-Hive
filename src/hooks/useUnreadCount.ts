@@ -16,7 +16,7 @@ export const useUnreadCount = () => {
     const { count: total } = await (supabase as any)
       .from("conversations")
       .select("id", { count: "exact", head: true })
-      .or(`participant_a.eq.${user.id},participant_b.eq.${user.id}`)
+      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
       .not("last_message", "is", null);
     setCount(total ?? 0);
   }, [user?.id]);

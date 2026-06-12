@@ -188,26 +188,26 @@ export const useDualStateMessaging = () => {
                 vendorActorId: vendorActorId.slice(0, 8) + "...",
               });
 
-              // STEP 2: Fetch conversations where user/vendor is participant_1 or participant_2
+              // STEP 2: Fetch conversations where user/vendor is participant_a or participant_b
               const { data: convA, error: errA } = await (supabase as any)
                 .from("conversations")
                 .select("*")
-                .eq("participant_1", vendorActorId)
+                .eq("participant_a", vendorActorId)
                 .order("last_message_at", { ascending: false });
 
               if (errA) {
-                console.error("[useDualStateMessaging] participant_1 query failed:", errA);
+                console.error("[useDualStateMessaging] participant_a query failed:", errA);
               }
 
-              // Fetch conversations where user/vendor is participant_2
+              // Fetch conversations where user/vendor is participant_b
               const { data: convB, error: errB } = await (supabase as any)
                 .from("conversations")
                 .select("*")
-                .eq("participant_2", vendorActorId)
+                .eq("participant_b", vendorActorId)
                 .order("last_message_at", { ascending: false });
 
               if (errB) {
-                console.error("[useDualStateMessaging] participant_2 query failed:", errB);
+                console.error("[useDualStateMessaging] participant_b query failed:", errB);
               }
 
               error = errA || errB;
