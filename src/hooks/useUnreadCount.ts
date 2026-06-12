@@ -8,18 +8,31 @@ import { useAuth } from "@/hooks/useAuth";
  * Simplified: counts total conversations as placeholder until read_at tracking is added.
  */
 export const useUnreadCount = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [count, setCount] = useState(0);
 
   const load = useCallback(async () => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
+
+    // Resolve actor ID from profile.id
+    const { data: actor, error: actorError } = await (supabase as any)
+      .from("actors")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+
+    if (actorError || !actor?.id) {
+      console.error("[useUnreadCount] Failed to resolve actor ID:", actorError);
+      return;
+    }
+
     const { count: total } = await (supabase as any)
       .from("conversations")
       .select("id", { count: "exact", head: true })
-      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+      .or(`participant_a.eq.${actor.id},participant_b.eq.${actor.id}`)
       .not("last_message", "is", null);
     setCount(total ?? 0);
-  }, [user?.id]);
+  }, [profile?.id]);
 
   useEffect(() => {
     load();
@@ -27,13 +40,13 @@ export const useUnreadCount = () => {
 
   // Real-time refresh
   useEffect(() => {
-    if (!user?.id) return;
+    if (!profile?.id) return;
     const channel = supabase
       .channel("unread-count")
       .on("postgres_changes" as any, { event: "*", schema: "public", table: "conversations" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, load]);
+  }, [profile?.id, load]);
 
   return count;
 };
