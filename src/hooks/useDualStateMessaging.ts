@@ -179,7 +179,7 @@ export const useDualStateMessaging = () => {
 
             console.log('[DEBUG] actor by store result:', {
               actorData: actorByStore,
-              storeId: store.id?.slice(0,8)
+              storeId: store.id
             });
           }
 
