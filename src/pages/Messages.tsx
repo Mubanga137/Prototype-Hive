@@ -109,7 +109,7 @@ const getOtherParticipantName = (conversation: Conversation, currentActorId: str
 };
 
 const getAvatarInitial = (name: string | null) => {
-  if (!name || name === "Guest" || name === "Customer") return "👤";
+  if (!name || name === "Guest" || name === "Customer") return "";
   return name.charAt(0).toUpperCase();
 };
 
@@ -490,7 +490,7 @@ const Messages = () => {
                   isSelected ? "bg-primary/8" : "hover:bg-secondary/50"}`}>
                 <Avatar className="h-11 w-11 shrink-0 border border-primary/20">
                   <AvatarFallback className="font-bold text-xs" style={{ backgroundColor: "#FFFBF2" }}>
-                    {otherActor?.is_guest ? (
+                    {displayName === "Guest" || displayName === "Customer" ? (
                       <User size={20} style={{ color: "#B37C1C" }} />
                     ) : (
                       <span style={{ color: "#B37C1C" }}>{getAvatarInitial(displayName)}</span>
@@ -560,7 +560,7 @@ const Messages = () => {
           )}
           <Avatar className="h-10 w-10 border border-primary/20">
             <AvatarFallback className="font-bold text-sm" style={{ backgroundColor: "#FFFBF2" }}>
-              {isSystemThread ? "🐝" : (otherActor?.is_guest ? (
+              {isSystemThread ? "🐝" : (displayName === "Guest" || displayName === "Customer" ? (
                 <User size={18} style={{ color: "#B37C1C" }} />
               ) : (
                 <span style={{ color: "#B37C1C" }}>{getAvatarInitial(displayName)}</span>
