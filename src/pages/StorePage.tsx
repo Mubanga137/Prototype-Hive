@@ -64,7 +64,7 @@ interface OfferItem {
 const StorePage = () => {
   const { storeKey } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [items, setItems] = useState<OfferItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,20 +209,55 @@ const StorePage = () => {
   };
 
   const handleMessageStore = async () => {
-    if (!user) { toast.error("Sign in to message this store."); navigate("/login"); return; }
+    if (!user || !profile?.id) { toast.error("Sign in to message this store."); navigate("/login"); return; }
     if (!store?.owner_user_id) { toast.error("Store owner not available for messaging."); return; }
     if (store.owner_user_id === user.id) { toast.info("This is your own store."); return; }
-    const a = user.id, b = store.owner_user_id;
+
+    // Resolve both actors
+    const { data: customerActor } = await supabase
+      .from("actors")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+
+    if (!customerActor?.id) {
+      toast.error("Unable to resolve your account for messaging.");
+      return;
+    }
+
+    const { data: vendorProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", store.owner_user_id)
+      .maybeSingle();
+
+    if (!vendorProfile?.id) {
+      toast.error("Unable to resolve store owner for messaging.");
+      return;
+    }
+
+    const { data: vendorActor } = await supabase
+      .from("actors")
+      .select("id")
+      .eq("profile_id", vendorProfile.id)
+      .maybeSingle();
+
+    if (!vendorActor?.id) {
+      toast.error("Unable to resolve store owner for messaging.");
+      return;
+    }
+
+    const a = customerActor.id, b = vendorActor.id;
     const { data: existing } = await supabase
       .from("conversations" as any)
       .select("id")
-      .or(`and(participant_a.eq.${a},participant_b.eq.${b}),and(participant_a.eq.${b},participant_b.eq.${a})`)
+      .or(`and(participant_1.eq.${a},participant_2.eq.${b}),and(participant_1.eq.${b},participant_2.eq.${a})`)
       .maybeSingle();
     let convId = (existing as any)?.id;
     if (!convId) {
       const { data: created } = await supabase
         .from("conversations" as any)
-        .insert({ participant_a: a, participant_b: b } as any)
+        .insert({ participant_1: a, participant_2: b } as any)
         .select("id")
         .single();
       convId = (created as any).id;
