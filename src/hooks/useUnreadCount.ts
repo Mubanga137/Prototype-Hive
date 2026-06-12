@@ -29,7 +29,7 @@ export const useUnreadCount = () => {
     const { count: total } = await (supabase as any)
       .from("conversations")
       .select("id", { count: "exact", head: true })
-      .or(`participant_a.eq.${actor.id},participant_b.eq.${actor.id}`)
+      .or(`participant_1.eq.${actor.id},participant_2.eq.${actor.id}`)
       .not("last_message", "is", null);
     setCount(total ?? 0);
   }, [profile?.id]);

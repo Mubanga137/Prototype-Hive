@@ -41,7 +41,7 @@ const MessagingDebugPanel = () => {
     addLog(`Found ${convs?.length || 0} conversations`);
     if (convs?.length) {
       convs.forEach((c: any) => {
-        addLog(`  - ${c.id}: ${c.participant_a} <-> ${c.participant_b}`);
+        addLog(`  - ${c.id}: ${c.participant_1} <-> ${c.participant_2}`);
       });
     }
     setLoading(false);

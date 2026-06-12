@@ -117,7 +117,7 @@ export const useDualStateMessaging = () => {
    *   - Execute twin-table relational lookup: fetch conversation shell, then message data
    *
    * IF SESSION IS AUTHENTICATED (Registered User/Vendor/Rider):
-   *   - Isolate conversation histories by checking: participant_a === auth.uid() OR participant_b === auth.uid()
+   *   - Isolate conversation histories by checking: participant_1 === auth.uid() OR participant_2 === auth.uid()
    */
   const loadConversations = useCallback(async () => {
     if (!context.authIdentifier || !context.authMode) {
@@ -188,26 +188,26 @@ export const useDualStateMessaging = () => {
                 vendorActorId: vendorActorId.slice(0, 8) + "...",
               });
 
-              // STEP 2: Fetch conversations where user/vendor is participant_a or participant_b
+              // STEP 2: Fetch conversations where user/vendor is participant_1 or participant_2
               const { data: convA, error: errA } = await (supabase as any)
                 .from("conversations")
                 .select("*")
-                .eq("participant_a", vendorActorId)
+                .eq("participant_1", vendorActorId)
                 .order("last_message_at", { ascending: false });
 
               if (errA) {
-                console.error("[useDualStateMessaging] participant_a query failed:", errA);
+                console.error("[useDualStateMessaging] participant_1 query failed:", errA);
               }
 
-              // Fetch conversations where user/vendor is participant_b
+              // Fetch conversations where user/vendor is participant_2
               const { data: convB, error: errB } = await (supabase as any)
                 .from("conversations")
                 .select("*")
-                .eq("participant_b", vendorActorId)
+                .eq("participant_2", vendorActorId)
                 .order("last_message_at", { ascending: false });
 
               if (errB) {
-                console.error("[useDualStateMessaging] participant_b query failed:", errB);
+                console.error("[useDualStateMessaging] participant_2 query failed:", errB);
               }
 
               error = errA || errB;
