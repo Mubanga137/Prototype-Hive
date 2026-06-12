@@ -657,37 +657,28 @@ const Messages = () => {
     );
   };
 
-  // ---- Mobile: list or chat ----
-  if (isMobile) {
-    return (
-      <RetailerStudioSidebar>
-        <div className="h-screen flex flex-col relative">
-        <AnimatePresence mode="wait">
-          {activeConv ? (
-            <motion.div key="chat" initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              className="absolute inset-0 z-20 flex flex-col">
-              <ChatPanel />
-            </motion.div>
-          ) : (
-            <motion.div key="inbox" initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              className="absolute inset-0 z-10 flex flex-col">
-              <InboxPanel />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AttachProductModal open={attachOpen} onClose={() => setAttachOpen(false)} onSelect={handleAttachProduct} />
-        </div>
-      </RetailerStudioSidebar>
-    );
-  }
+  const mobileContent = (
+    <div className="h-screen flex flex-col relative">
+      <AnimatePresence mode="wait">
+        {activeConv ? (
+          <motion.div key="chat" initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 280 }}
+            className="absolute inset-0 z-20 flex flex-col">
+            <ChatPanel />
+          </motion.div>
+        ) : (
+          <motion.div key="inbox" initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 280 }}
+            className="absolute inset-0 z-10 flex flex-col">
+            <InboxPanel />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AttachProductModal open={attachOpen} onClose={() => setAttachOpen(false)} onSelect={handleAttachProduct} />
+    </div>
+  );
 
-  // ---- Check if being rendered inside customer dashboard ----
-  const isInsideDashboard = location.pathname.includes("customer-dash");
-
-  // ---- Desktop: two-panel ----
-  const content = (
+  const desktopContent = (
     <div className="h-screen flex relative">
       <div className="relative z-10 w-[360px] shrink-0 border-r border-border flex flex-col">
         <InboxPanel />
@@ -699,16 +690,17 @@ const Messages = () => {
     </div>
   );
 
-  // If inside dashboard, don't wrap in RetailerStudioSidebar
-  if (isInsideDashboard) {
-    return content;
+  const content = isMobile ? mobileContent : desktopContent;
+
+  // Check if being rendered inside customer dashboard or other non-retailer pages
+  const isInsideDashboard = location.pathname.includes("customer-dash");
+
+  // Only wrap in sidebar if not inside a dashboard
+  if (!isInsideDashboard) {
+    return <RetailerStudioSidebar>{content}</RetailerStudioSidebar>;
   }
 
-  return (
-    <RetailerStudioSidebar>
-      {content}
-    </RetailerStudioSidebar>
-  );
+  return content;
 };
 
 export default Messages;
