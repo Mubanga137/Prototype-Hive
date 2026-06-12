@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDualStateMessaging } from "@/hooks/useDualStateMessaging";
 import RetailerStudioSidebar from "@/components/RetailerStudioSidebar";
-import hiveLogo from "@/assets/hive-logo.jpeg"
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -419,11 +418,7 @@ const Messages = () => {
   // ---- INBOX PANEL ----
   const InboxPanel = () => (
     <div className="flex flex-col h-full bg-card/80 backdrop-blur-xl">
-      <div className="px-4 py-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <img src={hiveLogo} alt="The Hive" className="w-8 h-8 rounded-full object-cover border border-primary/20" />
-          <h1 className="font-display font-bold text-foreground text-lg">Messages</h1>
-        </div>
+      <div className="px-4 py-3 border-b border-border">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <Input placeholder="Search conversations…" value={searchQuery}
