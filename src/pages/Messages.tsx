@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Phone, Paperclip, Send, Search, MessageSquare, Share2 } from "lucide-react";
+import { ArrowLeft, Phone, Paperclip, Send, Search, MessageSquare, Share2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDualStateMessaging } from "@/hooks/useDualStateMessaging";
@@ -491,7 +491,7 @@ const Messages = () => {
                 <Avatar className="h-11 w-11 shrink-0 border border-primary/20">
                   <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
                     {otherActor?.is_guest ? (
-                      <span style={{ fontSize: "18px" }}>👤</span>
+                      <User size={20} className="text-primary" />
                     ) : (
                       getAvatarInitial(displayName)
                     )}
@@ -561,7 +561,7 @@ const Messages = () => {
           <Avatar className="h-10 w-10 border border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
               {isSystemThread ? "🐝" : (otherActor?.is_guest ? (
-                <span style={{ fontSize: "16px" }}>👤</span>
+                <User size={18} className="text-primary" />
               ) : (
                 getAvatarInitial(displayName)
               ))}
