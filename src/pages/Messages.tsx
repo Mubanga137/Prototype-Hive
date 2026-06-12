@@ -489,11 +489,11 @@ const Messages = () => {
                 className={`w-full flex items-center gap-3 px-4 py-3 border-b border-border/30 transition-colors text-left ${
                   isSelected ? "bg-primary/8" : "hover:bg-secondary/50"}`}>
                 <Avatar className="h-11 w-11 shrink-0 border border-primary/20">
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                  <AvatarFallback className="font-bold text-xs" style={{ backgroundColor: "#FFFBF2" }}>
                     {otherActor?.is_guest ? (
-                      <User size={20} className="text-primary" />
+                      <User size={20} style={{ color: "#B37C1C" }} />
                     ) : (
-                      getAvatarInitial(displayName)
+                      <span style={{ color: "#B37C1C" }}>{getAvatarInitial(displayName)}</span>
                     )}
                   </AvatarFallback>
                 </Avatar>
@@ -559,11 +559,11 @@ const Messages = () => {
             </button>
           )}
           <Avatar className="h-10 w-10 border border-primary/20">
-            <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+            <AvatarFallback className="font-bold text-sm" style={{ backgroundColor: "#FFFBF2" }}>
               {isSystemThread ? "🐝" : (otherActor?.is_guest ? (
-                <User size={18} className="text-primary" />
+                <User size={18} style={{ color: "#B37C1C" }} />
               ) : (
-                getAvatarInitial(displayName)
+                <span style={{ color: "#B37C1C" }}>{getAvatarInitial(displayName)}</span>
               ))}
             </AvatarFallback>
           </Avatar>
