@@ -141,79 +141,120 @@ export const useDualStateMessaging = () => {
           data = [];
         } else {
           try {
-            // STEP 1: Resolve vendor/user actor ID using profile.id (NOT user.id)
+            // STEP 1: Three-path actor resolution
+            // Path 1: Try profile_id first (customers + some vendors)
+            // Path 2: If not found, try store_id (vendor actors)
             console.log("[Messaging] Auth uid:", uid.slice(0, 8) + "...");
             console.log("[Messaging] Profile id:", profile.id.slice(0, 8) + "...");
 
-            console.debug("[useDualStateMessaging] STEP 1: Resolving actor ID from profile_id", {
+            let vendorActorId: string | null = null;
+
+            // Path 1: Try profile_id first (customers + some vendors)
+            console.debug("[useDualStateMessaging] PATH 1: Resolving actor by profile_id", {
               profileId: profile.id.slice(0, 8) + "...",
             });
 
-            const { data: actorData, error: actorError } = await (supabase as any)
+            const { data: actorByProfile, error: profileError } = await (supabase as any)
               .from("actors")
               .select("id")
               .eq("profile_id", profile.id)
               .maybeSingle();
 
-            if (actorError) {
-              console.error("[useDualStateMessaging] Error resolving actor ID:", actorError);
-              error = actorError;
+            if (profileError) {
+              console.error("[useDualStateMessaging] Path 1 error:", profileError);
             }
 
-            const vendorActorId = actorData?.id;
-            console.log("[Messaging] Vendor actor id:", vendorActorId?.slice(0, 8) + "...");
+            if (actorByProfile?.id) {
+              vendorActorId = actorByProfile.id;
+              console.log("[Messaging] Found actor by profile_id:", vendorActorId.slice(0, 8) + "...");
+            }
 
-            // Guard: Ensure actor was found
+            // Path 2: If not found, try store_id (vendor actors)
             if (!vendorActorId) {
-              console.error("[useDualStateMessaging] No actor found for profile_id:", {
-                profileId: profile.id.slice(0, 8) + "...",
-              });
-              data = [];
-            } else {
-              console.debug("[useDualStateMessaging] STEP 2: Resolved actor ID", {
-                vendorActorId: vendorActorId.slice(0, 8) + "...",
+              console.debug("[useDualStateMessaging] PATH 2: Resolving actor by store_id", {
+                userId: uid.slice(0, 8) + "...",
               });
 
-              // STEP 2: Fetch conversations where user/vendor is participant_1 or participant_2
-              const { data: convA, error: errA } = await (supabase as any)
-                .from("conversations")
-                .select("*")
-                .eq("participant_1", vendorActorId)
-                .order("last_message_at", { ascending: false });
+              const { data: store, error: storeError } = await (supabase as any)
+                .from("sme_stores")
+                .select("id")
+                .eq("owner_user_id", uid)
+                .maybeSingle();
 
-              if (errA) {
-                console.error("[useDualStateMessaging] participant_1 query failed:", errA);
+              if (storeError) {
+                console.error("[useDualStateMessaging] Error fetching store:", storeError);
               }
 
-              // Fetch conversations where user/vendor is participant_2
-              const { data: convB, error: errB } = await (supabase as any)
-                .from("conversations")
-                .select("*")
-                .eq("participant_2", vendorActorId)
-                .order("last_message_at", { ascending: false });
+              if (store?.id) {
+                console.debug("[useDualStateMessaging] Found store:", {
+                  storeId: store.id.toString(),
+                });
 
-              if (errB) {
-                console.error("[useDualStateMessaging] participant_2 query failed:", errB);
+                const { data: actorByStore, error: storeActorError } = await (supabase as any)
+                  .from("actors")
+                  .select("id")
+                  .eq("store_id", store.id)
+                  .maybeSingle();
+
+                if (storeActorError) {
+                  console.error("[useDualStateMessaging] Error fetching actor by store:", storeActorError);
+                }
+
+                vendorActorId = actorByStore?.id ?? null;
+                if (vendorActorId) {
+                  console.log("[Messaging] Found actor by store_id:", vendorActorId.slice(0, 8) + "...");
+                }
               }
-
-              error = errA || errB;
-              data = [...(convA || []), ...(convB || [])];
-
-              console.log("[Messaging] Conversations found:", data?.length);
-
-              // Deduplicate and sort
-              const seen = new Set();
-              data = data.filter((conv: any) => {
-                if (seen.has(conv.id)) return false;
-                seen.add(conv.id);
-                return true;
-              });
-              data.sort((a: any, b: any) => {
-                const timeA = new Date(a.last_message_at || 0).getTime();
-                const timeB = new Date(b.last_message_at || 0).getTime();
-                return timeB - timeA;
-              });
             }
+
+            console.log("[Messaging] Resolved actor id:", vendorActorId?.slice(0, 8) + "...");
+
+            // Guard: Ensure actor was found via either path
+            if (!vendorActorId) {
+              console.error("[Messaging] Could not resolve actor for user:", uid);
+              return { success: false, conversations: [] };
+            }
+
+            // STEP 2: Fetch conversations where user/vendor is participant_1 or participant_2
+            const { data: convA, error: errA } = await (supabase as any)
+              .from("conversations")
+              .select("*")
+              .eq("participant_1", vendorActorId)
+              .order("last_message_at", { ascending: false });
+
+            if (errA) {
+              console.error("[useDualStateMessaging] participant_1 query failed:", errA);
+            }
+
+            // Fetch conversations where user/vendor is participant_2
+            const { data: convB, error: errB } = await (supabase as any)
+              .from("conversations")
+              .select("*")
+              .eq("participant_2", vendorActorId)
+              .order("last_message_at", { ascending: false });
+
+            if (errB) {
+              console.error("[useDualStateMessaging] participant_2 query failed:", errB);
+            }
+
+            error = errA || errB;
+
+            // Merge and deduplicate
+            const seen = new Set();
+            data = [...(convA || []), ...(convB || [])].filter((c: any) => {
+              if (seen.has(c.id)) return false;
+              seen.add(c.id);
+              return true;
+            });
+
+            console.log("[Messaging] Conversations found:", data?.length);
+
+            // Sort by last_message_at descending
+            data.sort((a: any, b: any) => {
+              const timeA = new Date(a.last_message_at || 0).getTime();
+              const timeB = new Date(b.last_message_at || 0).getTime();
+              return timeB - timeA;
+            });
           } catch (queryErr: any) {
             console.error("[useDualStateMessaging] Query exception:", queryErr.message);
             error = queryErr;
