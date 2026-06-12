@@ -120,6 +120,14 @@ export const useDualStateMessaging = () => {
    *   - Isolate conversation histories by checking: participant_1 === auth.uid() OR participant_2 === auth.uid()
    */
   const loadConversations = useCallback(async () => {
+    console.log('[DEBUG] loadConversations called with:', {
+      authMode: context.authMode,
+      authIdentifier: context.authIdentifier?.slice(0,8),
+      profileId: profile?.id?.slice(0,8),
+      userId: user?.id?.slice(0,8),
+      allTokens: context.allTrackingTokens?.length
+    });
+
     if (!context.authIdentifier || !context.authMode) {
       console.debug(
         "[useDualStateMessaging.loadConversations] No valid auth context, skipping"
@@ -177,6 +185,17 @@ export const useDualStateMessaging = () => {
             const vendorActorId = actorData?.id;
             console.log("[Messaging] Vendor actor id:", vendorActorId?.slice(0, 8) + "...");
 
+            console.log('[DEBUG] store lookup result:', {
+              storeData: actorData,
+              storeError: actorError,
+              ownerUserId: user?.id?.slice(0,8)
+            });
+
+            console.log('[DEBUG] actor by store result:', {
+              actorData: actorData,
+              actorError: actorError
+            });
+
             // Guard: Ensure actor was found
             if (!vendorActorId) {
               console.error("[useDualStateMessaging] No actor found for profile_id:", {
@@ -187,6 +206,8 @@ export const useDualStateMessaging = () => {
               console.debug("[useDualStateMessaging] STEP 2: Resolved actor ID", {
                 vendorActorId: vendorActorId.slice(0, 8) + "...",
               });
+
+              console.log('[DEBUG] About to query conversations with actorId:', vendorActorId);
 
               // STEP 2: Fetch conversations where user/vendor is participant_1 or participant_2
               const { data: convA, error: errA } = await (supabase as any)
