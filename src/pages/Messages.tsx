@@ -43,6 +43,10 @@ interface Actor {
   profile_id?: string | null;
   store_id?: number | null;
   rider_id?: number | null;
+  display_name?: string | null;
+  phone?: string | null;
+  is_guest?: boolean | null;
+  avatar_url?: string | null;
 }
 
 interface Message {
@@ -79,6 +83,36 @@ const formatTime = (iso: string | null) => {
 const initials = (name: string | null) =>
   (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 
+const getOtherParticipantName = (conversation: Conversation, currentActorId: string | undefined, actorsList: Actor[]) => {
+  const otherActorId = conversation.participant_1 === currentActorId
+    ? conversation.participant_2
+    : conversation.participant_1;
+
+  if (!otherActorId) return "Customer";
+
+  const otherActor = actorsList.find((a) => a.id === otherActorId);
+
+  if (!otherActor) return "Customer";
+
+  if (otherActor.display_name) {
+    return otherActor.display_name
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  }
+
+  if (otherActor.phone) {
+    return otherActor.phone;
+  }
+
+  return "Guest";
+};
+
+const getAvatarInitial = (name: string | null) => {
+  if (!name || name === "Guest" || name === "Customer") return "👤";
+  return name.charAt(0).toUpperCase();
+};
+
 // ---------- Component ----------
 
 const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
@@ -97,6 +131,7 @@ const Messages = () => {
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileSummary>>({});
+  const [actors, setActors] = useState<Actor[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -156,8 +191,8 @@ const Messages = () => {
 
     (async () => {
       try {
-        // Fetch actors with their details
-        const { data: actors, error: actorsError } = await supabase
+        // Fetch actors with display_name, phone, is_guest, and avatar_url
+        const { data: actorsData, error: actorsError } = await supabase
           .from("actors")
           .select(`
             id,
@@ -165,6 +200,10 @@ const Messages = () => {
             profile_id,
             store_id,
             rider_id,
+            display_name,
+            phone,
+            is_guest,
+            avatar_url,
             profiles(id, full_name, avatar_url),
             sme_stores(id, brand_name, logo_url),
             riders(id, rider_name)
@@ -176,11 +215,13 @@ const Messages = () => {
           return;
         }
 
-        if (!actors) return;
+        if (!actorsData) return;
+
+        setActors(actorsData as Actor[]);
 
         // Resolve display names based on actor type
         const map: Record<string, ProfileSummary> = { ...profiles };
-        actors.forEach((actor: any) => {
+        actorsData.forEach((actor: any) => {
           let displayName = "Unknown User";
 
           if (actor.type === "system") {
@@ -196,7 +237,7 @@ const Messages = () => {
           map[actor.id] = {
             user_id: actor.id,
             full_name: displayName,
-            phone: null,
+            phone: actor.phone || null,
           };
         });
 
@@ -407,6 +448,13 @@ const Messages = () => {
     return otherParticipantId ? profiles[otherParticipantId] : undefined;
   };
 
+  const getOtherActor = (conv: Conversation): Actor | undefined => {
+    const otherActorId = conv.participant_1 === uid
+      ? conv.participant_2
+      : conv.participant_1;
+    return otherActorId ? actors.find((a) => a.id === otherActorId) : undefined;
+  };
+
   const filtered = conversations.filter((c) => {
     // Show all conversations, don't filter out those with null/undefined fields
     if (!searchQuery) return true;
@@ -433,8 +481,8 @@ const Messages = () => {
           </div>
         ) : (
           filtered.map((conv) => {
-            const other = getOtherProfile(conv);
-            const vendorName = conv.vendor_actor?.sme_stores?.[0]?.brand_name || conv.vendor_actor?.display_name || other?.full_name || "Vendor";
+            const displayName = getOtherParticipantName(conv, uid, actors);
+            const otherActor = getOtherActor(conv);
             const isSelected = activeConv?.id === conv.id;
             return (
               <button key={conv.id} onClick={() => setActiveConv(conv)}
@@ -442,12 +490,16 @@ const Messages = () => {
                   isSelected ? "bg-primary/8" : "hover:bg-secondary/50"}`}>
                 <Avatar className="h-11 w-11 shrink-0 border border-primary/20">
                   <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                    {initials(vendorName)}
+                    {otherActor?.is_guest ? (
+                      <span style={{ fontSize: "18px" }}>👤</span>
+                    ) : (
+                      getAvatarInitial(displayName)
+                    )}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm text-foreground truncate">{vendorName}</p>
+                    <p className="font-semibold text-sm text-foreground truncate">{displayName}</p>
                     <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
                       {formatTime(conv.last_message_at)}
                     </span>
@@ -488,8 +540,10 @@ const Messages = () => {
     }
 
     const other = getOtherProfile(activeConv);
+    const otherActor = getOtherActor(activeConv);
+    const displayName = getOtherParticipantName(activeConv, uid, actors);
     const isSystemThread = messages.length > 0 && messages.every((m) => m.sender_actor_id === SYSTEM_BOT_ID);
-    const headerName = isSystemThread ? "THE HIVE" : (other?.full_name || "Unknown");
+    const headerName = isSystemThread ? "THE HIVE" : displayName;
     const headerSubtitle = isSystemThread ? "Order notifications & updates" : "Online";
 
     return (
@@ -506,7 +560,11 @@ const Messages = () => {
           )}
           <Avatar className="h-10 w-10 border border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-              {isSystemThread ? "🐝" : initials(headerName)}
+              {isSystemThread ? "🐝" : (otherActor?.is_guest ? (
+                <span style={{ fontSize: "16px" }}>👤</span>
+              ) : (
+                getAvatarInitial(displayName)
+              ))}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -516,8 +574,8 @@ const Messages = () => {
               <p className="text-[10px] text-muted-foreground">{headerSubtitle}</p>
             </div>
           </div>
-          {!isSystemThread && other?.phone && (
-            <a href={`tel:${other.phone}`}
+          {!isSystemThread && (otherActor?.phone || other?.phone) && (
+            <a href={`tel:${otherActor?.phone || other?.phone}`}
               className="flex items-center justify-center w-10 h-10 rounded-full transition-colors"
               style={{ backgroundColor: "#B37C1C" }}>
               <Phone size={18} color="#FFFBF2" />
