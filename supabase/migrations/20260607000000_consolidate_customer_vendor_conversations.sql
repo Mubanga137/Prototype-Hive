@@ -54,6 +54,7 @@ DECLARE
   v_customer_actor_id UUID;
   v_vendor_actor_id UUID;
   v_existing_conv_id UUID;
+  v_guest_actor_id UUID;
 BEGIN
   -- Sanitize inputs with explicit casting and null-safety
   v_buyer_id := NULLIF(p_buyer_id::TEXT, '')::UUID;
@@ -207,29 +208,68 @@ BEGIN
         END IF;
       END IF;
     ELSE
-      -- Guest flow: create conversation using guest_tracking_token
-      INSERT INTO public.conversations (
-        participant_1,
-        guest_tracking_token,
-        context_order_id,
-        last_message,
-        last_message_at
-      ) VALUES (
-        v_customer_actor_id,
-        CASE WHEN v_customer_actor_id IS NULL THEN v_tracking_token::TEXT ELSE NULL END,
-        v_order_id,
-        '🐝 Order Received',
-        NOW()
-      )
-      ON CONFLICT DO NOTHING
-      RETURNING id INTO v_conversation_id;
+      -- Guest flow: consolidate by phone number (same logic as auth users)
+      -- First find the guest actor by phone
+      SELECT id INTO v_guest_actor_id
+      FROM public.actors
+      WHERE phone = p_customer_phone
+        AND is_guest = true
+        AND type = 'customer'
+      ORDER BY created_at DESC
+      LIMIT 1;
 
-      -- If insert didn't return (conflict), fetch the existing conversation
-      IF v_conversation_id IS NULL THEN
-        SELECT id INTO v_conversation_id
+      -- If no guest actor exists, create one
+      IF v_guest_actor_id IS NULL THEN
+        INSERT INTO public.actors (type, display_name, phone, is_guest)
+        VALUES ('customer', p_customer_name, p_customer_phone, true)
+        RETURNING id INTO v_guest_actor_id;
+      END IF;
+
+      v_customer_actor_id := v_guest_actor_id;
+
+      -- Now check for existing conversation (same logic as auth users)
+      IF v_customer_actor_id IS NOT NULL AND v_vendor_actor_id IS NOT NULL THEN
+        SELECT id INTO v_existing_conv_id
         FROM public.conversations
-        WHERE context_order_id = v_order_id
+        WHERE (participant_1 = v_customer_actor_id AND participant_2 = v_vendor_actor_id)
+           OR (participant_1 = v_vendor_actor_id AND participant_2 = v_customer_actor_id)
         LIMIT 1;
+
+        IF v_existing_conv_id IS NOT NULL THEN
+          -- Reuse existing conversation
+          v_conversation_id := v_existing_conv_id;
+
+          -- Update the conversation's last_message_at to reflect new activity
+          UPDATE public.conversations
+          SET last_message_at = NOW()
+          WHERE id = v_conversation_id;
+        ELSE
+          -- Create new conversation between guest customer and vendor
+          INSERT INTO public.conversations (
+            participant_1,
+            participant_2,
+            context_order_id,
+            last_message,
+            last_message_at
+          ) VALUES (
+            v_customer_actor_id,
+            v_vendor_actor_id,
+            v_order_id,
+            '🐝 Order Received',
+            NOW()
+          )
+          ON CONFLICT DO NOTHING
+          RETURNING id INTO v_conversation_id;
+
+          -- If insert didn't return (conflict), fetch the existing conversation
+          IF v_conversation_id IS NULL THEN
+            SELECT id INTO v_conversation_id
+            FROM public.conversations
+            WHERE (participant_1 = v_customer_actor_id AND participant_2 = v_vendor_actor_id)
+               OR (participant_1 = v_vendor_actor_id AND participant_2 = v_customer_actor_id)
+            LIMIT 1;
+          END IF;
+        END IF;
       END IF;
     END IF;
   EXCEPTION WHEN OTHERS THEN
@@ -334,3 +374,52 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 GRANT EXECUTE ON FUNCTION public.secure_place_order(
   UUID, BIGINT, BIGINT, BIGINT, INT, TEXT, TEXT, TEXT, DATE, TEXT, TEXT
 ) TO anon, authenticated, public;
+
+-- =====================================================================
+-- ONE-TIME CLEANUP: Merge existing scattered guest conversations
+-- For each vendor/guest-phone pair with multiple conversations,
+-- keep only the oldest and merge all messages + orders into it
+-- =====================================================================
+DO $$
+DECLARE
+  r RECORD;
+  keep_conv_id UUID;
+BEGIN
+  FOR r IN
+    SELECT
+      a.phone,
+      a2.store_id,
+      MIN(c.created_at) as oldest,
+      array_agg(c.id ORDER BY c.created_at) as conv_ids,
+      COUNT(c.id) as conv_count
+    FROM public.conversations c
+    JOIN public.actors a ON a.id = c.participant_1 AND a.is_guest = true
+    JOIN public.actors a2 ON a2.id = c.participant_2 AND a2.type = 'vendor'
+    GROUP BY a.phone, a2.store_id
+    HAVING COUNT(c.id) > 1
+  LOOP
+    keep_conv_id := r.conv_ids[1];
+
+    RAISE LOG '[Cleanup] Consolidating % conversations for phone=%, store_id=%, keeping=%',
+      r.conv_count, r.phone, r.store_id, keep_conv_id;
+
+    -- Move all messages from duplicate conversations to the keeper
+    UPDATE public.messages
+    SET conversation_id = keep_conv_id
+    WHERE conversation_id = ANY(r.conv_ids[2:]);
+
+    -- Point all orders to the keeper conversation
+    UPDATE public.orders
+    SET conversation_id = keep_conv_id
+    WHERE conversation_id = ANY(r.conv_ids[2:]);
+
+    -- Delete the duplicate conversations
+    DELETE FROM public.conversations
+    WHERE id = ANY(r.conv_ids[2:]);
+
+    RAISE LOG '[Cleanup] Merged % conversations into keeper % for phone=%, store_id=%',
+      (r.conv_count - 1), keep_conv_id, r.phone, r.store_id;
+  END LOOP;
+
+  RAISE LOG '[Cleanup] Guest conversation consolidation complete';
+END $$;
