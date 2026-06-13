@@ -113,6 +113,14 @@ const getAvatarInitial = (name: string | null) => {
   return name.charAt(0).toUpperCase();
 };
 
+const isMigrationMessage = (message: Message): boolean => {
+  if (!message.content) return false;
+  return (
+    message.content.includes("conversation restored by Hive") ||
+    message.content.includes("legacy order migrated")
+  );
+};
+
 // ---------- Component ----------
 
 const SYSTEM_BOT_ID = "00000000-0000-0000-0000-000000000001";
@@ -596,6 +604,11 @@ const Messages = () => {
               </div>
             )}
             {messages.map((msg, index) => {
+              // Filter out migration messages (safety net)
+              if (isMigrationMessage(msg)) {
+                return null;
+              }
+
               // For authenticated users, compare against uid
               // For guests, use customer actor id from participant_1
               const customerActorId = activeConv?.participant_1;

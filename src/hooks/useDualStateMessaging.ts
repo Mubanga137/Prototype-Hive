@@ -315,6 +315,8 @@ export const useDualStateMessaging = () => {
           .from("messages")
           .select("*")
           .eq("conversation_id", conversationId)
+          .not("content", "ilike", "%conversation restored by Hive%")
+          .not("content", "ilike", "%legacy order migrated%")
           .order("created_at", { ascending: true });
 
         if (error) {
